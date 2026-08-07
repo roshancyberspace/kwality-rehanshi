@@ -1,0 +1,470 @@
+@import "tailwindcss";
+
+:root {
+  --brand-navy: #001b3d;
+  --brand-blue-dark: #003f86;
+  --brand-blue: #0054a6;
+  --brand-blue-soft: #eaf4ff;
+  --brand-green: #67b529;
+  --brand-green-dark: #5ca827;
+  --brand-green-soft: #eef9e8;
+  --brand-page: #f6fbff;
+  --brand-ink: #10233f;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  overflow-x: hidden;
+  padding-bottom: env(safe-area-inset-bottom);
+  font-family:
+    "Nunito Sans", "Segoe UI", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--brand-page);
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button,
+a {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+input,
+select {
+  min-width: 0;
+}
+
+button,
+input,
+select,
+textarea {
+  touch-action: manipulation;
+}
+
+@media (max-width: 640px) {
+  .admin-swal-popup {
+    width: calc(100vw - 24px) !important;
+  }
+
+  .admin-swal-actions {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modalSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes modalFadeOut {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes modalSlideDown {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(20px) scale(0.96);
+  }
+}
+
+.animate-modal-fade {
+  animation: modalFadeIn 240ms ease-out both;
+}
+
+.animate-modal-slide {
+  animation: modalSlideUp 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-modal-fade-out {
+  animation: modalFadeOut 180ms ease-in both;
+}
+
+.animate-modal-slide-out {
+  animation: modalSlideDown 180ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+
+.rating-dotted-underline {
+  text-decoration-line: underline;
+  text-decoration-style: dotted;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 4px;
+}
+
+@keyframes shimmerSweep {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.shimmer-block {
+  position: relative;
+  overflow: hidden;
+  background: #ececea;
+}
+
+.shimmer-block::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.72), transparent);
+  animation: shimmerSweep 1.3s infinite;
+}
+
+.admin-sidebar-drawer {
+  translate: -100% 0;
+}
+
+.admin-sidebar-drawer[data-open="true"] {
+  translate: 0 0;
+}
+
+@media (min-width: 64rem) {
+  .admin-sidebar-drawer {
+    translate: none;
+  }
+}
+
+.admin-swal-popup {
+  width: min(92vw, 400px) !important;
+  border-radius: 10px !important;
+  padding: 18px 18px 16px !important;
+}
+
+.admin-swal-icon {
+  height: 52px !important;
+  margin: 4px auto 12px !important;
+  width: 52px !important;
+}
+
+.admin-swal-title {
+  padding: 0 !important;
+  font-size: 20px !important;
+  line-height: 1.2 !important;
+}
+
+.admin-swal-text {
+  margin: 8px 0 0 !important;
+  font-size: 14px !important;
+  line-height: 1.35 !important;
+}
+
+.admin-swal-actions {
+  display: grid !important;
+  grid-template-columns: 1fr 1.35fr !important;
+  gap: 10px !important;
+  margin: 16px 0 0 !important;
+  width: 100% !important;
+}
+
+.admin-swal-button {
+  min-width: 0 !important;
+  width: 100% !important;
+  border-radius: 6px !important;
+  padding: 9px 14px !important;
+  font-size: 14px !important;
+  font-weight: 800 !important;
+}
+
+.admin-swal-cancel {
+  background: #64748b !important;
+}
+
+.admin-swal-input-label {
+  display: block !important;
+  margin: 14px 0 7px !important;
+  width: 100% !important;
+  text-align: left !important;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+  color: #334155 !important;
+}
+
+.admin-swal-textarea {
+  min-height: 88px !important;
+  max-height: 112px !important;
+  margin: 0 !important;
+  width: 100% !important;
+  border-radius: 7px !important;
+  font-size: 14px !important;
+  line-height: 1.35 !important;
+  padding: 10px 12px !important;
+  resize: vertical !important;
+}
+
+@keyframes couponGlowPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(103, 181, 41, 0);
+    transform: scale(1);
+  }
+
+  35% {
+    box-shadow: 0 0 0 6px rgba(103, 181, 41, 0.18), 0 12px 28px rgba(103, 181, 41, 0.22);
+    transform: scale(1.01);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(103, 181, 41, 0);
+    transform: scale(1);
+  }
+}
+
+@keyframes couponCheckPop {
+  0% {
+    opacity: 0;
+    transform: scale(0.35) rotate(-18deg);
+  }
+
+  60% {
+    opacity: 1;
+    transform: scale(1.12) rotate(4deg);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+@keyframes couponConfettiFly {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.35);
+  }
+
+  18% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--tx, 0px)), calc(-50% + var(--ty, -70px))) scale(0.65) rotate(240deg);
+  }
+}
+
+@keyframes couponSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-coupon-glow {
+  animation: couponGlowPulse 900ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.coupon-success-burst {
+  z-index: 2;
+}
+
+.coupon-success-check {
+  align-items: center;
+  animation: couponCheckPop 620ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  background: linear-gradient(135deg, #67b529, #4f9f1d);
+  border-radius: 9999px;
+  box-shadow: 0 10px 24px rgba(103, 181, 41, 0.35);
+  color: #fff;
+  display: grid;
+  height: 3.25rem;
+  place-items: center;
+  width: 3.25rem;
+}
+
+.coupon-confetti-particle {
+  animation: couponConfettiFly 900ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: var(--particle-delay);
+  background: var(--particle-hue);
+  border-radius: 9999px;
+  height: 0.55rem;
+  left: 50%;
+  position: absolute;
+  top: 50%;
+  width: 0.55rem;
+}
+
+.coupon-spinner {
+  animation: couponSpin 700ms linear infinite;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-radius: 9999px;
+  border-top-color: #fff;
+  display: inline-block;
+  height: 0.85rem;
+  width: 0.85rem;
+}
+
+.staff-login-input {
+  width: 100%;
+  min-height: 3rem;
+  border-radius: 0.9rem;
+  border: 1px solid #d7e2f0;
+  background: #fff;
+  padding: 0.85rem 1rem 0.85rem 2.6rem;
+  color: var(--brand-ink);
+  font-size: 0.875rem;
+  font-weight: 700;
+  outline: none;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.staff-login-input::placeholder {
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+.staff-login-input:focus {
+  border-color: #003f86;
+  box-shadow: 0 0 0 3px rgba(0, 63, 134, 0.12);
+}
+
+.vendor-onboard {
+  overscroll-behavior: none;
+}
+
+.vendor-onboard-step {
+  height: 100%;
+}
+
+@media (max-width: 1023px) {
+  .staff-login-form {
+    animation: none;
+  }
+
+  .staff-login {
+    background:
+      radial-gradient(circle at top right, rgba(103, 181, 41, 0.1), transparent 42%),
+      radial-gradient(circle at bottom left, rgba(0, 63, 134, 0.08), transparent 40%),
+      var(--brand-page);
+  }
+}
+
+.staff-login-panel {
+  animation: staffLoginRise 480ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.staff-login-form {
+  animation: staffLoginRise 560ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.staff-login-stat {
+  animation: staffLoginRise 640ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.staff-login-stat:nth-child(2) {
+  animation-delay: 70ms;
+}
+
+.staff-login-stat:nth-child(3) {
+  animation-delay: 140ms;
+}
+
+.staff-login-orb {
+  animation: staffLoginFloat 10s ease-in-out infinite;
+}
+
+.staff-login-orb-delayed {
+  animation: staffLoginFloat 12s ease-in-out infinite reverse;
+}
+
+.staff-login-spinner {
+  animation: couponSpin 700ms linear infinite;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-radius: 9999px;
+  border-top-color: #fff;
+  display: inline-block;
+  height: 1rem;
+  width: 1rem;
+}
+
+@keyframes staffLoginRise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes staffLoginFloat {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(12px, -18px, 0) scale(1.04);
+  }
+}
+
+.coupon-row-success {
+  animation: couponGlowPulse 900ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+
+.invoice-sheet {
+  max-width: 794px;
+}
+
+/* Thin & elegant custom scrollbars for modals & containers */
+.custom-thin-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+.custom-thin-scrollbar::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+.custom-thin-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-thin-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1;
+  border-radius: 9999px;
+}
+.custom-thin-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: #94a3b8;
+}
+

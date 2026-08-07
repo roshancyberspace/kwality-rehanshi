@@ -1,0 +1,545 @@
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Models\CustomerProfile;
+use App\Support\CustomerPasswordMailer;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
+
+class CustomerAuthController extends Controller
+{
+    public function __construct(private CustomerPasswordMailer $passwordMailer)
+    {
+    }
+
+    private function publicCustomer(CustomerProfile $customer, ?string $token = null): array
+    {
+        $metadata = $customer->metadata ?? [];
+        unset(
+            $metadata['password'],
+            $metadata['password_hash'],
+            $metadata['session_token'],
+            $metadata['password_reset'],
+            $metadata['login_otp']
+        );
+
+        $response = [
+            ...$customer->toArray(),
+            'metadata' => $metadata,
+        ];
+
+        if ($token) {
+            $response['auth_token'] = $token;
+            $response['token_type'] = 'Bearer';
+        }
+
+        return $response;
+    }
+
+    private function devicePayload(Request $request): array
+    {
+        return $request->validate([
+            'device_id' => ['nullable', 'string', 'max:255'],
+            'device_name' => ['nullable', 'string', 'max:255'],
+            'device_token' => ['nullable', 'string', 'max:1000'],
+            'fcm_token' => ['nullable', 'string', 'max:1000'],
+            'apns_token' => ['nullable', 'string', 'max:1000'],
+            'platform' => ['nullable', 'string', 'in:android,ios,web'],
+        ]);
+    }
+
+    private function syncDevice(CustomerProfile $customer, array $device): void
+    {
+        $pushToken = $device['fcm_token'] ?? $device['device_token'] ?? $device['apns_token'] ?? null;
+        if (! $pushToken) {
+            return;
+        }
+
+        $metadata = $customer->metadata ?? [];
+        $devices = collect($metadata['devices'] ?? [])
+            ->reject(fn ($item) => ($item['push_token'] ?? null) === $pushToken)
+            ->values()
+            ->all();
+
+        array_unshift($devices, [
+            'apns_token' => $device['apns_token'] ?? null,
+            'device_id' => $device['device_id'] ?? null,
+            'device_name' => $device['device_name'] ?? null,
+            'fcm_token' => $device['fcm_token'] ?? $device['device_token'] ?? null,
+            'platform' => $device['platform'] ?? null,
+            'push_token' => $pushToken,
+            'updated_at' => now()->toISOString(),
+        ]);
+
+        $metadata['devices'] = array_slice($devices, 0, 10);
+        $metadata['last_device'] = $metadata['devices'][0];
+        $customer->forceFill(['metadata' => $metadata])->save();
+    }
+
+    public function checkAvailability(Request $request)
+    {
+        $data = $request->validate([
+            'email' => ['nullable', 'email', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:50'],
+        ]);
+
+        $errors = $this->availabilityErrors($data['email'] ?? null, $data['phone'] ?? null);
+
+        return response()->json([
+            'available' => $errors === [],
+            'errors' => $errors,
+        ]);
+    }
+
+    public function register(Request $request)
+    {
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['nullable', 'email', 'max:255'],
+            'phone' => ['required', 'string', 'max:50'],
+            'password' => ['required', 'string', 'min:8', 'max:100'],
+        ]);
+
+        $errors = $this->availabilityErrors($data['email'] ?? null, $data['phone']);
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
+        }
+
+        $customer = CustomerProfile::create([
+            'phone' => $data['phone'],
+            'name' => $data['name'],
+            'email' => $data['email'] ?? null,
+            'status' => 'Active',
+            'password' => Hash::make($data['password']),
+            'metadata' => [
+                'registration_source' => 'customer_signup',
+            ],
+        ]);
+
+        $this->syncDevice($customer, $this->devicePayload($request));
+
+        $token = $customer->createToken('auth_token')->plainTextToken;
+
+        return response()->json($this->publicCustomer($customer->fresh(), $token));
+    }
+
+    public function login(Request $request)
+    {
+        $data = $request->validate([
+            'login' => ['nullable', 'string', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:50'],
+            'email' => ['nullable', 'email', 'max:255'],
+            'password' => ['required', 'string', 'max:100'],
+        ]);
+
+        $identifier = trim((string) ($data['login'] ?? $data['phone'] ?? $data['email'] ?? ''));
+        if ($identifier === '') {
+            return response()->json([
+                'message' => 'Enter your mobile number or email.',
+                'errors' => ['login' => ['Enter your mobile number or email.']],
+            ], 422);
+        }
+
+        $customer = $this->findCustomerByIdentifier($identifier);
+
+        $legacyPasswordHash = $customer?->metadata['password_hash'] ?? null;
+        $legacyPassword = $customer?->metadata['password'] ?? null;
+
+        $isValidPassword = false;
+
+        if ($customer && $customer->password && Hash::check($data['password'], $customer->password)) {
+            $isValidPassword = true;
+        } elseif ($customer && $legacyPasswordHash && Hash::check($data['password'], $legacyPasswordHash)) {
+            $isValidPassword = true;
+            $customer->password = Hash::make($data['password']);
+            $metadata = $customer->metadata ?? [];
+            unset($metadata['password_hash']);
+            $customer->metadata = $metadata;
+            $customer->save();
+        } elseif ($customer && $legacyPassword && hash_equals((string) $legacyPassword, $data['password'])) {
+            $isValidPassword = true;
+            $customer->password = Hash::make($data['password']);
+            $metadata = $customer->metadata ?? [];
+            unset($metadata['password']);
+            $customer->metadata = $metadata;
+            $customer->save();
+        }
+
+        if (! $customer || ! $isValidPassword) {
+            return response()->json(['message' => 'Invalid mobile number/email or password.'], 422);
+        }
+
+        $token = $customer->createToken('auth_token')->plainTextToken;
+        $this->syncDevice($customer, $this->devicePayload($request));
+
+        return response()->json($this->publicCustomer($customer->fresh(), $token));
+    }
+
+    public function sendLoginOtp(Request $request)
+    {
+        $data = $request->validate([
+            'login' => ['required', 'string', 'max:255'],
+        ]);
+
+        $identifier = trim($data['login']);
+        $customer = $this->findCustomerByIdentifier($identifier);
+
+        if (! $customer) {
+            return response()->json([
+                'message' => 'No active customer account found with this mobile number or email.',
+                'errors' => ['login' => ['No account found for this mobile number or email.']],
+            ], 422);
+        }
+
+        $otp = (string) random_int(100000, 999999);
+        $channel = $this->isEmailIdentifier($identifier) ? 'email' : 'phone';
+        $deliveryEmail = $customer->email ?: ($channel === 'email' ? $identifier : null);
+
+        $metadata = $customer->metadata ?? [];
+        $metadata['login_otp'] = [
+            'otp_hash' => Hash::make($otp),
+            'expires_at' => now()->addMinutes(10)->toIso8601String(),
+            'channel' => $channel,
+            'identifier' => $identifier,
+        ];
+        $customer->forceFill(['metadata' => $metadata])->save();
+
+        $sentViaEmail = false;
+        if ($deliveryEmail) {
+            try {
+                $this->passwordMailer->sendLoginOtp($deliveryEmail, $customer->name, $otp);
+                $sentViaEmail = true;
+            } catch (\Throwable) {
+                return response()->json(['message' => 'Unable to send OTP right now. Please try again.'], 422);
+            }
+        } else {
+            \Illuminate\Support\Facades\Log::info('Customer login OTP (phone only, no email on file)', [
+                'customer_id' => $customer->id,
+                'phone' => $customer->phone,
+                'otp' => $otp,
+            ]);
+        }
+
+        $response = [
+            'message' => $sentViaEmail
+                ? 'OTP sent to your registered email.'
+                : 'OTP generated for your mobile number. Check SMS/app notifications, or use password login if OTP is unavailable.',
+            'channel' => $sentViaEmail ? 'email' : 'phone',
+            'masked_destination' => $sentViaEmail
+                ? $this->maskEmail($deliveryEmail)
+                : $this->maskPhone($customer->phone ?: $identifier),
+        ];
+
+        if (config('app.debug')) {
+            $response['debug_otp'] = $otp;
+        }
+
+        return response()->json($response);
+    }
+
+    public function verifyLoginOtp(Request $request)
+    {
+        $data = $request->validate([
+            'login' => ['required', 'string', 'max:255'],
+            'otp' => ['required', 'digits:6'],
+        ]);
+
+        $customer = $this->findCustomerByIdentifier(trim($data['login']));
+        $loginOtp = $customer?->metadata['login_otp'] ?? null;
+
+        if (! $customer || ! $this->isValidLoginOtp($loginOtp, $data['otp'])) {
+            return response()->json([
+                'message' => 'Invalid or expired OTP.',
+                'errors' => ['otp' => ['Invalid or expired OTP.']],
+            ], 422);
+        }
+
+        $metadata = $customer->metadata ?? [];
+        unset($metadata['login_otp']);
+        $customer->forceFill(['metadata' => $metadata])->save();
+
+        $token = $customer->createToken('auth_token')->plainTextToken;
+        $this->syncDevice($customer, $this->devicePayload($request));
+
+        return response()->json($this->publicCustomer($customer->fresh(), $token));
+    }
+
+    private function availabilityErrors(?string $email, ?string $phone): array
+    {
+        $errors = [];
+
+        if ($phone !== null && trim($phone) !== '') {
+            if ($this->findCustomerByPhone($phone)) {
+                $errors['phone'] = ['This mobile number already exists.'];
+            }
+        }
+
+        if ($email !== null && trim($email) !== '') {
+            if ($this->findCustomerByEmail($email)) {
+                $errors['email'] = ['This email already exists.'];
+            }
+        }
+
+        return $errors;
+    }
+
+    private function findCustomerByPhone(string $phone): ?CustomerProfile
+    {
+        $digits = preg_replace('/\D+/', '', $phone) ?: '';
+        $last10 = strlen($digits) >= 10 ? substr($digits, -10) : $digits;
+        $variants = array_values(array_unique(array_filter([
+            trim($phone),
+            $digits,
+            $last10,
+            $last10 !== '' ? '91'.$last10 : null,
+            $last10 !== '' ? '+91'.$last10 : null,
+        ])));
+
+        if ($variants === []) {
+            return null;
+        }
+
+        return CustomerProfile::query()
+            ->where(function ($inner) use ($variants, $last10, $digits) {
+                foreach ($variants as $index => $variant) {
+                    if ($index === 0) {
+                        $inner->where('phone', $variant);
+                    } else {
+                        $inner->orWhere('phone', $variant);
+                    }
+                }
+
+                if ($digits !== '') {
+                    $inner->orWhereRaw("REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '+', '') LIKE ?", ['%'.$digits]);
+                }
+
+                if ($last10 !== '' && $last10 !== $digits) {
+                    $inner->orWhereRaw("REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '+', '') LIKE ?", ['%'.$last10]);
+                }
+            })
+            ->first();
+    }
+
+    private function findCustomerByEmail(string $email): ?CustomerProfile
+    {
+        return CustomerProfile::query()
+            ->whereRaw('LOWER(email) = ?', [strtolower(trim($email))])
+            ->first();
+    }
+
+    private function findCustomerByIdentifier(string $identifier): ?CustomerProfile
+    {
+        $identifier = trim($identifier);
+        if ($identifier === '') {
+            return null;
+        }
+
+        $query = CustomerProfile::query()->where('status', '!=', 'Blocked');
+
+        if ($this->isEmailIdentifier($identifier)) {
+            return $query->whereRaw('LOWER(email) = ?', [strtolower($identifier)])->first();
+        }
+
+        $digits = preg_replace('/\D+/', '', $identifier) ?: '';
+        $variants = array_values(array_unique(array_filter([
+            $identifier,
+            $digits,
+            strlen($digits) > 10 ? substr($digits, -10) : null,
+            strlen($digits) === 10 ? '91'.$digits : null,
+            strlen($digits) === 10 ? '+91'.$digits : null,
+        ])));
+
+        return $query
+            ->where(function ($inner) use ($variants, $digits) {
+                foreach ($variants as $index => $variant) {
+                    if ($index === 0) {
+                        $inner->where('phone', $variant);
+                    } else {
+                        $inner->orWhere('phone', $variant);
+                    }
+                }
+
+                if ($digits !== '') {
+                    $inner->orWhereRaw("REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '+', '') LIKE ?", ['%'.$digits]);
+                    if (strlen($digits) >= 10) {
+                        $inner->orWhereRaw("REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '+', '') LIKE ?", ['%'.substr($digits, -10)]);
+                    }
+                }
+            })
+            ->first();
+    }
+
+    private function isEmailIdentifier(string $identifier): bool
+    {
+        return (bool) filter_var($identifier, FILTER_VALIDATE_EMAIL);
+    }
+
+    private function isValidLoginOtp(?array $loginOtp, string $otp): bool
+    {
+        if (! $loginOtp || now()->greaterThan($loginOtp['expires_at'] ?? now()->subSecond())) {
+            return false;
+        }
+
+        return Hash::check($otp, (string) ($loginOtp['otp_hash'] ?? ''));
+    }
+
+    private function maskEmail(string $email): string
+    {
+        [$local, $domain] = array_pad(explode('@', $email, 2), 2, '');
+        $visible = substr($local, 0, 1);
+
+        return $visible.'***@'.$domain;
+    }
+
+    private function maskPhone(string $phone): string
+    {
+        $digits = preg_replace('/\D+/', '', $phone) ?: $phone;
+        if (strlen($digits) < 4) {
+            return '****';
+        }
+
+        return str_repeat('*', max(0, strlen($digits) - 4)).substr($digits, -4);
+    }
+
+    public function me(Request $request)
+    {
+        return response()->json($this->publicCustomer($request->user()));
+    }
+
+    public function session(Request $request)
+    {
+        // Legacy fallback that redirects to /me but assumes token is passed in body
+        // The token needs to be passed via Bearer header now.
+        // We will just validate using Sanctum middleware later.
+        $customer = $request->user('customer');
+        if (!$customer) {
+            return response()->json(['message' => 'Invalid mobile number or password.'], 422);
+        }
+        return response()->json($this->publicCustomer($customer, null));
+    }
+
+    public function logout(Request $request)
+    {
+        $customer = $request->user();
+        if ($customer) {
+            // Revoke current token
+            $request->user()->currentAccessToken()->delete();
+        }
+        return response()->json(['message' => 'Logged out']);
+    }
+
+    public function sendPasswordOtp(Request $request)
+    {
+        $data = $request->validate([
+            'email' => ['required', 'email', 'max:255'],
+        ]);
+
+        $customer = CustomerProfile::query()
+            ->where('email', $data['email'])
+            ->where('status', '!=', 'Blocked')
+            ->first();
+
+        if (! $customer) {
+            return response()->json(['message' => 'No active customer account found with this email.'], 422);
+        }
+
+        $otp = (string) random_int(100000, 999999);
+        $metadata = $customer->metadata ?? [];
+        $metadata['password_reset'] = [
+            'otp_hash' => Hash::make($otp),
+            'expires_at' => now()->addMinutes(10)->toIso8601String(),
+            'verified_at' => null,
+            'reset_token_hash' => null,
+        ];
+
+        $customer->forceFill(['metadata' => $metadata])->save();
+
+        try {
+            $this->passwordMailer->sendOtp($customer->email, $customer->name, $otp);
+        } catch (\Throwable) {
+            return response()->json(['message' => 'Unable to send OTP email right now. Please check mail settings and try again.'], 422);
+        }
+
+        return response()->json(['message' => 'OTP sent to your registered email.']);
+    }
+
+    public function verifyPasswordOtp(Request $request)
+    {
+        $data = $request->validate([
+            'email' => ['required', 'email', 'max:255'],
+            'otp' => ['required', 'digits:6'],
+        ]);
+
+        $customer = $this->customerForPasswordReset($data['email']);
+        $reset = $customer?->metadata['password_reset'] ?? null;
+
+        if (! $customer || ! $this->isValidPasswordOtp($reset, $data['otp'])) {
+            return response()->json(['message' => 'Invalid or expired OTP.'], 422);
+        }
+
+        $resetToken = Str::random(64);
+        $metadata = $customer->metadata ?? [];
+        $metadata['password_reset'] = [
+            ...$reset,
+            'verified_at' => now()->toIso8601String(),
+            'reset_token_hash' => hash('sha256', $resetToken),
+        ];
+        $customer->forceFill(['metadata' => $metadata])->save();
+
+        return response()->json([
+            'message' => 'OTP verified. You can now set a new password.',
+            'reset_token' => $resetToken,
+        ]);
+    }
+
+    public function resetPassword(Request $request)
+    {
+        $data = $request->validate([
+            'email' => ['required', 'email', 'max:255'],
+            'password' => ['required', 'string', 'min:8', 'max:100', 'confirmed'],
+            'reset_token' => ['required', 'string', 'size:64'],
+        ]);
+
+        $customer = $this->customerForPasswordReset($data['email']);
+        $reset = $customer?->metadata['password_reset'] ?? null;
+        $tokenHash = $reset['reset_token_hash'] ?? '';
+
+        if (
+            ! $customer
+            || ! $reset
+            || now()->greaterThan($reset['expires_at'] ?? now()->subSecond())
+            || ! hash_equals((string) $tokenHash, hash('sha256', $data['reset_token']))
+        ) {
+            return response()->json(['message' => 'Password reset session has expired. Please request a new OTP.'], 422);
+        }
+
+        $customer->password = Hash::make($data['password']);
+        $metadata = $customer->metadata ?? [];
+        unset($metadata['password'], $metadata['password_hash'], $metadata['password_reset'], $metadata['session_token']);
+
+        $customer->forceFill(['metadata' => $metadata])->save();
+
+        return response()->json(['message' => 'Password changed successfully. Please login with your new password.']);
+    }
+
+    private function customerForPasswordReset(string $email): ?CustomerProfile
+    {
+        return CustomerProfile::query()
+            ->where('email', $email)
+            ->where('status', '!=', 'Blocked')
+            ->first();
+    }
+
+    private function isValidPasswordOtp(?array $reset, string $otp): bool
+    {
+        if (! $reset || now()->greaterThan($reset['expires_at'] ?? now()->subSecond())) {
+            return false;
+        }
+
+        return Hash::check($otp, (string) ($reset['otp_hash'] ?? ''));
+    }
+}

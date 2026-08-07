@@ -1,0 +1,3784 @@
+{
+  "info": {
+    "_postman_id": "9e2f88f8-95d8-4f01-a9c7-5fa0fefbf5f1",
+    "name": "KwalityCareMobile API - Customer & Vendor",
+    "description": "Mobile app compatible API collection for customer and vendor apps. Set base_url to your backend URL, for example http://127.0.0.1:8000/api/v1. Updated with dynamic CMS pages, rate cards, invoices, tracking ledgers, and onboarding enhancements while preserving all legacy keys. All API endpoint responses are standardized to include \"status\" (boolean: true for success, false for failure) and \"error_code\" (integer/string: 0 or null on success, non-zero on error).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://127.0.0.1:8000/api/v1"
+    },
+    {
+      "key": "customer_id",
+      "value": "1"
+    },
+    {
+      "key": "customer_token",
+      "value": ""
+    },
+    {
+      "key": "partner_id",
+      "value": "1"
+    },
+    {
+      "key": "partner_token",
+      "value": ""
+    },
+    {
+      "key": "booking_id",
+      "value": "1"
+    },
+    {
+      "key": "vendor_job_id",
+      "value": "1"
+    },
+    {
+      "key": "notification_id",
+      "value": "1"
+    },
+    {
+      "key": "service_package_id",
+      "value": "1"
+    },
+    {
+      "key": "saved_address_id",
+      "value": "1"
+    },
+    {
+      "key": "bank_account_id",
+      "value": "1"
+    }
+  ],
+  "item": [
+    {
+      "name": "Shared Content",
+      "item": [
+        {
+          "name": "Frontend Content",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/frontend-content"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/frontend-content"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"items\": [\n      {\n        \"id\": 1,\n        \"title\": \"Frontend Content Sample Item 1\",\n        \"status\": \"Active\",\n        \"created_at\": \"2026-08-02T10:00:00Z\"\n      },\n      {\n        \"id\": 2,\n        \"title\": \"Frontend Content Sample Item 2\",\n        \"status\": \"Active\",\n        \"created_at\": \"2026-08-02T11:00:00Z\"\n      }\n    ],\n    \"total_count\": 2,\n    \"current_page\": 1,\n    \"per_page\": 25\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/frontend-content"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Categories",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/categories?status=Active&per_page=50"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/categories?status=Active&per_page=50"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"items\": [\n      {\n        \"id\": 1,\n        \"title\": \"Categories Sample Item 1\",\n        \"status\": \"Active\",\n        \"created_at\": \"2026-08-02T10:00:00Z\"\n      },\n      {\n        \"id\": 2,\n        \"title\": \"Categories Sample Item 2\",\n        \"status\": \"Active\",\n        \"created_at\": \"2026-08-02T11:00:00Z\"\n      }\n    ],\n    \"total_count\": 2,\n    \"current_page\": 1,\n    \"per_page\": 25\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/categories?status=Active&per_page=50"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Services",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/services?status=Active&per_page=50"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/services?status=Active&per_page=50"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"items\": [\n      {\n        \"id\": 1,\n        \"title\": \"Services Sample Item 1\",\n        \"status\": \"Active\",\n        \"created_at\": \"2026-08-02T10:00:00Z\"\n      },\n      {\n        \"id\": 2,\n        \"title\": \"Services Sample Item 2\",\n        \"status\": \"Active\",\n        \"created_at\": \"2026-08-02T11:00:00Z\"\n      }\n    ],\n    \"total_count\": 2,\n    \"current_page\": 1,\n    \"per_page\": 25\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/services?status=Active&per_page=50"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Service Packages",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/service-packages?status=Active&per_page=50"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/service-packages?status=Active&per_page=50"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"items\": [\n      {\n        \"id\": 1,\n        \"title\": \"Service Packages Sample Item 1\",\n        \"status\": \"Active\",\n        \"created_at\": \"2026-08-02T10:00:00Z\"\n      },\n      {\n        \"id\": 2,\n        \"title\": \"Service Packages Sample Item 2\",\n        \"status\": \"Active\",\n        \"created_at\": \"2026-08-02T11:00:00Z\"\n      }\n    ],\n    \"total_count\": 2,\n    \"current_page\": 1,\n    \"per_page\": 25\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/service-packages?status=Active&per_page=50"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Service Package Detail",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/service-packages/{{service_package_id}}"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/service-packages/{{service_package_id}}"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"id\": 1,\n    \"title\": \"Service Package Detail\",\n    \"status\": \"Active\"\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/service-packages/{{service_package_id}}"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Locations",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/locations?status=Active&per_page=100"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/locations?status=Active&per_page=100"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"items\": [\n      {\n        \"id\": 1,\n        \"title\": \"Locations Sample Item 1\",\n        \"status\": \"Active\",\n        \"created_at\": \"2026-08-02T10:00:00Z\"\n      },\n      {\n        \"id\": 2,\n        \"title\": \"Locations Sample Item 2\",\n        \"status\": \"Active\",\n        \"created_at\": \"2026-08-02T11:00:00Z\"\n      }\n    ],\n    \"total_count\": 2,\n    \"current_page\": 1,\n    \"per_page\": 25\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/locations?status=Active&per_page=100"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Coupons",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/coupons?status=Active&per_page=50"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/coupons?status=Active&per_page=50"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"items\": [\n      {\n        \"id\": 1,\n        \"title\": \"Coupons Sample Item 1\",\n        \"status\": \"Active\",\n        \"created_at\": \"2026-08-02T10:00:00Z\"\n      },\n      {\n        \"id\": 2,\n        \"title\": \"Coupons Sample Item 2\",\n        \"status\": \"Active\",\n        \"created_at\": \"2026-08-02T11:00:00Z\"\n      }\n    ],\n    \"total_count\": 2,\n    \"current_page\": 1,\n    \"per_page\": 25\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/coupons?status=Active&per_page=50"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "CMS Pages List",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/pages?status=Active&per_page=50"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/pages?status=Active&per_page=50"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"items\": [\n      {\n        \"id\": 1,\n        \"title\": \"CMS Pages List Sample Item 1\",\n        \"status\": \"Active\",\n        \"created_at\": \"2026-08-02T10:00:00Z\"\n      },\n      {\n        \"id\": 2,\n        \"title\": \"CMS Pages List Sample Item 2\",\n        \"status\": \"Active\",\n        \"created_at\": \"2026-08-02T11:00:00Z\"\n      }\n    ],\n    \"total_count\": 2,\n    \"current_page\": 1,\n    \"per_page\": 25\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/pages?status=Active&per_page=50"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "CMS Page By Slug (Privacy Policy / Terms)",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/pages/slug/privacy-policy"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/pages/slug/privacy-policy"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"id\": 1,\n    \"title\": \"CMS Page By Slug (Privacy Policy / Terms)\",\n    \"status\": \"Active\"\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/pages/slug/privacy-policy"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Brands Catalog",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/brands?status=Active&per_page=50"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/brands?status=Active&per_page=50"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"items\": [\n      {\n        \"id\": 1,\n        \"title\": \"Brands Catalog Sample Item 1\",\n        \"status\": \"Active\",\n        \"created_at\": \"2026-08-02T10:00:00Z\"\n      },\n      {\n        \"id\": 2,\n        \"title\": \"Brands Catalog Sample Item 2\",\n        \"status\": \"Active\",\n        \"created_at\": \"2026-08-02T11:00:00Z\"\n      }\n    ],\n    \"total_count\": 2,\n    \"current_page\": 1,\n    \"per_page\": 25\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/brands?status=Active&per_page=50"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Rate Card & Spare Parts Items",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/rate-items?status=Active&per_page=100"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/rate-items?status=Active&per_page=100"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"items\": [\n      {\n        \"id\": 1,\n        \"title\": \"Rate Card & Spare Parts Items Sample Item 1\",\n        \"status\": \"Active\",\n        \"created_at\": \"2026-08-02T10:00:00Z\"\n      },\n      {\n        \"id\": 2,\n        \"title\": \"Rate Card & Spare Parts Items Sample Item 2\",\n        \"status\": \"Active\",\n        \"created_at\": \"2026-08-02T11:00:00Z\"\n      }\n    ],\n    \"total_count\": 2,\n    \"current_page\": 1,\n    \"per_page\": 25\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/rate-items?status=Active&per_page=100"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Service Package Sections",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/service-package-sections?status=Active&per_page=50"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/service-package-sections?status=Active&per_page=50"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"items\": [\n      {\n        \"id\": 1,\n        \"title\": \"Service Package Sections Sample Item 1\",\n        \"status\": \"Active\",\n        \"created_at\": \"2026-08-02T10:00:00Z\"\n      },\n      {\n        \"id\": 2,\n        \"title\": \"Service Package Sections Sample Item 2\",\n        \"status\": \"Active\",\n        \"created_at\": \"2026-08-02T11:00:00Z\"\n      }\n    ],\n    \"total_count\": 2,\n    \"current_page\": 1,\n    \"per_page\": 25\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/service-package-sections?status=Active&per_page=50"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Calculate Checkout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"service_id\": 1,\n  \"package_ids\": [1],\n  \"coupon_code\": \"WELCOME10\",\n  \"address\": \"Lucknow\",\n  \"payment_method\": \"ONLINE\"\n}"
+            },
+            "url": "{{base_url}}/checkout/calculate"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{base_url}}/checkout/calculate"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"subtotal\": 499,\n    \"discount\": 50,\n    \"taxes\": 45,\n    \"final_total\": 494,\n    \"currency\": \"INR\"\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{base_url}}/checkout/calculate"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Customer Auth",
+      "item": [
+        {
+          "name": "Create Account",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Demo Customer\",\n  \"email\": \"customer@example.com\",\n  \"phone\": \"9876543210\",\n  \"password\": \"password123\",\n  \"platform\": \"ios\",\n  \"device_id\": \"ios-device-001\",\n  \"device_name\": \"iPhone\",\n  \"fcm_token\": \"FCM_TOKEN_FROM_APP\",\n  \"apns_token\": \"APNS_TOKEN_FROM_IOS\"\n}"
+            },
+            "url": "{{base_url}}/customers/register"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{base_url}}/customers/register"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"id\": 101,\n    \"name\": \"Demo User\",\n    \"email\": \"user@example.com\",\n    \"token\": \"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...\",\n    \"status\": \"Active\"\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{base_url}}/customers/register"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"9876543210\",\n  \"password\": \"password123\",\n  \"platform\": \"android\",\n  \"device_id\": \"android-device-001\",\n  \"device_name\": \"Android Phone\",\n  \"fcm_token\": \"FCM_TOKEN_FROM_APP\"\n}"
+            },
+            "url": "{{base_url}}/customers/login"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{base_url}}/customers/login"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"id\": 101,\n    \"name\": \"Demo User\",\n    \"email\": \"user@example.com\",\n    \"token\": \"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...\",\n    \"status\": \"Active\"\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{base_url}}/customers/login"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Check Session",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customer_id\": {{customer_id}},\n  \"token\": \"{{customer_token}}\"\n}"
+            },
+            "url": "{{base_url}}/customers/session"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{base_url}}/customers/session"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"id\": 1,\n    \"title\": \"Check Session\",\n    \"status\": \"Active\"\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{base_url}}/customers/session"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Current Customer (Me)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customer_token}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/customers/me"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/customers/me"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"id\": 1,\n    \"title\": \"Get Current Customer (Me)\",\n    \"status\": \"Active\"\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/customers/me"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customer_id\": {{customer_id}},\n  \"token\": \"{{customer_token}}\"\n}"
+            },
+            "url": "{{base_url}}/customers/logout"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{base_url}}/customers/logout"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": null\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{base_url}}/customers/logout"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Send Password OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"customer@example.com\"\n}"
+            },
+            "url": "{{base_url}}/customers/password/send-otp"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{base_url}}/customers/password/send-otp"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"id\": 1,\n    \"title\": \"Send Password OTP\",\n    \"status\": \"Active\"\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{base_url}}/customers/password/send-otp"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Verify Password OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"customer@example.com\",\n  \"otp\": \"123456\"\n}"
+            },
+            "url": "{{base_url}}/customers/password/verify-otp"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{base_url}}/customers/password/verify-otp"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"id\": 1,\n    \"title\": \"Verify Password OTP\",\n    \"status\": \"Active\"\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{base_url}}/customers/password/verify-otp"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Reset Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"customer@example.com\",\n  \"password\": \"newpassword123\",\n  \"password_confirmation\": \"newpassword123\",\n  \"reset_token\": \"RESET_TOKEN_FROM_VERIFY_OTP\"\n}"
+            },
+            "url": "{{base_url}}/customers/password/reset"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{base_url}}/customers/password/reset"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"id\": 1,\n    \"title\": \"Reset Password\",\n    \"status\": \"Active\"\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{base_url}}/customers/password/reset"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update Customer Password",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"current_password\": \"oldpassword123\",\n  \"password\": \"newpassword123\",\n  \"password_confirmation\": \"newpassword123\"\n}"
+            },
+            "url": "{{base_url}}/customers/{{customer_id}}/password"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "PATCH",
+                "url": "{{base_url}}/customers/{{customer_id}}/password"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"id\": 1,\n    \"title\": \"Update Customer Password\",\n    \"status\": \"Active\"\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "PATCH",
+                "url": "{{base_url}}/customers/{{customer_id}}/password"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Customer App",
+      "item": [
+        {
+          "name": "Customer Overview",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/customers/{{customer_id}}/overview"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/customers/{{customer_id}}/overview"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"id\": 1,\n    \"title\": \"Customer Overview\",\n    \"status\": \"Active\"\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/customers/{{customer_id}}/overview"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Customer Profile",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/customers/{{customer_id}}"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/customers/{{customer_id}}"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"id\": 1,\n    \"title\": \"Customer Profile\",\n    \"status\": \"Active\"\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/customers/{{customer_id}}"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update Customer Profile",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Demo Customer\",\n  \"email\": \"customer@example.com\",\n  \"address\": \"Jaipur\"\n}"
+            },
+            "url": "{{base_url}}/customers/{{customer_id}}"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "PATCH",
+                "url": "{{base_url}}/customers/{{customer_id}}"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"id\": 1,\n    \"title\": \"Update Customer Profile\",\n    \"status\": \"Active\"\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "PATCH",
+                "url": "{{base_url}}/customers/{{customer_id}}"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Upload Customer Profile Picture",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "profile_picture",
+                  "type": "file",
+                  "src": ""
+                }
+              ]
+            },
+            "url": "{{base_url}}/customers/{{customer_id}}/profile-picture"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{base_url}}/customers/{{customer_id}}/profile-picture"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"id\": 1,\n    \"title\": \"Upload Customer Profile Picture\",\n    \"status\": \"Active\"\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{base_url}}/customers/{{customer_id}}/profile-picture"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Create Booking",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customer_name\": \"Demo Customer\",\n  \"customer_phone\": \"9876543210\",\n  \"service_name\": \"AC Repair\",\n  \"scheduled_at\": \"2026-06-05 11:00:00\",\n  \"address\": \"Jaipur, Rajasthan\",\n  \"payment_method\": \"COD\",\n  \"amount\": 499,\n  \"service_id\": 1,\n  \"package_id\": 1,\n  \"coupon_code\": \"SAVE10\",\n  \"notes\": \"Please bring appropriate tools\",\n  \"metadata\": {\n    \"customer_id\": {{customer_id}},\n    \"items\": [{ \"id\": {{service_package_id}}, \"qty\": 1 }],\n    \"source\": \"customer_mobile_app\"\n  }\n}"
+            },
+            "url": "{{base_url}}/bookings"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{base_url}}/bookings"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"id\": 1,\n    \"title\": \"Create Booking\",\n    \"status\": \"Active\"\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{base_url}}/bookings"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Bookings",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/bookings?per_page=25"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/bookings?per_page=25"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"items\": [\n      {\n        \"id\": 1,\n        \"title\": \"Bookings Sample Item 1\",\n        \"status\": \"Active\",\n        \"created_at\": \"2026-08-02T10:00:00Z\"\n      },\n      {\n        \"id\": 2,\n        \"title\": \"Bookings Sample Item 2\",\n        \"status\": \"Active\",\n        \"created_at\": \"2026-08-02T11:00:00Z\"\n      }\n    ],\n    \"total_count\": 2,\n    \"current_page\": 1,\n    \"per_page\": 25\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/bookings?per_page=25"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Booking Detail",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/bookings/{{booking_id}}"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/bookings/{{booking_id}}"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"id\": 1,\n    \"title\": \"Booking Detail\",\n    \"status\": \"Active\"\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/bookings/{{booking_id}}"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Cancel Booking",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cancel_reason\": \"Schedule changed by customer\",\n  \"cancelled_by\": \"customer\"\n}"
+            },
+            "url": "{{base_url}}/bookings/{{booking_id}}/cancel"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{base_url}}/bookings/{{booking_id}}/cancel"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"id\": 1,\n    \"title\": \"Cancel Booking\",\n    \"status\": \"Active\"\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{base_url}}/bookings/{{booking_id}}/cancel"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Booking Invoice Detail",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/bookings/{{booking_id}}/invoice"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/bookings/{{booking_id}}/invoice"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"id\": 1,\n    \"title\": \"Booking Invoice Detail\",\n    \"status\": \"Active\"\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/bookings/{{booking_id}}/invoice"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Booking Tracking Ledgers",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/booking-ledgers?booking_id={{booking_id}}&per_page=25"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/booking-ledgers?booking_id={{booking_id}}&per_page=25"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"items\": [\n      {\n        \"id\": 1,\n        \"title\": \"Booking Tracking Ledgers Sample Item 1\",\n        \"status\": \"Active\",\n        \"created_at\": \"2026-08-02T10:00:00Z\"\n      },\n      {\n        \"id\": 2,\n        \"title\": \"Booking Tracking Ledgers Sample Item 2\",\n        \"status\": \"Active\",\n        \"created_at\": \"2026-08-02T11:00:00Z\"\n      }\n    ],\n    \"total_count\": 2,\n    \"current_page\": 1,\n    \"per_page\": 25\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/booking-ledgers?booking_id={{booking_id}}&per_page=25"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Saved Addresses",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/saved-addresses?per_page=25"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/saved-addresses?per_page=25"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"items\": [\n      {\n        \"id\": 1,\n        \"title\": \"Saved Addresses Sample Item 1\",\n        \"status\": \"Active\",\n        \"created_at\": \"2026-08-02T10:00:00Z\"\n      },\n      {\n        \"id\": 2,\n        \"title\": \"Saved Addresses Sample Item 2\",\n        \"status\": \"Active\",\n        \"created_at\": \"2026-08-02T11:00:00Z\"\n      }\n    ],\n    \"total_count\": 2,\n    \"current_page\": 1,\n    \"per_page\": 25\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/saved-addresses?per_page=25"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Create Saved Address",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customer_profile_id\": {{customer_id}},\n  \"label\": \"Home\",\n  \"contact_name\": \"Demo Customer\",\n  \"mobile\": \"9876543210\",\n  \"flat\": \"A-101\",\n  \"street\": \"Main Road\",\n  \"city\": \"Jaipur\",\n  \"metadata\": { \"source\": \"customer_mobile_app\" }\n}"
+            },
+            "url": "{{base_url}}/saved-addresses"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{base_url}}/saved-addresses"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"id\": 1,\n    \"title\": \"Create Saved Address\",\n    \"status\": \"Active\"\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{base_url}}/saved-addresses"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update Saved Address",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"label\": \"Home\",\n  \"city\": \"Jaipur\"\n}"
+            },
+            "url": "{{base_url}}/saved-addresses/{{saved_address_id}}"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "PATCH",
+                "url": "{{base_url}}/saved-addresses/{{saved_address_id}}"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"id\": 1,\n    \"title\": \"Update Saved Address\",\n    \"status\": \"Active\"\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "PATCH",
+                "url": "{{base_url}}/saved-addresses/{{saved_address_id}}"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Customer Wallets",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/customer-wallets?per_page=25"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/customer-wallets?per_page=25"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"items\": [\n      {\n        \"id\": 1,\n        \"title\": \"Customer Wallets Sample Item 1\",\n        \"status\": \"Active\",\n        \"created_at\": \"2026-08-02T10:00:00Z\"\n      },\n      {\n        \"id\": 2,\n        \"title\": \"Customer Wallets Sample Item 2\",\n        \"status\": \"Active\",\n        \"created_at\": \"2026-08-02T11:00:00Z\"\n      }\n    ],\n    \"total_count\": 2,\n    \"current_page\": 1,\n    \"per_page\": 25\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/customer-wallets?per_page=25"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Reviews",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/reviews?per_page=25"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/reviews?per_page=25"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"items\": [\n      {\n        \"id\": 1,\n        \"title\": \"Reviews Sample Item 1\",\n        \"status\": \"Active\",\n        \"created_at\": \"2026-08-02T10:00:00Z\"\n      },\n      {\n        \"id\": 2,\n        \"title\": \"Reviews Sample Item 2\",\n        \"status\": \"Active\",\n        \"created_at\": \"2026-08-02T11:00:00Z\"\n      }\n    ],\n    \"total_count\": 2,\n    \"current_page\": 1,\n    \"per_page\": 25\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/reviews?per_page=25"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Create Review",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customer_name\": \"Demo Customer\",\n  \"partner_name\": \"Demo Vendor\",\n  \"service_name\": \"AC Repair\",\n  \"rating\": 5,\n  \"text\": \"Great service\",\n  \"metadata\": { \"customer_id\": {{customer_id}}, \"direction\": \"customer_to_vendor\" }\n}"
+            },
+            "url": "{{base_url}}/reviews"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{base_url}}/reviews"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"id\": 1,\n    \"title\": \"Create Review\",\n    \"status\": \"Active\"\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{base_url}}/reviews"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Support Tickets",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/support-tickets?per_page=25"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/support-tickets?per_page=25"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"items\": [\n      {\n        \"id\": 1,\n        \"title\": \"Support Tickets Sample Item 1\",\n        \"status\": \"Active\",\n        \"created_at\": \"2026-08-02T10:00:00Z\"\n      },\n      {\n        \"id\": 2,\n        \"title\": \"Support Tickets Sample Item 2\",\n        \"status\": \"Active\",\n        \"created_at\": \"2026-08-02T11:00:00Z\"\n      }\n    ],\n    \"total_count\": 2,\n    \"current_page\": 1,\n    \"per_page\": 25\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/support-tickets?per_page=25"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Create Support Ticket",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Demo Customer\",\n  \"type\": \"Customer\",\n  \"subject\": \"Need help with booking\",\n  \"priority\": \"Medium\",\n  \"metadata\": { \"customer_id\": {{customer_id}}, \"source\": \"customer_mobile_app\" }\n}"
+            },
+            "url": "{{base_url}}/support-tickets"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{base_url}}/support-tickets"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"id\": 1,\n    \"title\": \"Create Support Ticket\",\n    \"status\": \"Active\"\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{base_url}}/support-tickets"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Vendor Auth & KYC",
+      "item": [
+        {
+          "name": "KYC Requirements",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/partners-kyc/requirements"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/partners-kyc/requirements"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"required_documents\": [\n      \"ID Proof\",\n      \"Address Proof\",\n      \"Bank Cancelled Cheque\"\n    ],\n    \"steps_count\": 3\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/partners-kyc/requirements"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Vendor Register KYC",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "name",
+                  "value": "Demo Vendor",
+                  "type": "text"
+                },
+                {
+                  "key": "business_name",
+                  "value": "Demo Services",
+                  "type": "text"
+                },
+                {
+                  "key": "phone",
+                  "value": "9876500000",
+                  "type": "text"
+                },
+                {
+                  "key": "email",
+                  "value": "vendor@example.com",
+                  "type": "text"
+                },
+                {
+                  "key": "password",
+                  "value": "password123",
+                  "type": "text"
+                },
+                {
+                  "key": "services[]",
+                  "value": "AC Repair",
+                  "type": "text"
+                },
+                {
+                  "key": "area",
+                  "value": "Vaishali Nagar",
+                  "type": "text"
+                },
+                {
+                  "key": "city",
+                  "value": "Jaipur",
+                  "type": "text"
+                },
+                {
+                  "key": "pincode",
+                  "value": "302021",
+                  "type": "text"
+                },
+                {
+                  "key": "address_line",
+                  "value": "Jaipur, Rajasthan",
+                  "type": "text"
+                },
+                {
+                  "key": "bank_account_holder",
+                  "value": "Demo Vendor",
+                  "type": "text"
+                },
+                {
+                  "key": "bank_account_number",
+                  "value": "1234567890",
+                  "type": "text"
+                },
+                {
+                  "key": "bank_account_type",
+                  "value": "Savings",
+                  "type": "text"
+                },
+                {
+                  "key": "bank_branch_name",
+                  "value": "Jaipur",
+                  "type": "text"
+                },
+                {
+                  "key": "bank_ifsc",
+                  "value": "HDFC0001234",
+                  "type": "text"
+                },
+                {
+                  "key": "bank_name",
+                  "value": "HDFC Bank",
+                  "type": "text"
+                },
+                {
+                  "key": "platform",
+                  "value": "android",
+                  "type": "text"
+                },
+                {
+                  "key": "device_id",
+                  "value": "vendor-android-001",
+                  "type": "text"
+                },
+                {
+                  "key": "fcm_token",
+                  "value": "FCM_TOKEN_FROM_VENDOR_APP",
+                  "type": "text"
+                },
+                {
+                  "key": "step",
+                  "value": "complete",
+                  "type": "text"
+                },
+                {
+                  "key": "onboarding_status",
+                  "value": "submitted",
+                  "type": "text"
+                },
+                {
+                  "key": "document_0",
+                  "type": "file",
+                  "src": ""
+                },
+                {
+                  "key": "document_1",
+                  "type": "file",
+                  "src": ""
+                },
+                {
+                  "key": "document_2",
+                  "type": "file",
+                  "src": ""
+                }
+              ]
+            },
+            "url": "{{base_url}}/partners/register"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{base_url}}/partners/register"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"id\": 101,\n    \"name\": \"Demo User\",\n    \"email\": \"user@example.com\",\n    \"token\": \"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...\",\n    \"status\": \"Active\"\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{base_url}}/partners/register"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Vendor Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"login\": \"vendor@example.com\",\n  \"password\": \"password123\",\n  \"platform\": \"ios\",\n  \"device_id\": \"vendor-ios-001\",\n  \"device_name\": \"Vendor iPhone\",\n  \"fcm_token\": \"FCM_TOKEN_FROM_VENDOR_APP\",\n  \"apns_token\": \"APNS_TOKEN_FROM_IOS\"\n}"
+            },
+            "url": "{{base_url}}/partners/login"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{base_url}}/partners/login"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"id\": 101,\n    \"name\": \"Demo User\",\n    \"email\": \"user@example.com\",\n    \"token\": \"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...\",\n    \"status\": \"Active\"\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{base_url}}/partners/login"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Vendor Check Session",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"partner_id\": {{partner_id}},\n  \"token\": \"{{partner_token}}\"\n}"
+            },
+            "url": "{{base_url}}/partners/session"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{base_url}}/partners/session"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"id\": 1,\n    \"title\": \"Vendor Check Session\",\n    \"status\": \"Active\"\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{base_url}}/partners/session"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Current Vendor (Me)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{partner_token}}"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/partners/me"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/partners/me"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"id\": 1,\n    \"title\": \"Get Current Vendor (Me)\",\n    \"status\": \"Active\"\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/partners/me"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update Vendor Password",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"current_password\": \"oldpassword123\",\n  \"password\": \"newpassword123\",\n  \"password_confirmation\": \"newpassword123\"\n}"
+            },
+            "url": "{{base_url}}/partners/{{partner_id}}/password"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "PATCH",
+                "url": "{{base_url}}/partners/{{partner_id}}/password"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"id\": 1,\n    \"title\": \"Update Vendor Password\",\n    \"status\": \"Active\"\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "PATCH",
+                "url": "{{base_url}}/partners/{{partner_id}}/password"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Vendor Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"partner_id\": {{partner_id}},\n  \"token\": \"{{partner_token}}\"\n}"
+            },
+            "url": "{{base_url}}/partners/logout"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{base_url}}/partners/logout"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": null\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{base_url}}/partners/logout"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Vendor App",
+      "item": [
+        {
+          "name": "Vendor Overview",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/partners/{{partner_id}}/overview"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/partners/{{partner_id}}/overview"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"id\": 1,\n    \"title\": \"Vendor Overview\",\n    \"status\": \"Active\"\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/partners/{{partner_id}}/overview"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Vendor Profile",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/partners/{{partner_id}}"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/partners/{{partner_id}}"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"id\": 1,\n    \"title\": \"Vendor Profile\",\n    \"status\": \"Active\"\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/partners/{{partner_id}}"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Vendor Public Profile",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/partners/{{partner_id}}/public-profile"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/partners/{{partner_id}}/public-profile"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"id\": 1,\n    \"title\": \"Vendor Public Profile\",\n    \"status\": \"Active\"\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/partners/{{partner_id}}/public-profile"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update Availability",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"availability\": \"Available\"\n}"
+            },
+            "url": "{{base_url}}/partners/{{partner_id}}/availability"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "PATCH",
+                "url": "{{base_url}}/partners/{{partner_id}}/availability"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"id\": 1,\n    \"title\": \"Update Availability\",\n    \"status\": \"Active\"\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "PATCH",
+                "url": "{{base_url}}/partners/{{partner_id}}/availability"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Vendor Jobs",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/vendor-jobs?per_page=25"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/vendor-jobs?per_page=25"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"items\": [\n      {\n        \"id\": 1,\n        \"title\": \"Vendor Jobs Sample Item 1\",\n        \"status\": \"Active\",\n        \"created_at\": \"2026-08-02T10:00:00Z\"\n      },\n      {\n        \"id\": 2,\n        \"title\": \"Vendor Jobs Sample Item 2\",\n        \"status\": \"Active\",\n        \"created_at\": \"2026-08-02T11:00:00Z\"\n      }\n    ],\n    \"total_count\": 2,\n    \"current_page\": 1,\n    \"per_page\": 25\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/vendor-jobs?per_page=25"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Vendor Job Detail",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/vendor-jobs/{{vendor_job_id}}"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/vendor-jobs/{{vendor_job_id}}"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"id\": 1,\n    \"title\": \"Vendor Job Detail\",\n    \"status\": \"Active\"\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/vendor-jobs/{{vendor_job_id}}"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update Vendor Job",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"Accepted\",\n  \"next_action\": \"Start job\",\n  \"service_id\": 1,\n  \"technician_notes\": \"Arrived at customer location\",\n  \"completion_verified\": true\n}"
+            },
+            "url": "{{base_url}}/vendor-jobs/{{vendor_job_id}}"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "PATCH",
+                "url": "{{base_url}}/vendor-jobs/{{vendor_job_id}}"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"id\": 1,\n    \"title\": \"Update Vendor Job\",\n    \"status\": \"Active\"\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "PATCH",
+                "url": "{{base_url}}/vendor-jobs/{{vendor_job_id}}"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Upload Job Photos",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "photos[]",
+                  "type": "file",
+                  "src": ""
+                }
+              ]
+            },
+            "url": "{{base_url}}/vendor-jobs/{{vendor_job_id}}/photos"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{base_url}}/vendor-jobs/{{vendor_job_id}}/photos"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"id\": 1,\n    \"title\": \"Upload Job Photos\",\n    \"status\": \"Active\"\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{base_url}}/vendor-jobs/{{vendor_job_id}}/photos"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Upload Job Media Chunk (Large File/Video)",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "chunk",
+                  "type": "file",
+                  "src": ""
+                },
+                {
+                  "key": "chunk_index",
+                  "value": "0",
+                  "type": "text"
+                },
+                {
+                  "key": "total_chunks",
+                  "value": "3",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": "{{base_url}}/vendor-jobs/{{vendor_job_id}}/media-chunk"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{base_url}}/vendor-jobs/{{vendor_job_id}}/media-chunk"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"id\": 1,\n    \"title\": \"Upload Job Media Chunk (Large File/Video)\",\n    \"status\": \"Active\"\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{base_url}}/vendor-jobs/{{vendor_job_id}}/media-chunk"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Vendor Wallets",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/vendor-wallets?per_page=25"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/vendor-wallets?per_page=25"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"items\": [\n      {\n        \"id\": 1,\n        \"title\": \"Vendor Wallets Sample Item 1\",\n        \"status\": \"Active\",\n        \"created_at\": \"2026-08-02T10:00:00Z\"\n      },\n      {\n        \"id\": 2,\n        \"title\": \"Vendor Wallets Sample Item 2\",\n        \"status\": \"Active\",\n        \"created_at\": \"2026-08-02T11:00:00Z\"\n      }\n    ],\n    \"total_count\": 2,\n    \"current_page\": 1,\n    \"per_page\": 25\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/vendor-wallets?per_page=25"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Wallet Transactions",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/wallet-transactions?per_page=25"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/wallet-transactions?per_page=25"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"items\": [\n      {\n        \"id\": 1,\n        \"title\": \"Wallet Transactions Sample Item 1\",\n        \"status\": \"Active\",\n        \"created_at\": \"2026-08-02T10:00:00Z\"\n      },\n      {\n        \"id\": 2,\n        \"title\": \"Wallet Transactions Sample Item 2\",\n        \"status\": \"Active\",\n        \"created_at\": \"2026-08-02T11:00:00Z\"\n      }\n    ],\n    \"total_count\": 2,\n    \"current_page\": 1,\n    \"per_page\": 25\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/wallet-transactions?per_page=25"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Payouts",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/payouts?per_page=25"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/payouts?per_page=25"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"items\": [\n      {\n        \"id\": 1,\n        \"title\": \"Payouts Sample Item 1\",\n        \"status\": \"Active\",\n        \"created_at\": \"2026-08-02T10:00:00Z\"\n      },\n      {\n        \"id\": 2,\n        \"title\": \"Payouts Sample Item 2\",\n        \"status\": \"Active\",\n        \"created_at\": \"2026-08-02T11:00:00Z\"\n      }\n    ],\n    \"total_count\": 2,\n    \"current_page\": 1,\n    \"per_page\": 25\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/payouts?per_page=25"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Upload Profile Picture",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "profile_picture",
+                  "type": "file",
+                  "src": ""
+                }
+              ]
+            },
+            "url": "{{base_url}}/partners/{{partner_id}}/profile-picture"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{base_url}}/partners/{{partner_id}}/profile-picture"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"id\": 1,\n    \"title\": \"Upload Profile Picture\",\n    \"status\": \"Active\"\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{base_url}}/partners/{{partner_id}}/profile-picture"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Upload Document",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "label",
+                  "value": "Police Verification",
+                  "type": "text"
+                },
+                {
+                  "key": "document",
+                  "type": "file",
+                  "src": ""
+                }
+              ]
+            },
+            "url": "{{base_url}}/partners/{{partner_id}}/documents"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{base_url}}/partners/{{partner_id}}/documents"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"id\": 1,\n    \"title\": \"Upload Document\",\n    \"status\": \"Active\"\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{base_url}}/partners/{{partner_id}}/documents"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Add Bank Account",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"account_holder\": \"Demo Vendor\",\n  \"account_number\": \"1234567890\",\n  \"account_type\": \"Savings\",\n  \"bank_name\": \"HDFC Bank\",\n  \"branch_name\": \"Jaipur\",\n  \"ifsc\": \"HDFC0001234\",\n  \"make_active\": true\n}"
+            },
+            "url": "{{base_url}}/partners/{{partner_id}}/bank-accounts"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{base_url}}/partners/{{partner_id}}/bank-accounts"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"id\": 1,\n    \"title\": \"Add Bank Account\",\n    \"status\": \"Active\"\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{base_url}}/partners/{{partner_id}}/bank-accounts"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update Bank Account",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"account_holder\": \"Demo Vendor\",\n  \"account_number\": \"1234567890\",\n  \"account_type\": \"Current\",\n  \"bank_name\": \"HDFC Bank\",\n  \"branch_name\": \"Jaipur Main\",\n  \"ifsc\": \"HDFC0005678\"\n}"
+            },
+            "url": "{{base_url}}/partners/{{partner_id}}/bank-accounts/{{bank_account_id}}"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "PUT",
+                "url": "{{base_url}}/partners/{{partner_id}}/bank-accounts/{{bank_account_id}}"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"id\": 1,\n    \"title\": \"Update Bank Account\",\n    \"status\": \"Active\"\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "PUT",
+                "url": "{{base_url}}/partners/{{partner_id}}/bank-accounts/{{bank_account_id}}"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Activate Bank Account",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/partners/{{partner_id}}/bank-accounts/{{bank_account_id}}/active"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "PATCH",
+                "url": "{{base_url}}/partners/{{partner_id}}/bank-accounts/{{bank_account_id}}/active"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"id\": 1,\n    \"title\": \"Activate Bank Account\",\n    \"status\": \"Active\"\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "PATCH",
+                "url": "{{base_url}}/partners/{{partner_id}}/bank-accounts/{{bank_account_id}}/active"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Vendor Rate Items (All Active Spare Parts & Rates)",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/rate-items?status=Active&per_page=100"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/rate-items?status=Active&per_page=100"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Rate items fetched successfully\",\n  \"data\": {\n    \"items\": [\n      {\n        \"id\": 1,\n        \"service_id\": 2,\n        \"name\": \"Copper Pipe per Meter (AC)\",\n        \"price\": \"350.00\",\n        \"image\": \"https://example.com/images/copper-pipe.jpg\",\n        \"status\": \"Active\",\n        \"service\": {\n          \"id\": 2,\n          \"name\": \"Split AC Repair & Servicing\",\n          \"category_id\": 1,\n          \"status\": \"Active\"\n        }\n      },\n      {\n        \"id\": 2,\n        \"service_id\": 2,\n        \"name\": \"AC Capacitor 45uF Replacement\",\n        \"price\": \"450.00\",\n        \"image\": \"https://example.com/images/capacitor.jpg\",\n        \"status\": \"Active\",\n        \"service\": {\n          \"id\": 2,\n          \"name\": \"Split AC Repair & Servicing\",\n          \"category_id\": 1,\n          \"status\": \"Active\"\n        }\n      }\n    ],\n    \"total_count\": 2,\n    \"current_page\": 1,\n    \"per_page\": 100\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Sample)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/rate-items?status=Active&per_page=100"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Unable to retrieve rate card items\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Vendor Rate Items By Service (Filtered for active job)",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/rate-items?service_id=2&status=Active&per_page=100"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/rate-items?service_id=2&status=Active&per_page=100"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Service rate items fetched successfully\",\n  \"data\": {\n    \"items\": [\n      {\n        \"id\": 1,\n        \"service_id\": 2,\n        \"name\": \"Copper Pipe per Meter (AC)\",\n        \"price\": \"350.00\",\n        \"image\": \"https://example.com/images/copper-pipe.jpg\",\n        \"status\": \"Active\"\n      }\n    ],\n    \"total_count\": 1,\n    \"current_page\": 1,\n    \"per_page\": 100\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/rate-items?service_id=2&status=Active&per_page=100"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid service ID specified\",\n  \"data\": null\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Mobile Push & Notifications",
+      "item": [
+        {
+          "name": "Register Customer FCM/APNs Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customer_id\": {{customer_id}},\n  \"token\": \"{{customer_token}}\",\n  \"platform\": \"ios\",\n  \"device_id\": \"ios-device-001\",\n  \"device_name\": \"iPhone\",\n  \"fcm_token\": \"FCM_TOKEN_FROM_APP\",\n  \"apns_token\": \"APNS_TOKEN_FROM_IOS\"\n}"
+            },
+            "url": "{{base_url}}/mobile/customers/device-token"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{base_url}}/mobile/customers/device-token"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"id\": 101,\n    \"name\": \"Demo User\",\n    \"email\": \"user@example.com\",\n    \"token\": \"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...\",\n    \"status\": \"Active\"\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{base_url}}/mobile/customers/device-token"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Remove Customer FCM/APNs Token",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customer_id\": {{customer_id}},\n  \"token\": \"{{customer_token}}\",\n  \"platform\": \"ios\",\n  \"device_id\": \"ios-device-001\",\n  \"fcm_token\": \"FCM_TOKEN_FROM_APP\"\n}"
+            },
+            "url": "{{base_url}}/mobile/customers/device-token"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "DELETE",
+                "url": "{{base_url}}/mobile/customers/device-token"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": null\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "DELETE",
+                "url": "{{base_url}}/mobile/customers/device-token"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Customer Notifications",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/mobile/customers/notifications?customer_id={{customer_id}}&token={{customer_token}}&per_page=25"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/mobile/customers/notifications?customer_id={{customer_id}}&token={{customer_token}}&per_page=25"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"items\": [\n      {\n        \"id\": 1,\n        \"title\": \"Customer Notifications Sample Item 1\",\n        \"status\": \"Active\",\n        \"created_at\": \"2026-08-02T10:00:00Z\"\n      },\n      {\n        \"id\": 2,\n        \"title\": \"Customer Notifications Sample Item 2\",\n        \"status\": \"Active\",\n        \"created_at\": \"2026-08-02T11:00:00Z\"\n      }\n    ],\n    \"total_count\": 2,\n    \"current_page\": 1,\n    \"per_page\": 25\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/mobile/customers/notifications?customer_id={{customer_id}}&token={{customer_token}}&per_page=25"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Mark Customer Notification Read",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customer_id\": {{customer_id}},\n  \"token\": \"{{customer_token}}\"\n}"
+            },
+            "url": "{{base_url}}/mobile/customers/notifications/{{notification_id}}/read"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "PATCH",
+                "url": "{{base_url}}/mobile/customers/notifications/{{notification_id}}/read"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"id\": 1,\n    \"title\": \"Mark Customer Notification Read\",\n    \"status\": \"Active\"\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "PATCH",
+                "url": "{{base_url}}/mobile/customers/notifications/{{notification_id}}/read"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Register Vendor FCM/APNs Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"partner_id\": {{partner_id}},\n  \"token\": \"{{partner_token}}\",\n  \"platform\": \"android\",\n  \"device_id\": \"vendor-android-001\",\n  \"device_name\": \"Vendor Android\",\n  \"fcm_token\": \"FCM_TOKEN_FROM_VENDOR_APP\"\n}"
+            },
+            "url": "{{base_url}}/mobile/vendors/device-token"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{base_url}}/mobile/vendors/device-token"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"id\": 101,\n    \"name\": \"Demo User\",\n    \"email\": \"user@example.com\",\n    \"token\": \"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...\",\n    \"status\": \"Active\"\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{base_url}}/mobile/vendors/device-token"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Remove Vendor FCM/APNs Token",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"partner_id\": {{partner_id}},\n  \"token\": \"{{partner_token}}\",\n  \"platform\": \"android\",\n  \"device_id\": \"vendor-android-001\",\n  \"fcm_token\": \"FCM_TOKEN_FROM_VENDOR_APP\"\n}"
+            },
+            "url": "{{base_url}}/mobile/vendors/device-token"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "DELETE",
+                "url": "{{base_url}}/mobile/vendors/device-token"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": null\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "DELETE",
+                "url": "{{base_url}}/mobile/vendors/device-token"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Vendor Notifications",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/mobile/vendors/notifications?partner_id={{partner_id}}&token={{partner_token}}&per_page=25"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/mobile/vendors/notifications?partner_id={{partner_id}}&token={{partner_token}}&per_page=25"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"items\": [\n      {\n        \"id\": 1,\n        \"title\": \"Vendor Notifications Sample Item 1\",\n        \"status\": \"Active\",\n        \"created_at\": \"2026-08-02T10:00:00Z\"\n      },\n      {\n        \"id\": 2,\n        \"title\": \"Vendor Notifications Sample Item 2\",\n        \"status\": \"Active\",\n        \"created_at\": \"2026-08-02T11:00:00Z\"\n      }\n    ],\n    \"total_count\": 2,\n    \"current_page\": 1,\n    \"per_page\": 25\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "GET",
+                "url": "{{base_url}}/mobile/vendors/notifications?partner_id={{partner_id}}&token={{partner_token}}&per_page=25"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Mark Vendor Notification Read",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"partner_id\": {{partner_id}},\n  \"token\": \"{{partner_token}}\"\n}"
+            },
+            "url": "{{base_url}}/mobile/vendors/notifications/{{notification_id}}/read"
+          },
+          "response": [
+            {
+              "name": "200 OK (Successful Response with status & error_code)",
+              "originalRequest": {
+                "method": "PATCH",
+                "url": "{{base_url}}/mobile/vendors/notifications/{{notification_id}}/read"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"error_code\": 0,\n  \"message\": \"Request executed successfully\",\n  \"data\": {\n    \"id\": 1,\n    \"title\": \"Mark Vendor Notification Read\",\n    \"status\": \"Active\"\n  }\n}"
+            },
+            {
+              "name": "400 Bad Request / Error (Failure Response Sample)",
+              "originalRequest": {
+                "method": "PATCH",
+                "url": "{{base_url}}/mobile/vendors/notifications/{{notification_id}}/read"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"error_code\": 400,\n  \"message\": \"Invalid request parameters or missing authentication\",\n  \"data\": null\n}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
