@@ -556,7 +556,7 @@ function CartPage({
             </svg>
           </span>
           <span className="text-xs sm:text-sm font-medium text-slate-800 tracking-tight">
-            Saving ₹{totalSavings} on this order
+            Saving Rs.{totalSavings} on this order
           </span>
         </div>
 
@@ -608,11 +608,11 @@ function CartPage({
                         {/* Pricing */}
                         <div className="text-right shrink-0 min-w-[60px]">
                           <div className="text-sm sm:text-base font-extrabold text-slate-900">
-                            ₹{item.lineTotal}
+                            Rs.{item.lineTotal}
                           </div>
                           {showOriginal && (
                             <div className="text-xs sm:text-sm text-neutral-400 line-through font-medium mt-0.5">
-                              ₹{totalOriginal}
+                              Rs.{totalOriginal}
                             </div>
                           )}
                         </div>
@@ -657,14 +657,14 @@ function CartPage({
               return (
                 <div key={category} className="flex items-center justify-between text-sm sm:text-base font-medium text-slate-700">
                   <span>{category}</span>
-                  <span className="font-bold text-slate-900">₹{catTotal}</span>
+                  <span className="font-bold text-slate-900">Rs.{catTotal}</span>
                 </div>
               )
             })}
             {serviceFee > 0 && (
               <div className="flex items-center justify-between text-sm sm:text-base font-medium text-slate-700">
                 <span>Visitation & Service fee</span>
-                <span className="font-bold text-slate-900">₹{serviceFee}</span>
+                <span className="font-bold text-slate-900">Rs.{serviceFee}</span>
               </div>
             )}
             {selectedTip > 0 && (
@@ -679,7 +679,7 @@ function CartPage({
                     (Remove)
                   </button>
                 </span>
-                <span className="font-bold text-slate-900">₹{selectedTip}</span>
+                <span className="font-bold text-slate-900">Rs.{selectedTip}</span>
               </div>
             )}
             {discount > 0 && appliedCoupon && (
@@ -694,7 +694,7 @@ function CartPage({
                     (Remove)
                   </button>
                 </span>
-                <span className="font-extrabold">-₹{discount}</span>
+                <span className="font-extrabold">-Rs.{discount}</span>
               </div>
             )}
           </div>
@@ -703,14 +703,14 @@ function CartPage({
           
           <div className="flex items-center justify-between text-base sm:text-lg font-black text-slate-900">
             <span>Total amount</span>
-            <span>₹{totalToPay}</span>
+            <span>Rs.{totalToPay}</span>
           </div>
 
           <div className="border-t border-neutral-200/80 my-3 sm:my-4" />
 
           <div className="flex items-center justify-between text-base sm:text-lg font-black text-slate-900">
             <span>Amount to pay</span>
-            <span>₹{totalToPay}</span>
+            <span>Rs.{totalToPay}</span>
           </div>
         </div>
 
@@ -723,9 +723,9 @@ function CartPage({
           </h2>
           <div className="grid grid-cols-4 gap-2.5 sm:gap-3.5 pt-1 pb-2">
             {[
-              { value: 50, label: '₹50', popular: false },
-              { value: 75, label: '₹75', popular: true },
-              { value: 100, label: '₹100', popular: false },
+              { value: 50, label: 'Rs.50', popular: false },
+              { value: 75, label: 'Rs.75', popular: true },
+              { value: 100, label: 'Rs.100', popular: false },
               { value: 'custom', label: 'Custom', popular: false },
             ].map((tipOption) => {
               const isSelected = typeof tipOption.value === 'number' && selectedTip === tipOption.value
@@ -944,7 +944,7 @@ function CartPage({
               </p>
               <form onSubmit={handleCustomTipSubmit}>
                 <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 font-extrabold text-slate-500 text-lg">₹</span>
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 font-extrabold text-slate-500 text-lg">Rs.</span>
                   <input
                     type="number"
                     min="1"
@@ -1011,7 +1011,7 @@ function CartPage({
                     <span className="text-lg">⚡</span>
                     <div>
                       <p className="font-bold text-slate-900">Within 3 hours of start time</p>
-                      <p className="mt-0.5 text-neutral-500">A small fee of ₹50 may apply to compensate the professional who reserved this time slot for you.</p>
+                      <p className="mt-0.5 text-neutral-500">A small fee of Rs.50 may apply to compensate the professional who reserved this time slot for you.</p>
                     </div>
                   </div>
                 </div>

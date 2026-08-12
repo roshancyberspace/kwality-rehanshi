@@ -11,6 +11,7 @@ use App\Support\BookingExtraItemsManager;
 use App\Support\BookingMetadataEnricher;
 use App\Support\WalletManager;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -23,14 +24,23 @@ class VendorJobController extends CrudController
 
     public function index(Request $request)
     {
-        if ($request->filled('partner_id')) {
-            $this->syncAssignedBookings($request->integer('partner_id'));
+        $partnerId = $request->filled('partner_id') ? $request->integer('partner_id') : null;
+        $shouldSync = $partnerId && ! $request->boolean('skip_sync');
+
+        if ($shouldSync) {
+            // Avoid re-syncing assigned bookings on every 5s vendor poll.
+            Cache::remember("vendor_jobs_sync_{$partnerId}", 20, function () use ($partnerId) {
+                $this->syncAssignedBookings($partnerId);
+
+                return true;
+            });
         }
 
         $query = VendorJob::query()->latest('id');
+        $lite = $request->boolean('lite') || $request->boolean('options');
 
-        if ($request->filled('partner_id')) {
-            $query->where('partner_id', $request->integer('partner_id'));
+        if ($partnerId) {
+            $query->where('partner_id', $partnerId);
         }
 
         if ($request->filled('status')) {
@@ -47,9 +57,44 @@ class VendorJobController extends CrudController
             });
         }
 
+        $mapItems = function ($items) use ($lite) {
+            if (! $lite) {
+                return $items;
+            }
+
+            return $items->map(function ($job) {
+                $data = $job->toArray();
+                $metadata = is_array($data['metadata'] ?? null) ? $data['metadata'] : [];
+                $work = is_array($metadata['work'] ?? null) ? $metadata['work'] : [];
+
+                foreach (['start_photos', 'end_photos', 'start_videos', 'end_videos'] as $mediaKey) {
+                    if (isset($work[$mediaKey]) && is_array($work[$mediaKey])) {
+                        $work[$mediaKey] = array_map(function ($item) {
+                            if (! is_array($item)) {
+                                return $item;
+                            }
+
+                            return [
+                                'name' => $item['name'] ?? null,
+                                'path' => $item['path'] ?? null,
+                                'type' => $item['type'] ?? null,
+                            ];
+                        }, $work[$mediaKey]);
+                    }
+                }
+
+                $metadata['work'] = $work;
+                $data['metadata'] = $metadata;
+
+                return $data;
+            });
+        };
+
         $perPageParam = $request->input('per_page');
         if ($perPageParam === 'all' || (int) $perPageParam === -1 || $request->boolean('all')) {
-            $items = $query->get();
+            $items = $query->limit(500)->get();
+            $items = $mapItems($items);
+
             return response()->json([
                 'data' => $items,
                 'total' => $items->count(),
@@ -59,7 +104,10 @@ class VendorJobController extends CrudController
             ]);
         }
 
-        return response()->json($query->paginate(max(1, (int) $request->integer('per_page', 25))));
+        $paginator = $query->paginate(max(1, min(100, (int) $request->integer('per_page', 25))));
+        $paginator->setCollection($mapItems($paginator->getCollection()));
+
+        return response()->json($paginator);
     }
 
     private function syncAssignedBookings(int $partnerId): void

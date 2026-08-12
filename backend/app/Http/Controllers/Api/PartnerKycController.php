@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\KycDocument;
 use App\Models\Partner;
 use App\Models\Service;
 use App\Models\SubService;
@@ -13,23 +14,6 @@ use Illuminate\Validation\ValidationException;
 
 class PartnerKycController extends Controller
 {
-    private array $serviceDocuments = [
-        'AC Repair' => ['Technical certificate or work experience proof'],
-        'Cleaning' => ['Work experience proof'],
-        'Salon' => ['Salon training certificate or portfolio'],
-        'Electrician' => ['Electrical license or experience proof'],
-        'Plumber' => ['Work experience proof'],
-        'Carpenter' => ['Work experience proof'],
-        'Painting' => ['Work experience proof'],
-    ];
-
-    private array $commonDocuments = [
-        ['label' => 'Profile photo', 'required' => true],
-        ['label' => 'Aadhaar', 'required' => true],
-        ['label' => 'PAN', 'required' => true],
-        ['label' => 'Address proof', 'required' => true],
-        ['label' => 'Police Verification Certificate', 'required' => true],
-    ];
 
     private function publicPartner(Partner $partner, ?string $token = null): array
     {
@@ -111,24 +95,12 @@ class PartnerKycController extends Controller
         ])->values()->all();
 
         $serviceNames = collect($services)->pluck('name')->filter()->values()->all();
-        if (! $serviceNames) {
-            $serviceNames = array_keys($this->serviceDocuments);
-        }
-
-        $documents = collect($serviceNames)
-            ->mapWithKeys(fn (string $service) => [
-                $service => array_map(
-                    fn (string $label) => ['label' => $label, 'required' => true],
-                    $this->serviceDocuments[$service] ?? ['Work experience proof']
-                ),
-            ])
-            ->all();
 
         return response()->json([
             'services' => $services,
             'service_names' => $serviceNames,
-            'documents' => $documents,
-            'common_documents' => $this->commonDocuments,
+            'documents' => (object) [],
+            'common_documents' => $this->activeKycDocuments(),
         ]);
     }
 
@@ -211,7 +183,7 @@ class PartnerKycController extends Controller
             $serviceNames = array_values(array_unique([...$serviceNames, ...$data['services']]));
         }
 
-        $requiredDocuments = $this->requiredDocuments($serviceNames);
+        $requiredDocuments = $this->requiredDocuments();
         $this->validateRequiredUploads($request, $requiredDocuments);
         $documents = $this->collectUploadedDocuments($request, $requiredDocuments);
         $identityPaths = $this->identityDocumentPaths($documents);
@@ -260,6 +232,7 @@ class PartnerKycController extends Controller
                 'submitted_from_step' => $data['onboarding_step'] ?? 'documents',
                 'service_ids' => $serviceIds,
                 'sub_service_ids' => $validSubServiceIds,
+                'profile_picture' => $identityPaths['profile_picture'],
             ],
         ]);
 
@@ -448,46 +421,55 @@ class PartnerKycController extends Controller
         return response()->json(['message' => 'Partner KYC rejected. Vendor login remains locked.', 'partner' => $partner->fresh()]);
     }
 
-    private function requiredDocuments(array $services): array
+    private function activeKycDocuments(): array
     {
-        $documents = $this->commonDocuments;
+        return KycDocument::query()
+            ->where('status', 'Active')
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get(['id', 'name', 'is_required'])
+            ->map(fn (KycDocument $document) => [
+                'id' => $document->id,
+                'label' => $document->name,
+                'required' => (bool) $document->is_required,
+            ])
+            ->values()
+            ->all();
+    }
 
-        foreach ($services as $service) {
-            foreach ($this->serviceDocuments[$service] ?? ['Work experience proof'] as $label) {
-                $documents[] = ['label' => $label, 'required' => true];
-            }
-        }
-
-        $unique = [];
-        foreach ($documents as $document) {
-            $key = strtolower(trim($document['label']));
-            if (isset($unique[$key])) {
-                continue;
-            }
-            $unique[$key] = $document;
-        }
-
-        return array_values($unique);
+    private function requiredDocuments(): array
+    {
+        return $this->activeKycDocuments();
     }
 
     private function identityDocumentPaths(array $documents): array
     {
         $aadhaar = null;
         $pan = null;
+        $profilePicture = null;
 
         foreach ($documents as $document) {
             $label = strtolower(trim((string) ($document['label'] ?? '')));
+            $path = $document['path'] ?? null;
+            if (! $path) {
+                continue;
+            }
+
             if (in_array($label, ['aadhaar', 'aadhar'], true)) {
-                $aadhaar = $document['path'] ?? null;
+                $aadhaar = $path;
             }
             if ($label === 'pan') {
-                $pan = $document['path'] ?? null;
+                $pan = $path;
+            }
+            if ($label === 'profile photo' || str_contains($label, 'profile photo') || $label === 'profile') {
+                $profilePicture = $path;
             }
         }
 
         return [
             'aadhaar_document' => $aadhaar,
             'pan_document' => $pan,
+            'profile_picture' => $profilePicture,
         ];
     }
 
@@ -512,11 +494,13 @@ class PartnerKycController extends Controller
         foreach ($requiredDocuments as $index => $document) {
             $label = $document['label'];
             $required = (bool) ($document['required'] ?? true);
+            $documentId = $document['id'] ?? null;
             $field = 'document_'.$index;
 
             if ($request->hasFile($field)) {
                 $path = $this->storePublicUpload($request->file($field));
                 $uploaded[] = [
+                    'document_id' => $documentId,
                     'label' => $label,
                     'path' => $path,
                     'required' => $required,
@@ -527,6 +511,7 @@ class PartnerKycController extends Controller
             }
 
             $uploaded[] = [
+                'document_id' => $documentId,
                 'label' => $label,
                 'path' => null,
                 'required' => $required,

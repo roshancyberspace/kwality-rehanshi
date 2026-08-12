@@ -62,5 +62,7 @@ export const adminApi = {
   rejectPartnerDocument: (id, index, reason) => request(`/partners/${id}/documents/${index}/reject`, { method: 'PATCH', body: { reason } }),
   notificationSummary: () => request('/notifications-summary'),
   markNotificationsRead: () => request('/notifications/mark-all-read', { method: 'POST' }),
+  dashboard: (params) => request('/admin/dashboard', { params }),
+  reports: () => request('/admin/reports'),
   uploadMedia: (body) => request('/media/upload', { method: 'POST', body }),
 }

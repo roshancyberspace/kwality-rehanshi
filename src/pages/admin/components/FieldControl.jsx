@@ -1,4 +1,68 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+
+const CUSTOM_SELECT_VALUE = '__custom__'
+
+function normalizeSelectOptions(options = []) {
+  return options.map((option) => ({
+    label: String(option.label ?? option),
+    value: String(option.value ?? option),
+    ...((option && typeof option === 'object') ? option : {}),
+  }))
+}
+
+function SelectField({ commonClass, field, onChange, value }) {
+  const options = useMemo(() => normalizeSelectOptions(field.options), [field.options])
+  const optionValues = useMemo(() => options.map((option) => option.value), [options])
+  const stringValue = String(value ?? '')
+  const valueIsCustom = Boolean(field.allowCustom && stringValue !== '' && !optionValues.includes(stringValue))
+  const [customMode, setCustomMode] = useState(valueIsCustom)
+
+  useEffect(() => {
+    if (valueIsCustom) setCustomMode(true)
+    if (stringValue && optionValues.includes(stringValue)) setCustomMode(false)
+  }, [optionValues, stringValue, valueIsCustom])
+
+  const showCustomInput = Boolean(field.allowCustom && (customMode || valueIsCustom))
+  const selectValue = showCustomInput ? CUSTOM_SELECT_VALUE : stringValue
+
+  return (
+    <label className="block">
+      <span className="text-sm font-bold text-slate-700">{field.label}</span>
+      <select
+        className={commonClass}
+        onChange={(event) => {
+          const next = event.target.value
+          if (next === CUSTOM_SELECT_VALUE) {
+            setCustomMode(true)
+            if (!valueIsCustom) onChange(field.name, '')
+            return
+          }
+          setCustomMode(false)
+          onChange(field.name, next)
+        }}
+        required={field.required && !stringValue}
+        value={selectValue}
+      >
+        <option value="">Select</option>
+        {options.map((option) => (
+          <option key={`${option.value}-${option.label}`} value={option.value}>{option.label}</option>
+        ))}
+        {field.allowCustom ? <option value={CUSTOM_SELECT_VALUE}>Custom...</option> : null}
+      </select>
+      {showCustomInput ? (
+        <input
+          className={`${commonClass} !mt-2`}
+          onChange={(event) => onChange(field.name, event.target.value)}
+          placeholder={field.customPlaceholder || `Custom ${String(field.label || '').toLowerCase()}`}
+          required={field.required}
+          type="text"
+          value={stringValue}
+        />
+      ) : null}
+      {field.hint ? <span className="mt-1 block text-xs font-semibold text-slate-500">{field.hint}</span> : null}
+    </label>
+  )
+}
 
 function FieldControl({ field, value, onChange }) {
   const safeValue = value ?? ''
@@ -21,22 +85,19 @@ function FieldControl({ field, value, onChange }) {
           placeholder={field.type === 'json' ? '{"key":"value"}' : field.label}
           value={typeof safeValue === 'object' && safeValue !== null ? JSON.stringify(safeValue, null, 2) : safeValue}
         />
+        {field.hint ? <span className="mt-1 block text-xs font-semibold text-slate-500">{field.hint}</span> : null}
       </label>
     )
   }
 
   if (field.type === 'select') {
     return (
-      <label className="block">
-        <span className="text-sm font-bold text-slate-700">{field.label}</span>
-        <select className={commonClass} onChange={(event) => onChange(field.name, event.target.value)} value={safeValue}>
-          <option value="">Select</option>
-          {(field.options || []).map((option) => (
-            <option key={option.value ?? option} value={option.value ?? option}>{option.label ?? option}</option>
-          ))}
-        </select>
-        {field.hint ? <span className="mt-1 block text-xs font-semibold text-slate-500">{field.hint}</span> : null}
-      </label>
+      <SelectField
+        commonClass={commonClass}
+        field={field}
+        onChange={onChange}
+        value={safeValue}
+      />
     )
   }
 
@@ -117,6 +178,7 @@ function FieldControl({ field, value, onChange }) {
             )}
           </div>
         )}
+        {field.hint ? <span className="mt-1 block text-xs font-semibold text-slate-500">{field.hint}</span> : null}
       </div>
     )
   }
@@ -130,10 +192,11 @@ function FieldControl({ field, value, onChange }) {
         placeholder={field.type === 'tags' ? 'Comma separated values' : field.label}
         readOnly={field.readOnly}
         required={field.required}
-        step={field.step}
+        step={field.inputStep ?? field.step}
         type={field.type === 'tags' ? 'text' : field.type || 'text'}
         value={safeValue}
       />
+      {field.hint ? <span className="mt-1 block text-xs font-semibold text-slate-500">{field.hint}</span> : null}
     </label>
   )
 }

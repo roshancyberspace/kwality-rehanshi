@@ -319,8 +319,6 @@ function SettingsView() {
   return (
     <Panel
       action={<ActionButton disabled={isLoading} onClick={saveCurrentGroup} tone="primary">{isLoading ? 'Saving...' : 'Save Settings'}</ActionButton>}
-      subtitle="Manage app-wide dynamic settings that feed the website and checkout."
-      title="Settings"
     >
       <div className="grid gap-5 p-5">
         <div className="flex flex-wrap gap-2">

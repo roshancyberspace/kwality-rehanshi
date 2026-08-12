@@ -1,8 +1,65 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import AuthModal from '../auth/AuthModal'
 import LocationModal from './LocationModal'
 import { buildBackendUrl } from '../../config/urls'
 import { getBrandingDisplay } from '../../utils/branding'
+
+const SEARCH_PLACEHOLDER_SERVICES = [
+  'AC service',
+  'Salon at home',
+  'Deep cleaning',
+  'Plumbing',
+  'Electrician',
+  'Pest control',
+  'Painting',
+  'Carpenter',
+]
+
+const useTypingPlaceholder = (services, { enabled = true } = {}) => {
+  const [displayText, setDisplayText] = useState(`Search for ${services[0] || 'service'}`)
+
+  useEffect(() => {
+    if (!enabled || !services.length) return undefined
+
+    let serviceIndex = 0
+    let charIndex = 0
+    let isDeleting = false
+    let timeoutId
+
+    const tick = () => {
+      const current = services[serviceIndex]
+      const typed = current.slice(0, charIndex)
+      setDisplayText(`Search for '${typed}'`)
+
+      if (!isDeleting && charIndex < current.length) {
+        charIndex += 1
+        timeoutId = window.setTimeout(tick, 90)
+        return
+      }
+
+      if (!isDeleting && charIndex === current.length) {
+        isDeleting = true
+        timeoutId = window.setTimeout(tick, 1600)
+        return
+      }
+
+      if (isDeleting && charIndex > 0) {
+        charIndex -= 1
+        timeoutId = window.setTimeout(tick, 45)
+        return
+      }
+
+      isDeleting = false
+      serviceIndex = (serviceIndex + 1) % services.length
+      timeoutId = window.setTimeout(tick, 320)
+    }
+
+    timeoutId = window.setTimeout(tick, 400)
+    return () => window.clearTimeout(timeoutId)
+  }, [enabled, services])
+
+  return displayText
+}
 
 const highlightMatch = (text, query) => {
   if (!query || !text) return text
@@ -45,6 +102,9 @@ function Navbar({
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [isSearchFocused, setIsSearchFocused] = useState(false)
+  const typingPlaceholder = useTypingPlaceholder(SEARCH_PLACEHOLDER_SERVICES, {
+    enabled: !searchQuery.trim(),
+  })
   const { appName, isLogoCircular, logoText, logoUrl, showBrandName, tagline } = getBrandingDisplay(appSettings)
   const profileImage = buildBackendUrl(user?.metadata?.profile_picture || user?.metadata?.avatar_url || user?.avatar_url || user?.image || '')
   const profileInitials = (user?.name || user?.phone || 'U')
@@ -200,7 +260,7 @@ function Navbar({
                 </button>
                 <input
                   className="w-full bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400 lg:placeholder:text-blue-700 font-medium lg:font-normal"
-                  placeholder="Search for 'AC service'"
+                  placeholder={typingPlaceholder}
                   value={searchQuery}
                   onChange={(event) => setSearchQuery(event.target.value)}
                   onFocus={() => setIsSearchFocused(true)}

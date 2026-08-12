@@ -125,8 +125,6 @@ function InvoiceSettingsView() {
   return (
     <Panel
       action={<ActionButton disabled={isSaving} onClick={saveInvoiceSettings} tone="primary">{isSaving ? 'Saving...' : 'Save Invoice Setting'}</ActionButton>}
-      subtitle="Control the GST invoice content, bank details, QR code and signature shown to customers."
-      title="Invoice Setting"
     >
       <div className="grid gap-5 p-5 xl:grid-cols-[1fr_360px]">
         <div className="grid gap-4 lg:grid-cols-2">

@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import Swal from 'sweetalert2'
 import { ActionButton, Panel, StatusBadge } from '../../components/admin/AdminUI'
 import { buildVendorPublicPath, defaultMembership, IdentityCard } from '../../components/vendor/MembershipAssets'
-import { buildBackendUrl, buildStorageUrl } from '../../config/urls'
+import { buildDocumentUrl } from '../../config/urls'
+import { resolvePartnerProfilePictureUrl } from '../../utils/partnerProfile'
 import { adminApi } from '../../services/adminApi'
 import { notify } from '../../utils/feedback'
 import AdminLayout from './components/AdminLayout'
@@ -142,15 +143,7 @@ function formatDocumentLabel(document, index) {
 }
 
 function getDocumentUrl(path) {
-  if (!path) return ''
-  if (path.startsWith('documents/') || path.startsWith('banners/') || path.startsWith('settings-images/')) {
-    return buildBackendUrl(path)
-  }
-  return buildStorageUrl(path)
-}
-
-function getPublicAssetUrl(path) {
-  return buildBackendUrl(path)
+  return buildDocumentUrl(path)
 }
 
 function InfoCard({ fields, title }) {
@@ -370,7 +363,6 @@ function DocumentVerificationPanel({
   onRejectDocument,
   onReplaceDocument,
   onVerifyDocument,
-  onViewDocument,
   saving,
   verifiedDocuments,
 }) {
@@ -428,9 +420,20 @@ function DocumentVerificationPanel({
                     {isRejected ? `Rejected: ${document.rejection_reason || 'Reason saved'}` : `${isVerified ? 'Approved' : 'Uploaded'} on ${document.date || formatValue(document.verified_at || document.uploaded_at) || 'pending review'}`}
                   </p>
                   <div className="-ml-14 mt-4 flex w-[calc(100%+3.5rem)] items-center gap-1.5">
-                    <button className="h-8 min-w-14 rounded-md border border-slate-200 px-2 text-xs font-black text-slate-600 transition hover:bg-[#EEF9E8] hover:text-[#67B529]" onClick={() => onViewDocument(index)} type="button">
-                      View
-                    </button>
+                    {document.path ? (
+                      <a
+                        className="inline-flex h-8 min-w-14 items-center justify-center rounded-md border border-slate-200 px-2 text-xs font-black text-slate-600 transition hover:bg-[#EEF9E8] hover:text-[#67B529]"
+                        href={getDocumentUrl(document.path)}
+                        rel="noreferrer"
+                        target="_blank"
+                      >
+                        View
+                      </a>
+                    ) : (
+                      <button className="h-8 min-w-14 rounded-md border border-slate-200 px-2 text-xs font-black text-slate-400" disabled type="button">
+                        View
+                      </button>
+                    )}
                     <button className="grid h-8 w-8 shrink-0 place-items-center rounded-md border border-[#67B529]/35 text-[#67B529] transition hover:bg-[#EEF9E8] disabled:opacity-50" disabled={saving || isVerified} onClick={() => onVerifyDocument(index)} title="Approve document" type="button">
                       <span className="sr-only">Approve document</span>
                       <svg aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" viewBox="0 0 24 24">
@@ -521,17 +524,7 @@ function PartnerDetailsPage({ adminProfile, onBackHome, onTabChange, partnerId }
   const [loading, setLoading] = useState(true)
   const [newDocumentLabel, setNewDocumentLabel] = useState('')
   const [saving, setSaving] = useState(false)
-  const [viewingDocument, setViewingDocument] = useState(null)
   const [isIdCardOpen, setIsIdCardOpen] = useState(false)
-  const [isDocumentClosing, setIsDocumentClosing] = useState(false)
-
-  const closeDocumentPreview = () => {
-    setIsDocumentClosing(true)
-    window.setTimeout(() => {
-      setViewingDocument(null)
-      setIsDocumentClosing(false)
-    }, 180)
-  }
 
   const loadPartner = async () => {
     setLoading(true)
@@ -848,7 +841,7 @@ function PartnerDetailsPage({ adminProfile, onBackHome, onTabChange, partnerId }
   const subscriptionStatus = partner?.metadata?.subscription_status || partner?.metadata?.subscription || 'Not configured'
   const isFeatured = Boolean(partner?.metadata?.featured || partner?.metadata?.is_featured)
   const bookingAmount = (booking) => formatMoney(booking.amount || booking.total_amount || booking.final_amount || 0)
-  const profilePicture = getPublicAssetUrl(partner?.metadata?.profile_picture || partner?.metadata?.avatar_url || '')
+  const profilePicture = resolvePartnerProfilePictureUrl(partner)
   const publicPath = buildVendorPublicPath(partner?.id || partnerId)
   const canEditPartner = canAccessModule(adminProfile, 'Partners', 'edit')
   const canViewPartner = canAccessModule(adminProfile, 'Partners', 'view')
@@ -1047,7 +1040,6 @@ function PartnerDetailsPage({ adminProfile, onBackHome, onTabChange, partnerId }
                     onRejectDocument={rejectDocument}
                     onReplaceDocument={uploadDocument}
                     onVerifyDocument={verifyDocument}
-                    onViewDocument={(index) => setViewingDocument({ document: (partner.documents || [])[index] || {}, index })}
                     saving={saving}
                     verifiedDocuments={verifiedDocuments}
                   />
@@ -1130,7 +1122,6 @@ function PartnerDetailsPage({ adminProfile, onBackHome, onTabChange, partnerId }
                   onRejectDocument={rejectDocument}
                   onReplaceDocument={uploadDocument}
                   onVerifyDocument={verifyDocument}
-                  onViewDocument={(index) => setViewingDocument({ document: (partner.documents || [])[index] || {}, index })}
                   saving={saving}
                   verifiedDocuments={verifiedDocuments}
                 />
@@ -1140,31 +1131,6 @@ function PartnerDetailsPage({ adminProfile, onBackHome, onTabChange, partnerId }
           </>
         )}
       </div>
-      {viewingDocument && (
-        <div className={`fixed inset-0 z-50 grid place-items-center bg-slate-950/50 p-4 ${isDocumentClosing ? 'animate-modal-fade-out' : 'animate-modal-fade'}`}>
-          <div className={`grid max-h-[90vh] w-full max-w-4xl overflow-hidden rounded-lg bg-white shadow-2xl ${isDocumentClosing ? 'animate-modal-slide-out' : 'animate-modal-slide'}`}>
-            <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
-              <div className="min-w-0">
-                <p className="truncate text-lg font-black text-slate-800">{formatDocumentLabel(viewingDocument.document, viewingDocument.index)}</p>
-                <p className="mt-1 truncate text-xs font-bold text-slate-500">{viewingDocument.document.path}</p>
-              </div>
-              <button
-                className="grid h-9 w-9 place-items-center rounded-lg text-slate-500 transition hover:bg-rose-50 hover:text-rose-700"
-                onClick={closeDocumentPreview}
-                title="Close"
-                type="button"
-              >
-                <svg aria-hidden="true" className="h-5 w-5" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.4" viewBox="0 0 24 24">
-                  <path d="M18 6 6 18M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            <div className="h-[72vh] bg-slate-100">
-              <iframe className="h-full w-full border-0" src={getDocumentUrl(viewingDocument.document.path)} title={formatDocumentLabel(viewingDocument.document, viewingDocument.index)} />
-            </div>
-          </div>
-        </div>
-      )}
       {isIdCardOpen && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/50 p-4">
           <div className="w-full max-w-md overflow-hidden rounded-lg bg-white shadow-2xl">

@@ -13,7 +13,7 @@ const createApiClient = (tokenKey, storage = window.localStorage) => {
   instance.interceptors.request.use((config) => {
     try {
       const token = storage.getItem(tokenKey)
-      if (token) {
+      if (token && token !== 'undefined' && token !== 'null') {
         config.headers.Authorization = `Bearer ${token}`
       }
     } catch (e) {

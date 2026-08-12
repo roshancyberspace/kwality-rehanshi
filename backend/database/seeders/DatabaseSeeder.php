@@ -66,7 +66,7 @@ class DatabaseSeeder extends Seeder
             ->all();
 
         Role::updateOrCreate(['slug' => 'super-admin'], ['name' => 'Super Admin', 'permissions' => ['*'], 'status' => 'Active']);
-        Role::updateOrCreate(['slug' => 'manager'], ['name' => 'Manager', 'permissions' => $permissionsFor(['Dashboard', 'Reports', 'Profiles', 'Customers', 'Saved Addresses', 'Partners', 'Vendor Jobs', 'Categories', 'Services', 'Sub-Services', 'Service Packages', 'Bookings', 'Assign Professional', 'Reviews', 'Support Tickets', 'Notifications'], ['view', 'create', 'edit', 'assign']), 'status' => 'Active']);
+        Role::updateOrCreate(['slug' => 'manager'], ['name' => 'Manager', 'permissions' => $permissionsFor(['Dashboard', 'Reports', 'Profiles', 'Customers', 'Saved Addresses', 'Partners', 'Documents', 'Vendor Jobs', 'Categories', 'Services', 'Sub-Services', 'Service Packages', 'Bookings', 'Assign Professional', 'Reviews', 'Support Tickets', 'Notifications'], ['view', 'create', 'edit', 'assign']), 'status' => 'Active']);
         Role::updateOrCreate(['slug' => 'finance-manager'], ['name' => 'Finance Manager', 'permissions' => $permissionsFor(['Dashboard', 'Reports', 'Profiles', 'Bookings', 'Payments', 'Payouts', 'Vendor Wallet', 'Customer Wallet', 'Wallet Transactions', 'Booking Ledger'], ['view', 'approve', 'export']), 'status' => 'Active']);
 
         $serviceCatalog = [

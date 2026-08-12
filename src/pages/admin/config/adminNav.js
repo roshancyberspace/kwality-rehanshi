@@ -15,6 +15,7 @@ export const adminNavItems = [
   ['Customers', 'user'],
   ['Saved Addresses', 'home'],
   ['Partners', 'toolbox'],
+  ['Documents', 'document'],
   ['Vendor Dashboard', 'user'],
   ['Payments', 'card'],
   ['Wallet Transactions', 'ledger'],
@@ -70,7 +71,7 @@ export const adminNavSections = [
       ['Customers', 'user'],
       ['Saved Addresses', 'home'],
       ['Partners', 'toolbox'],
-    
+      ['Documents', 'document'],
     ],
   },
   {

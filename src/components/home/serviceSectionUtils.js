@@ -46,8 +46,8 @@ export const serviceToCard = (service) => {
   return {
     image: service.image || service.parentService?.image,
     meta: service.duration || service.parentService?.name || '',
-    price: cleanPrice ? `₹${cleanPrice}` : '',
-    originalPrice: cleanOrig && Number(cleanOrig) > Number(cleanPrice) ? `₹${cleanOrig}` : '',
+    price: cleanPrice ? `Rs.${cleanPrice}` : '',
+    originalPrice: cleanOrig && Number(cleanOrig) > Number(cleanPrice) ? `Rs.${cleanOrig}` : '',
     rating: service.rating || service.parentService?.rating || '4.75',
     reviews,
     service: service.isPackage ? service.parentService : service,

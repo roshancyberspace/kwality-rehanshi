@@ -21,6 +21,11 @@ const normalizeValue = (field, rawValue) => {
 
   if (field.type === 'number') return Number(rawValue)
 
+  if (field.name === 'rating' && rawValue !== '' && rawValue !== null && rawValue !== undefined) {
+    const numericRating = Number(rawValue)
+    return Number.isFinite(numericRating) ? numericRating : rawValue
+  }
+
   if (field.type === 'json') {
     return typeof rawValue === 'string' ? JSON.parse(rawValue) : rawValue
   }

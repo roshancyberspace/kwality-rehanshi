@@ -5,9 +5,9 @@ const couponToOffer = (coupon) => ({
   title:
     coupon.type === "Percentage"
       ? `${coupon.value}% OFF`
-      : `₹${coupon.value} OFF`,
+      : `Rs.${coupon.value} OFF`,
   text: coupon.minimum_order
-    ? `Use on orders above ₹${coupon.minimum_order}.`
+    ? `Use on orders above Rs.${coupon.minimum_order}.`
     : "Limited period offer.",
   image:
     coupon.metadata?.image ||

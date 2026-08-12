@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { ActionIconButton, RowActionsMenu, StatusBadge } from '../../../components/admin/AdminUI'
 import { downloadInvoiceFile } from '../../../components/profile/OrderHistorySection'
 import { buildBackendUrl } from '../../../config/urls'
+import { resolvePartnerProfilePicturePath } from '../../../utils/partnerProfile'
 import { formatDate, formatValue } from './formatters'
 
 const activeBookingStatuses = [
@@ -124,37 +125,45 @@ export const makeColumns = (config, { actionLoadingId, appSettings = {}, canChan
       ? <StatusBadge>{formatValue(row[key])}</StatusBadge>
       : (config.endpoint === '/bookings' && key === 'booking_no') || (config.endpoint === '/vendor-jobs' && key === 'job_no')
         ? (
-          <button className="grid text-left font-black text-slate-800 underline-offset-2 hover:text-[#67B529] hover:underline" onClick={() => onBookingDetails(row)} type="button">
+          <button className="grid gap-0 text-left font-black leading-tight text-slate-800 underline-offset-2 hover:text-[#67B529] hover:underline" onClick={() => onBookingDetails(row)} type="button">
             <span>{formatValue(row[key]) || `#${row.id}`}</span>
             {config.endpoint === '/bookings' && row.scheduled_at && (
-              <span className="mt-0.5 whitespace-nowrap text-xs font-bold text-slate-500">{formatBookingSchedule(row.scheduled_at)}</span>
+              <span className="whitespace-nowrap text-[11px] font-bold text-slate-500">{formatBookingSchedule(row.scheduled_at)}</span>
             )}
           </button>
         )
       : config.endpoint === '/bookings' && key === 'payment_amount'
         ? (
-          <div className="grid gap-1">
+          <div className="grid gap-0.5 leading-tight">
             <StatusBadge>{formatValue(row.payment_status)}</StatusBadge>
-            <span className="text-sm font-black text-slate-800">Booking: Rs. {formatValue(row.amount)}</span>
+            <span className="text-xs font-black text-slate-800">Rs. {formatValue(row.amount)}</span>
             {Number(row.tip_amount || row.metadata?.tip_amount || 0) > 0 ? (
-              <span className="text-xs font-bold text-[#6338E0] bg-[#F3EAFF] px-2 py-0.5 rounded border border-[#D5C5FD] w-fit">
+              <span className="w-fit rounded bg-[#F3EAFF] px-1.5 py-0.5 text-[10px] font-bold text-[#6338E0]">
                 Tip: Rs. {formatValue(row.tip_amount || row.metadata?.tip_amount)}
               </span>
-            ) : (
-              <span className="text-[11px] text-slate-400 font-medium">Tip: Rs. 0</span>
-            )}
+            ) : null}
           </div>
         )
       : config.endpoint === '/bookings' && key === 'scheduled_at'
         ? <span className="whitespace-nowrap">{formatBookingSchedule(row[key])}</span>
       : config.endpoint === '/bookings' && key === 'customer_name'
         ? (
-          <button className="grid text-left font-black text-[#67B529] underline-offset-2 hover:underline disabled:cursor-default disabled:text-slate-800 disabled:hover:no-underline" disabled={!row.metadata?.customer_id} onClick={() => onCustomerDetails({ id: row.metadata.customer_id })} type="button">
-            <span>{formatValue(row[key]) || `Customer #${row.metadata?.customer_id || row.id}`}</span>
+          <button className="grid gap-0 text-left font-black leading-tight text-[#67B529] underline-offset-2 hover:underline disabled:cursor-default disabled:text-slate-800 disabled:hover:no-underline" disabled={!row.metadata?.customer_id} onClick={() => onCustomerDetails({ id: row.metadata.customer_id })} type="button">
+            <span className="truncate">{formatValue(row[key]) || `Customer #${row.metadata?.customer_id || row.id}`}</span>
             {(row.customer_phone || row.metadata?.customer_phone || row.metadata?.phone) && (
-              <span className="mt-0.5 text-xs font-bold text-slate-500">{row.customer_phone || row.metadata?.customer_phone || row.metadata?.phone}</span>
+              <span className="truncate text-[11px] font-bold text-slate-500">{row.customer_phone || row.metadata?.customer_phone || row.metadata?.phone}</span>
             )}
           </button>
+        )
+      : config.endpoint === '/bookings' && key === 'professional_name'
+        ? (
+          <span className={`truncate text-sm ${row.professional_name ? 'font-semibold text-slate-700' : 'font-medium text-slate-400'}`}>
+            {formatValue(row.professional_name) || '—'}
+          </span>
+        )
+      : config.endpoint === '/bookings' && key === 'service_name'
+        ? (
+          <span className="line-clamp-2 text-sm font-semibold leading-snug text-slate-700">{formatValue(row.service_name)}</span>
         )
       : itemWithImageEndpoints.includes(config.endpoint) && key === 'name'
         ? (
@@ -179,7 +188,7 @@ export const makeColumns = (config, { actionLoadingId, appSettings = {}, canChan
       : config.endpoint === '/partners' && key === 'name'
         ? (
           <div className="flex items-center gap-3">
-            <TableThumbnail isPerson name={formatValue(row[key]) || row.business_name} src={row.profile_picture || row.metadata?.profile_picture || row.metadata?.avatar_url || row.avatar_url || row.image || ''} />
+            <TableThumbnail isPerson name={formatValue(row[key]) || row.business_name} src={resolvePartnerProfilePicturePath(row)} />
             <button className="text-left font-black text-[#67B529] underline-offset-2 hover:underline" onClick={() => onView(row)} type="button">
               {formatValue(row[key]) || `Partner #${row.id}`}
             </button>
@@ -222,6 +231,8 @@ export const makeColumns = (config, { actionLoadingId, appSettings = {}, canChan
         )
       : config.endpoint === '/coupons' && key === 'scope_summary'
         ? <span className="text-sm font-semibold text-slate-600">{formatValue(row.scope_summary || 'All services')}</span>
+      : key === 'is_required'
+        ? <StatusBadge>{row[key] === true || row[key] === 1 || row[key] === '1' || row[key] === 'Yes' ? 'Yes' : 'No'}</StatusBadge>
       : formatValue(row[key]),
   })),
   {
@@ -234,7 +245,7 @@ export const makeColumns = (config, { actionLoadingId, appSettings = {}, canChan
         : []
 
       return (
-        <div className={`flex flex-nowrap items-center ${config.endpoint === '/bookings' ? 'min-w-40 gap-1.5' : 'min-w-28 gap-2'}`}>
+        <div className={`flex flex-nowrap items-center ${config.endpoint === '/bookings' ? 'gap-1' : 'min-w-28 gap-2'}`}>
           {config.endpoint === '/admin-users' && (
             <ActionIconButton isLoading={actionLoadingId === 'action'} label="View permissions" onClick={() => onViewPermissions(row)}>
               <svg aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" viewBox="0 0 24 24">

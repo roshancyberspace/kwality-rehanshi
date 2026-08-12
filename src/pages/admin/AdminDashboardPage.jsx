@@ -30,6 +30,7 @@ import { preparePayload } from './utils/formPayload'
 import { normalizeForInput, readRows } from './utils/formatters'
 import { playOrderAlertSound } from './utils/notifications'
 import { broadcastRealtimeRefresh } from '../../utils/realtime'
+import { invalidateAdminCache, rememberAdminCache } from '../../utils/adminDataCache'
 import { canAccessModule, filterNavSectionsByPermissions, isSuperAdminProfile, normalizePermissions } from './utils/permissions'
 import { slugify } from '../../utils/slugs'
 import { adminNavSections } from './config/adminNav'
@@ -52,11 +53,42 @@ const readPagination = (payload) => {
   }
 }
 
-const SERVER_PAGINATED_TABS = ['Service Packages', 'Rate List']
+const SERVER_PAGINATED_TABS = [
+  'Service Packages',
+  'Sub-Services',
+  'Rate List',
+  'Customers',
+  'Partners',
+  'Bookings',
+  'Payments',
+  'Booking Ledger',
+  'Vendor Wallet',
+  'Wallet Transactions',
+  'Payouts',
+  'Vendor Jobs',
+  'Saved Addresses',
+  'Reviews',
+  'Support Tickets',
+  'Coupons',
+  'App Content',
+  'Notifications',
+  'Admin Users',
+]
+
+const POLL_INTERVAL_MS = 20000
+
+const humanizeOptionKey = (value) =>
+  String(value || '')
+    .replace(/[-_]+/g, ' ')
+    .replace(/\b\w/g, (char) => char.toUpperCase())
+    .trim()
 
 function AdminDashboardPage({ appSettings = {}, authenticatedAdmin, onAdminProfileUpdated, onBackHome, onLogout, onOpenCustomerDetails, onOpenPartnerDetails }) {
   const [activeTab, setActiveTab] = useState(() => window.sessionStorage.getItem('adminActiveTab') || 'Dashboard')
   const [datasets, setDatasets] = useState({})
+  const [optionDatasets, setOptionDatasets] = useState({})
+  const [dashboardPayload, setDashboardPayload] = useState(null)
+  const [reportsPayload, setReportsPayload] = useState(null)
   const [isFetching, setIsFetching] = useState(false)
   const [actionLoadingId, setActionLoadingId] = useState(null)
   const [error, setError] = useState('')
@@ -78,6 +110,11 @@ function AdminDashboardPage({ appSettings = {}, authenticatedAdmin, onAdminProfi
     typeof Notification === 'undefined' ? 'unsupported' : Notification.permission,
   )
   const latestNotificationIdRef = useRef(null)
+  const activeTabRef = useRef(activeTab)
+
+  useEffect(() => {
+    activeTabRef.current = activeTab
+  }, [activeTab])
 
   const activeConfig = useMemo(() => {
     const config = moduleConfigs[activeTab]
@@ -88,9 +125,47 @@ function AdminDashboardPage({ appSettings = {}, authenticatedAdmin, onAdminProfi
       fields: config.fields.map((field) => {
         if (!field.optionsFrom) return field
 
+        const sourceRecords = optionDatasets[field.optionsFrom] || datasets[field.optionsFrom] || []
+
+        if (field.optionsDistinct) {
+          const keyField = field.optionsDistinct === true ? (field.optionValue || field.name) : field.optionsDistinct
+          const seen = new Set()
+          const options = []
+
+          sourceRecords.forEach((record) => {
+            const raw = record?.[keyField]
+            if (raw == null || String(raw).trim() === '') return
+            const value = String(raw).trim()
+            const serviceId = record.service_id ?? null
+            const dedupeKey = `${serviceId ?? ''}::${value}`
+            if (seen.has(dedupeKey)) return
+            seen.add(dedupeKey)
+            options.push({
+              label: field.optionLabelMap?.[value] || humanizeOptionKey(value),
+              value,
+              service_id: serviceId,
+              category_id: record.category_id ?? null,
+              partner_id: record.partner_id ?? null,
+            })
+          })
+
+          const preferredOrder = Object.keys(field.optionLabelMap || {})
+          options.sort((left, right) => {
+            const leftIndex = preferredOrder.indexOf(left.value)
+            const rightIndex = preferredOrder.indexOf(right.value)
+            if (leftIndex !== -1 || rightIndex !== -1) {
+              return (leftIndex === -1 ? Number.MAX_SAFE_INTEGER : leftIndex)
+                - (rightIndex === -1 ? Number.MAX_SAFE_INTEGER : rightIndex)
+            }
+            return left.label.localeCompare(right.label)
+          })
+
+          return { ...field, options }
+        }
+
         return {
           ...field,
-          options: (datasets[field.optionsFrom] || []).map((record) => {
+          options: sourceRecords.map((record) => {
             const value = Number(record[field.optionValue] ?? record.id)
             const baseLabel = [
               record[field.optionLabel],
@@ -102,12 +177,16 @@ function AdminDashboardPage({ appSettings = {}, authenticatedAdmin, onAdminProfi
             return {
               label: field.type === 'multiselect' ? `${baseLabel} (ID: ${value})` : baseLabel,
               value,
+              // Keep relation keys so dependent selects can filter (e.g. sub-services by service_id)
+              service_id: record.service_id ?? null,
+              category_id: record.category_id ?? null,
+              partner_id: record.partner_id ?? null,
             }
           }),
         }
       }),
     }
-  }, [activeTab, datasets])
+  }, [activeTab, datasets, optionDatasets])
   const currentAdminProfile = useMemo(() => {
     const adminUsers = datasets['Admin Users'] || []
     const roles = datasets.Roles || []
@@ -137,8 +216,10 @@ function AdminDashboardPage({ appSettings = {}, authenticatedAdmin, onAdminProfi
     if (!options.silent) setIsFetching(true)
     setError('')
     try {
+      const useServerPaging = SERVER_PAGINATED_TABS.includes(tab)
       const payload = await adminApi.list(config.endpoint, {
-        per_page: 20,
+        per_page: useServerPaging ? 15 : 25,
+        ...(options.lite ? { lite: 1 } : {}),
         ...params,
       })
       setDatasets((current) => ({ ...current, [tab]: readRows(payload) }))
@@ -152,17 +233,46 @@ function AdminDashboardPage({ appSettings = {}, authenticatedAdmin, onAdminProfi
     }
   }
 
+  const loadOptionDataset = async (tab, options = {}) => {
+    const config = moduleConfigs[tab]
+    if (!config) return []
+
+    const cacheKey = `options:${tab}`
+    if (options.force) invalidateAdminCache(cacheKey)
+
+    const resolved = await rememberAdminCache(cacheKey, async () => {
+      const payload = await adminApi.list(config.endpoint, {
+        per_page: 'all',
+        all: 1,
+        lite: 1,
+        options: 1,
+      })
+      return readRows(payload)
+    })
+
+    setOptionDatasets((current) => ({ ...current, [tab]: resolved }))
+
+    setDatasets((current) => {
+      // Don't overwrite a currently server-paginated active table with options dump.
+      if (SERVER_PAGINATED_TABS.includes(tab) && activeTabRef.current === tab && current[tab]?.length) {
+        return current
+      }
+      return { ...current, [tab]: resolved }
+    })
+
+    return resolved
+  }
+
   const loadDashboardData = async (options = {}) => {
     if (!options.silent) setIsFetching(true)
     setError('')
     try {
-      const entries = await Promise.all(
-        ['Customers', 'Partners', 'Bookings', 'Payments', 'Booking Ledger', 'Vendor Wallet', 'Wallet Transactions'].map(async (tab) => {
-          const payload = await adminApi.list(moduleConfigs[tab].endpoint, { per_page: 100 })
-          return [tab, readRows(payload)]
-        }),
-      )
-      setDatasets((current) => ({ ...current, ...Object.fromEntries(entries) }))
+      const payload = await adminApi.dashboard({ recent_limit: 8 })
+      setDashboardPayload(payload)
+      setDatasets((current) => ({
+        ...current,
+        Bookings: payload.recent_bookings || [],
+      }))
     } catch (requestError) {
       setError(requestError.message)
     } finally {
@@ -174,13 +284,8 @@ function AdminDashboardPage({ appSettings = {}, authenticatedAdmin, onAdminProfi
     if (!options.silent) setIsFetching(true)
     setError('')
     try {
-      const entries = await Promise.all(
-        ['Customers', 'Partners', 'Bookings', 'Payments', 'Booking Ledger', 'Vendor Wallet', 'Wallet Transactions', 'Payouts'].map(async (tab) => {
-          const payload = await adminApi.list(moduleConfigs[tab].endpoint, { per_page: 100 })
-          return [tab, readRows(payload)]
-        }),
-      )
-      setDatasets((current) => ({ ...current, ...Object.fromEntries(entries) }))
+      const payload = await adminApi.reports()
+      setReportsPayload(payload)
     } catch (requestError) {
       setError(requestError.message)
     } finally {
@@ -192,12 +297,10 @@ function AdminDashboardPage({ appSettings = {}, authenticatedAdmin, onAdminProfi
     if (!options.silent) setIsFetching(true)
     setError('')
     try {
-      const tabs = ['Admin Users', 'Roles']
-      const entries = await Promise.all(tabs.map(async (tab) => {
-        const payload = await adminApi.list(moduleConfigs[tab].endpoint, { per_page: 100 })
-        return [tab, readRows(payload)]
-      }))
-      setDatasets((current) => ({ ...current, ...Object.fromEntries(entries) }))
+      await Promise.all([
+        loadModule('Admin Users', { per_page: 50 }, { ...options, silent: true }),
+        loadOptionDataset('Roles'),
+      ])
     } catch (requestError) {
       setError(requestError.message)
     } finally {
@@ -229,25 +332,22 @@ function AdminDashboardPage({ appSettings = {}, authenticatedAdmin, onAdminProfi
       ...new Set((config?.fields || [])
         .map((field) => field.optionsFrom)
         .filter(Boolean)),
-    ].filter((dependencyTab) => dependencyTab !== tab)
+    ].filter((dependencyTab) => {
+      if (dependencyTab !== tab) return true
+      // Same-module option sources (e.g. distinct category_key) still need a full options dump.
+      return (config?.fields || []).some((field) => field.optionsFrom === tab && field.optionsDistinct)
+    })
 
     if (!options.silent) setIsFetching(true)
     setError('')
     try {
-      await Promise.all([
-        loadModule(tab, {}, { ...options, silent: true }),
-        ...dependencyTabs.map(async (dependencyTab) => {
-          const dependencyConfig = moduleConfigs[dependencyTab]
-          if (!dependencyConfig) return
+      const loadMain = SERVER_PAGINATED_TABS.includes(tab)
+        ? loadPaginatedModulePage(tab, serverPagination[tab]?.current_page || 1, { ...options, silent: true })
+        : loadModule(tab, {}, { ...options, silent: true })
 
-          // Always load full option lists for relation/multiselect fields,
-          // even when the source module normally uses server pagination.
-          const payload = await adminApi.list(dependencyConfig.endpoint, {
-            per_page: 'all',
-            all: 1,
-          })
-          setDatasets((current) => ({ ...current, [dependencyTab]: readRows(payload) }))
-        }),
+      await Promise.all([
+        loadMain,
+        ...dependencyTabs.map((dependencyTab) => loadOptionDataset(dependencyTab)),
       ])
     } catch (requestError) {
       setError(requestError.message)
@@ -268,7 +368,7 @@ function AdminDashboardPage({ appSettings = {}, authenticatedAdmin, onAdminProfi
     try {
       const payload = await adminApi.list(config.endpoint, {
         page,
-        per_page: 10,
+        per_page: 15,
         ...(search ? { q: search } : {}),
         ...(status ? { status } : {}),
       })
@@ -307,7 +407,10 @@ function AdminDashboardPage({ appSettings = {}, authenticatedAdmin, onAdminProfi
     }
 
     if (tab === 'Assign Professional') {
-      await Promise.all([loadModule('Bookings', {}, { silent }), loadModule('Partners', {}, { silent })])
+      await Promise.all([
+        loadModule('Bookings', { per_page: 40, status: '' }, { silent }),
+        loadOptionDataset('Partners'),
+      ])
       return
     }
 
@@ -315,8 +418,9 @@ function AdminDashboardPage({ appSettings = {}, authenticatedAdmin, onAdminProfi
       const page = serverPagination['Service Packages']?.current_page || 1
       await Promise.all([
         loadPaginatedModulePage('Service Packages', page, { silent }),
-        loadModule('Services', { per_page: 100 }, { silent }),
-        loadModule('Sub-Services', { per_page: 100 }, { silent }),
+        loadOptionDataset('Services'),
+        loadOptionDataset('Sub-Services'),
+        loadOptionDataset('Service Packages'),
       ])
       return
     }
@@ -325,7 +429,7 @@ function AdminDashboardPage({ appSettings = {}, authenticatedAdmin, onAdminProfi
       const page = serverPagination['Rate List']?.current_page || 1
       await Promise.all([
         loadPaginatedModulePage('Rate List', page, { silent }),
-        loadModule('Services', { per_page: 100 }, { silent }),
+        loadOptionDataset('Services'),
       ])
       return
     }
@@ -334,13 +438,22 @@ function AdminDashboardPage({ appSettings = {}, authenticatedAdmin, onAdminProfi
   }
 
   const refreshActiveWorkspace = async ({ source } = {}) => {
-    const silent = source === 'poll' || source === 'broadcast'
-    await loadWorkspaceForTab(activeTab, { silent })
+    // Poll only checks notifications — full reloads were freezing the panel every 5s.
+    if (source === 'poll') {
+      await loadNotificationSummary()
+      if (activeTabRef.current === 'Dashboard') {
+        await loadDashboardData({ silent: true })
+      }
+      return
+    }
+
+    const silent = source === 'broadcast'
+    await loadWorkspaceForTab(activeTabRef.current, { silent })
   }
 
   useRealtimeRefresh({
     enabled: true,
-    intervalMs: 5000,
+    intervalMs: POLL_INTERVAL_MS,
     onRefresh: refreshActiveWorkspace,
     target: 'admin',
   })
@@ -353,8 +466,8 @@ function AdminDashboardPage({ appSettings = {}, authenticatedAdmin, onAdminProfi
     if (!SERVER_PAGINATED_TABS.includes(activeTab)) return undefined
 
     const timer = window.setTimeout(() => {
-      loadPaginatedModulePage(activeTab, 1)
-    }, 300)
+      loadPaginatedModulePage(activeTab, 1, { silent: true })
+    }, 50)
 
     return () => window.clearTimeout(timer)
   }, [tableFilters.status, tableSearch])
@@ -383,65 +496,43 @@ function AdminDashboardPage({ appSettings = {}, authenticatedAdmin, onAdminProfi
   }, [error])
 
   const analytics = useMemo(() => {
+    const stats = dashboardPayload?.stats || reportsPayload?.stats || {}
     const bookings = datasets.Bookings || []
-    const payments = datasets.Payments || []
-    const ledgers = datasets['Booking Ledger'] || []
-    const wallets = datasets['Vendor Wallet'] || []
-    const walletTransactions = datasets['Wallet Transactions'] || []
-    const payouts = datasets.Payouts || []
-    const isPaidPayment = (payment) => ['paid', 'cash', 'success', 'successful', 'completed'].includes(String(payment.status || '').toLowerCase())
-    const isPaidBooking = (booking) => {
-      const paymentStatus = String(booking.payment_status || '').toLowerCase()
-      const status = String(booking.status || '').toLowerCase()
-      return ['paid', 'cash'].includes(paymentStatus) || status === 'completed'
-    }
-    const paymentRevenue = payments.filter(isPaidPayment).reduce((total, payment) => total + Number(payment.amount || 0), 0)
-    const bookingRevenue = bookings.filter(isPaidBooking).reduce((total, booking) => total + Number(booking.amount || 0), 0)
-    const ledgerRevenue = ledgers.reduce((total, ledger) => total + Number(ledger.gross || 0), 0)
-    const totalRevenue = Math.max(paymentRevenue, bookingRevenue, ledgerRevenue)
-    const platformFees = ledgers.reduce((total, ledger) => total + Number(ledger.commission || 0), 0)
-      || walletTransactions.filter((row) => row.type === 'Company Commission').reduce((total, row) => total + Number(row.amount || 0), 0)
-    const vendorPayable = wallets.reduce((total, wallet) => total + Number(wallet.vendor_payable || 0), 0)
-    const cashCollected = wallets.reduce((total, wallet) => total + Number(wallet.cash_collected || 0), 0)
-    const withdrawalPending = payouts.filter((payout) => !['Paid', 'Rejected'].includes(payout.status)).reduce((total, payout) => total + Number(payout.pending || 0), 0)
-    const paidOut = payouts.reduce((total, payout) => total + Number(payout.paid || 0), 0)
-    const completedBookings = bookings.filter((booking) => booking.status === 'Completed').length
-    const pendingBookings = bookings.filter((booking) => ['Pending', 'Pending Approval'].includes(booking.status)).length
 
     return {
-      bookingRevenue,
+      bookingRevenue: Number(stats.booking_revenue || 0),
       bookings,
-      cashCollected,
-      completedBookings,
-      ledgerRevenue,
-      ledgers,
-      paidOut,
-      paymentRevenue,
-      payments,
-      pendingBookings,
-      platformFees,
-      totalRevenue,
-      vendorPayable,
-      walletTransactions,
-      wallets,
-      withdrawalPending,
+      cashCollected: Number(stats.cash_collected || 0),
+      completedBookings: Number(stats.completed_bookings || 0),
+      ledgerRevenue: Number(stats.ledger_revenue || 0),
+      ledgers: [],
+      paidOut: Number(stats.paid_out || 0),
+      paymentRevenue: Number(stats.payment_revenue || 0),
+      payments: [],
+      pendingBookings: Number(stats.pending_bookings || 0),
+      platformFees: Number(stats.platform_fees || 0),
+      totalRevenue: Number(stats.total_revenue || 0),
+      vendorPayable: Number(stats.vendor_payable || 0),
+      walletTransactions: [],
+      wallets: [],
+      withdrawalPending: Number(stats.withdrawal_pending || 0),
     }
-  }, [datasets])
+  }, [dashboardPayload, datasets.Bookings, reportsPayload])
 
   const dashboardStats = useMemo(() => {
-    const bookings = analytics.bookings || []
+    const stats = dashboardPayload?.stats || reportsPayload?.stats || {}
 
     return [
-      ['Total Revenue', `Rs. ${analytics.totalRevenue.toLocaleString('en-IN')}`, 'Paid bookings + posted payment records'],
-      ['Total Bookings', bookings.length, 'All service bookings'],
-      ['Pending Bookings', analytics.pendingBookings, 'Needs action'],
-      ['Completed Bookings', analytics.completedBookings, 'Successfully delivered'],
-      ['Customers', (datasets.Customers || []).length, 'Registered customer profiles'],
-      ['Active Professionals', (datasets.Partners || []).filter((partner) => partner.status !== 'Inactive').length, 'Available partner records'],
-      ['Platform Fees', `Rs. ${analytics.platformFees.toLocaleString('en-IN')}`, 'Commission earned'],
-      ['Vendor Payable', `Rs. ${analytics.vendorPayable.toLocaleString('en-IN')}`, 'Available vendor wallet balance'],
+      ['Total Revenue', `Rs. ${Number(stats.total_revenue || 0).toLocaleString('en-IN')}`, 'Paid bookings + posted payment records'],
+      ['Total Bookings', Number(stats.total_bookings || 0), 'All service bookings'],
+      ['Pending Bookings', Number(stats.pending_bookings || 0), 'Needs action'],
+      ['Completed Bookings', Number(stats.completed_bookings || 0), 'Successfully delivered'],
+      ['Customers', Number(stats.customers_count || 0), 'Registered customer profiles'],
+      ['Active Professionals', Number(stats.active_partners_count || 0), 'Available partner records'],
+      ['Platform Fees', `Rs. ${Number(stats.platform_fees || 0).toLocaleString('en-IN')}`, 'Commission earned'],
+      ['Vendor Payable', `Rs. ${Number(stats.vendor_payable || 0).toLocaleString('en-IN')}`, 'Available vendor wallet balance'],
     ]
-  }, [analytics, datasets])
+  }, [dashboardPayload, reportsPayload])
 
   const openEditor = async (record = null) => {
     if (!activeConfig) return
@@ -464,6 +555,9 @@ function AdminDashboardPage({ appSettings = {}, authenticatedAdmin, onAdminProfi
         if (!record && field.autoGeneratePrefix) {
           initialValue = `${field.autoGeneratePrefix}${Math.floor(10000 + Math.random() * 90000)}`
         }
+        if (!record && field.defaultValue !== undefined && (initialValue === '' || initialValue === null || initialValue === undefined)) {
+          initialValue = field.defaultValue
+        }
         if (!record && field.name === 'applies_to' && !initialValue) {
           initialValue = 'all'
         }
@@ -472,6 +566,10 @@ function AdminDashboardPage({ appSettings = {}, authenticatedAdmin, onAdminProfi
         }
         if (field.type === 'multiselect' && !Array.isArray(initialValue)) {
           initialValue = []
+        }
+        // Rating stored as number — keep select presets matching string options
+        if (field.name === 'rating' && initialValue !== '' && initialValue !== null && initialValue !== undefined) {
+          initialValue = String(initialValue)
         }
         values[field.name] = initialValue
         return values
@@ -498,6 +596,23 @@ function AdminDashboardPage({ appSettings = {}, authenticatedAdmin, onAdminProfi
         if (value !== 'category') next.category_ids = []
         if (value !== 'service') next.service_ids = []
         if (value !== 'package') next.service_package_ids = []
+      }
+
+      // When parent service changes, clear dependent fields if they no longer match
+      if (name === 'service_id' && activeTab === 'Service Packages') {
+        const subServiceOptions = (activeConfig?.fields || []).find((field) => field.name === 'sub_service_id')?.options || []
+        const stillValidSubService = subServiceOptions.some((option) => (
+          String(option.value) === String(current.sub_service_id)
+          && String(option.service_id ?? '') === String(value)
+        ))
+        if (!stillValidSubService) next.sub_service_id = ''
+
+        const packageGroupOptions = (activeConfig?.fields || []).find((field) => field.name === 'category_key')?.options || []
+        const stillValidGroup = packageGroupOptions.some((option) => (
+          String(option.value) === String(current.category_key)
+          && String(option.service_id ?? '') === String(value)
+        ))
+        if (!stillValidGroup) next.category_key = ''
       }
 
       return next
@@ -540,11 +655,16 @@ function AdminDashboardPage({ appSettings = {}, authenticatedAdmin, onAdminProfi
       }
       showSuccessAlert(isEditing ? 'Record updated' : 'Record created')
       closeModal()
-      if (SERVER_PAGINATED_TABS.includes(activeTab)) {
-        await loadPaginatedModulePage(activeTab, serverPagination[activeTab]?.current_page || 1)
-      } else {
-        await loadModule(activeTab)
+      invalidateAdminCache(`options:${activeTab}`)
+      const reloadTasks = [
+        SERVER_PAGINATED_TABS.includes(activeTab)
+          ? loadPaginatedModulePage(activeTab, serverPagination[activeTab]?.current_page || 1)
+          : loadModule(activeTab),
+      ]
+      if ((activeConfig?.fields || []).some((field) => field.optionsFrom === activeTab && field.optionsDistinct)) {
+        reloadTasks.push(loadOptionDataset(activeTab, { force: true }))
       }
+      await Promise.all(reloadTasks)
       broadcastRealtimeRefresh({ source: 'admin-record-save', targets: ['admin', 'customer', 'vendor'] })
     } catch (requestError) {
       setError(requestError.message)
@@ -573,11 +693,16 @@ function AdminDashboardPage({ appSettings = {}, authenticatedAdmin, onAdminProfi
       await adminApi.remove(activeConfig.endpoint, record.id)
       setToastMessage('Record deleted')
       showSuccessAlert('Record deleted')
-      if (SERVER_PAGINATED_TABS.includes(activeTab)) {
-        await loadPaginatedModulePage(activeTab, serverPagination[activeTab]?.current_page || 1)
-      } else {
-        await loadModule(activeTab)
+      invalidateAdminCache(`options:${activeTab}`)
+      const reloadTasks = [
+        SERVER_PAGINATED_TABS.includes(activeTab)
+          ? loadPaginatedModulePage(activeTab, serverPagination[activeTab]?.current_page || 1)
+          : loadModule(activeTab),
+      ]
+      if ((activeConfig?.fields || []).some((field) => field.optionsFrom === activeTab && field.optionsDistinct)) {
+        reloadTasks.push(loadOptionDataset(activeTab, { force: true }))
       }
+      await Promise.all(reloadTasks)
       broadcastRealtimeRefresh({ source: 'admin-record-delete', targets: ['admin', 'customer', 'vendor'] })
     } catch (requestError) {
       setError(requestError.message)
@@ -1090,11 +1215,11 @@ function AdminDashboardPage({ appSettings = {}, authenticatedAdmin, onAdminProfi
     }
 
     if (activeTab === 'Dashboard') {
-      return <DashboardView analytics={analytics} dashboardStats={dashboardStats} datasets={datasets} globalSearch={globalSearch} makeColumns={makeColumns} />
+      return <DashboardView analytics={analytics} dashboardPayload={dashboardPayload} dashboardStats={dashboardStats} datasets={datasets} globalSearch={globalSearch} makeColumns={makeColumns} />
     }
 
     if (activeTab === 'Reports') {
-      return <ReportsView analytics={analytics} dashboardStats={dashboardStats} datasets={datasets} />
+      return <ReportsView analytics={analytics} dashboardStats={dashboardStats} reportsPayload={reportsPayload} />
     }
 
     if (activeTab === 'Assign Professional') {
@@ -1162,7 +1287,7 @@ function AdminDashboardPage({ appSettings = {}, authenticatedAdmin, onAdminProfi
           onAdd={() => openEditor()}
           onClearFilters={resetTableControls}
           onFilterChange={(name, value) => setTableFilters((current) => ({ ...current, [name]: value }))}
-          onPageChange={(page) => SERVER_PAGINATED_TABS.includes(activeTab) && loadPaginatedModulePage(activeTab, page)}
+          onPageChange={(page) => SERVER_PAGINATED_TABS.includes(activeTab) && loadPaginatedModulePage(activeTab, page, { silent: true })}
           onTableSearchChange={setTableSearch}
           pagination={SERVER_PAGINATED_TABS.includes(activeTab) ? serverPagination[activeTab] : undefined}
           rows={datasets[activeTab] || []}
@@ -1214,6 +1339,18 @@ function AdminDashboardPage({ appSettings = {}, authenticatedAdmin, onAdminProfi
           resetTableControls()
           setActiveTab(tab)
         }}
+        pageSubtitle={activeConfig?.subtitle || ({
+          Dashboard: 'Live marketplace overview',
+          Reports: 'Payment, booking, wallet and payout analytics',
+          Profiles: 'Your admin account settings',
+          Settings: 'App-wide website and checkout settings',
+          Pages: 'Static CMS content pages',
+          'Invoice Setting': 'GST invoice content and customer bill details',
+          'Vendor Dashboard': 'Preview any vendor dashboard',
+          'Package Detail Sections': 'Modal section content per service package',
+          Roles: 'Role names and permission keys',
+          'Assign Professional': 'Accept bookings and assign partners',
+        }[activeTab] || '')}
       >
         {renderContent()}
       </AdminLayout>

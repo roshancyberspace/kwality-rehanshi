@@ -4,7 +4,7 @@ const defaultMostBooked = [
   {
     name: 'AC Service',
     rating: '4.8',
-    price: '₹499',
+    price: 'Rs.499',
     image: '/acservices.png',
     bgClass: 'bg-[#F2F8FF] border-blue-100 hover:border-blue-300',
     btnHover: 'hover:bg-[#003F86] hover:text-white',
@@ -12,7 +12,7 @@ const defaultMostBooked = [
   {
     name: 'Cleaning',
     rating: '4.8',
-    price: '₹399',
+    price: 'Rs.399',
     image: '/cleaning.png',
     bgClass: 'bg-[#F0FDF4] border-emerald-100 hover:border-emerald-300',
     btnHover: 'hover:bg-[#003F86] hover:text-white',
@@ -20,7 +20,7 @@ const defaultMostBooked = [
   {
     name: 'Salon & Spa',
     rating: '4.8',
-    price: '₹299',
+    price: 'Rs.299',
     image: '/facel.png',
     bgClass: 'bg-[#FFF1F2] border-rose-100 hover:border-rose-300',
     btnHover: 'hover:bg-[#003F86] hover:text-white',
@@ -28,7 +28,7 @@ const defaultMostBooked = [
   {
     name: 'Appliance Repair',
     rating: '4.8',
-    price: '₹249',
+    price: 'Rs.249',
     image: '/sofacleing.png',
     bgClass: 'bg-[#FFFBEB] border-amber-100 hover:border-amber-300',
     btnHover: 'hover:bg-[#003F86] hover:text-white',

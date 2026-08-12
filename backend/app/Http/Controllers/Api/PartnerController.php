@@ -462,7 +462,7 @@ class PartnerController extends CrudController
             'status' => $partner->status,
             'kyc_status' => $partner->kyc_status,
             'membership' => $membership,
-            'profile_picture' => $partner->metadata['profile_picture'] ?? null,
+            'profile_picture' => $partner->profile_picture,
         ]);
     }
 
@@ -572,6 +572,11 @@ class PartnerController extends CrudController
         }
         if ($label === 'pan') {
             $update['pan_document'] = $path;
+        }
+        if ($label === 'profile photo' || str_contains($label, 'profile photo') || $label === 'profile') {
+            $metadata = $partner->metadata ?? [];
+            $metadata['profile_picture'] = $path;
+            $update['metadata'] = $metadata;
         }
 
         $partner->update($update);

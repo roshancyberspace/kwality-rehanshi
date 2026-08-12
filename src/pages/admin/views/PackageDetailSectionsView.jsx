@@ -834,10 +834,8 @@ function PackageDetailSectionsView({ onRefresh }) {
   return (
     <Panel
       action={<ActionButton onClick={startAdd} tone="primary">Add Section</ActionButton>}
-      subtitle="Each tab controls one modal section type. Add, edit, reorder, hide, or create custom sections per service package."
-      title="Package Detail Sections"
     >
-      <div className="border-b border-slate-200 bg-white p-3">
+      <div className="border-b border-slate-100 bg-white p-3">
         <div className="flex gap-2 overflow-x-auto pb-2">
           {sectionTemplates.map(([key, label]) => (
             <button

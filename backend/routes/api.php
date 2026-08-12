@@ -1,9 +1,11 @@
 <?php
 
+use App\Http\Controllers\Api\AdminDashboardController;
 use App\Http\Controllers\Api\AdminNotificationController;
 use App\Http\Controllers\Api\AdminUserController;
 use App\Http\Controllers\Api\AppContentController;
 use App\Http\Controllers\Api\BrandController;
+use App\Http\Controllers\Api\KycDocumentController;
 use App\Http\Controllers\Api\BookingLedgerController;
 use App\Http\Controllers\Api\BookingController;
 use App\Http\Controllers\Api\CategoryController;
@@ -55,6 +57,7 @@ Route::prefix('v1')->group(function () {
     Route::apiResource('sub-services', SubServiceController::class);
     Route::apiResource('service-packages', ServicePackageController::class);
     Route::apiResource('brands', BrandController::class);
+    Route::apiResource('kyc-documents', KycDocumentController::class);
     Route::apiResource('service-package-sections', ServicePackageSectionController::class);
     Route::apiResource('rate-items', RateItemController::class);
     Route::post('customers/register', [CustomerAuthController::class, 'register']);
@@ -131,6 +134,8 @@ Route::prefix('v1')->group(function () {
     Route::apiResource('app-content', AppContentController::class);
     Route::get('notifications-summary', [AdminNotificationController::class, 'summary']);
     Route::post('notifications/mark-all-read', [AdminNotificationController::class, 'markAllRead']);
+    Route::get('admin/dashboard', [AdminDashboardController::class, 'dashboard']);
+    Route::get('admin/reports', [AdminDashboardController::class, 'reports']);
     Route::apiResource('notifications', AdminNotificationController::class);
     Route::apiResource('roles', RoleController::class);
     Route::post('admin-users/login', [AdminUserController::class, 'login']);

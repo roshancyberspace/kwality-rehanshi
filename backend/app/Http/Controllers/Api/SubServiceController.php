@@ -29,6 +29,7 @@ class SubServiceController extends CrudController
         $data['slug'] = $this->uniqueSlug($data['slug'] ?? $data['name']);
         $record = SubService::create($data);
         $record->load('service');
+        $this->clearModelCache();
 
         return response()->json($record, 201);
     }
@@ -44,6 +45,7 @@ class SubServiceController extends CrudController
 
         $record->update($data);
         $record->load('service');
+        $this->clearModelCache();
 
         return response()->json($record->fresh(['service']));
     }

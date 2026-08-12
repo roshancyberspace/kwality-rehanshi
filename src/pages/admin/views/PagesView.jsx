@@ -300,16 +300,15 @@ function PagesView() {
 
   return (
     <Panel
-      actions={
+      action={
         <button
           onClick={handleCreate}
           className="rounded-lg bg-[#003F86] px-4 py-2 text-sm font-bold text-white shadow hover:bg-blue-900 transition flex items-center gap-2"
+          type="button"
         >
           + Add New Page
         </button>
       }
-      subtitle="Manage static CMS content pages like Privacy Policy and Terms & Conditions directly with full HTML and video embed capability."
-      title="Pages Management"
     >
       {isLoading ? (
         <div className="py-12 text-center text-slate-500 font-medium">Loading CMS pages...</div>
@@ -319,7 +318,7 @@ function PagesView() {
           <p className="mt-1 text-sm text-slate-400">Click &apos;+ Add New Page&apos; above to build your first legal or content page.</p>
         </div>
       ) : (
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 p-4 sm:grid-cols-2 lg:grid-cols-3">
           {pages.map((page) => (
             <div key={page.id} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow transition flex flex-col justify-between">
               <div>

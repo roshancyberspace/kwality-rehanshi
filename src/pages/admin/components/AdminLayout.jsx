@@ -112,6 +112,7 @@ function AdminLayout({
   globalSearch,
   onGlobalSearchChange,
   onSelectSearchRecord,
+  pageSubtitle = '',
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(() => (typeof window !== 'undefined' ? window.innerWidth >= 1024 : true))
   const activeSectionTitle = navSections.find((section) => section.title !== 'Overview' && section.items.some(([item]) => item === activeTab))?.title || ''
@@ -282,6 +283,9 @@ function AdminLayout({
                 <div className="min-w-0">
                   <p className="hidden truncate text-xs font-black uppercase tracking-wide text-[#67B529] lg:block">Home Service Marketplace</p>
                   <h1 className="truncate text-lg sm:text-2xl font-black text-slate-800">{activeTab}</h1>
+                  {pageSubtitle ? (
+                    <p className="mt-0.5 hidden truncate text-sm font-semibold text-slate-500 lg:block">{pageSubtitle}</p>
+                  ) : null}
                 </div>
               </div>
               <div className="contents lg:flex lg:flex-nowrap lg:items-center lg:gap-2">

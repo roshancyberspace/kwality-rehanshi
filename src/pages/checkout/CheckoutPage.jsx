@@ -106,6 +106,17 @@ function CheckoutPage({
   const [gstin, setGstin] = useState('')
   const [companyName, setCompanyName] = useState('')
 
+  useEffect(() => {
+    const meta = currentUser?.metadata || {}
+    const savedGstin = String(meta.gstin || meta.gst_number || '').trim()
+    const savedCompany = String(meta.company_name || meta.business_name || '').trim()
+    if (savedGstin || savedCompany) {
+      setHasGst(true)
+      if (savedGstin) setGstin(savedGstin.toUpperCase())
+      if (savedCompany) setCompanyName(savedCompany)
+    }
+  }, [currentUser?.id])
+
   const [address, setAddress] = useState({
     city: 'Lucknow',
     contactName: '',
@@ -212,6 +223,7 @@ function CheckoutPage({
   const isGstValid = !hasGst || (gstRegex.test(gstin.trim()) && companyName.trim() !== '')
   
   const canProceedToPayment = displayCart.length > 0 && isLoggedIn && hasServiceAddress && isServiceCityLucknow && Boolean(slot) && isGstValid
+  // Wallet insufficient only blocks booking when Wallet is selected; COD / UPI stay enabled
   const canPlaceBooking = canProceedToPayment && checkoutStep === 'payment' && hasEnoughWalletBalance && !isPlacingBooking
 
   useEffect(() => {
@@ -275,19 +287,46 @@ function CheckoutPage({
   }, [currentUser, isLoggedIn])
 
   useEffect(() => {
-    if (checkoutStep !== 'payment' || !isWalletPayment) return undefined
-    if (!hasEnoughWalletBalance) {
-      setCheckoutError(insufficientWalletMessage)
-      return undefined
-    }
-    setCheckoutError((current) => (
+    if (checkoutStep !== 'payment') return undefined
+
+    const clearInsufficientWalletError = (current) => (
       current === insufficientWalletMessage
       || current === 'Wallet balance is lower than payable amount.'
         ? ''
         : current
-    ))
+    )
+
+    // Wallet check only applies when Wallet is the selected method
+    if (!isWalletPayment) {
+      setCheckoutError(clearInsufficientWalletError)
+      return undefined
+    }
+
+    if (!hasEnoughWalletBalance) {
+      setCheckoutError(insufficientWalletMessage)
+      return undefined
+    }
+
+    setCheckoutError(clearInsufficientWalletError)
     return undefined
   }, [checkoutStep, hasEnoughWalletBalance, insufficientWalletMessage, isWalletPayment])
+
+  const handlePaymentModeChange = (mode) => {
+    setPaymentMode(mode)
+    const nextIsWallet = /wallet/i.test(String(mode || ''))
+    if (!nextIsWallet) {
+      setCheckoutError((current) => (
+        current === insufficientWalletMessage
+        || current === 'Wallet balance is lower than payable amount.'
+          ? ''
+          : current
+      ))
+      return
+    }
+    if (walletBalance < totalAmountToPay) {
+      setCheckoutError(insufficientWalletMessage)
+    }
+  }
 
   const updateAddress = (field, value) => {
     setAddress((current) => ({ ...current, [field]: value }))
@@ -474,6 +513,17 @@ function CheckoutPage({
   }
 
   const placeBooking = async () => {
+    if (hasGst) {
+      if (!gstin.trim() || !companyName.trim()) {
+        setCheckoutError('Please provide both GSTIN and Company Name for GST claim.')
+        return
+      }
+      if (!gstRegex.test(gstin.trim())) {
+        setCheckoutError('Please enter a valid 15-character GSTIN.')
+        return
+      }
+    }
+
     if (isWalletPayment && !hasEnoughWalletBalance) {
       setCheckoutError(insufficientWalletMessage)
       return
@@ -532,7 +582,12 @@ function CheckoutPage({
             subtotal,
             tip_amount: tipAmount,
             user_location: locationLabel,
-            ...(hasGst && gstin.trim() ? { gstin: gstin.trim(), company_name: companyName.trim() } : {}),
+            ...(hasGst && gstin.trim() ? {
+              gstin: gstin.trim().toUpperCase(),
+              company_name: companyName.trim(),
+              has_gst: true,
+              place_of_supply: 'Uttar Pradesh (09)',
+            } : {}),
             ...(selectedSlotsMap ? { selected_slots: selectedSlotsMap } : {}),
           },
           payment_method: effectivePaymentMode,
@@ -614,28 +669,96 @@ function CheckoutPage({
             Select payment method
           </h1>
           <p className="text-xs sm:text-sm font-bold text-[#6338E0] mt-0.5">
-            Amount to pay: ₹{totalAmountToPay}
+            Amount to pay: Rs.{totalAmountToPay}
           </p>
         </div>
       </header>
 
       <section className="border-b border-neutral-200 bg-white hidden lg:block">
-        <div className="mx-auto max-w-7xl px-5 py-4 lg:px-5">
-          <p className="text-xs font-semibold uppercase tracking-wide text-[#6338E0]">Checkout</p>
-          <h1 className="mt-1 text-2xl font-bold leading-tight text-slate-900">Complete your booking</h1>
+        <div className="mx-auto max-w-7xl px-5 py-2.5 lg:px-5">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-[#6338E0]">Checkout</p>
+          <h1 className="mt-0.5 text-xl font-bold leading-tight text-slate-900">Complete your booking</h1>
         </div>
       </section>
 
-      <section className="mx-auto grid max-w-7xl gap-5 px-4 py-5 lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-4 lg:px-5 lg:py-5">
-        <div className="min-w-0">
+      <section className="mx-auto grid max-w-7xl gap-4 px-4 py-3.5 lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-3.5 lg:px-5 lg:py-3.5">
+        <div className="min-w-0 grid gap-3">
           <ServiceSlotPayment
             appSettings={appSettings}
-            onPaymentModeChange={setPaymentMode}
+            onPaymentModeChange={handlePaymentModeChange}
             paymentMode={effectivePaymentMode}
             hasNextDaySlot={hasNextDaySlot}
             payableAmount={totalAmountToPay}
             walletBalance={walletBalance}
           />
+
+          <section className="overflow-hidden rounded-xl border border-neutral-200/90 bg-white shadow-xs">
+            <div className="border-b border-neutral-100 px-3.5 py-2">
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <h2 className="text-sm font-bold tracking-tight text-slate-900">
+                    GST details
+                  </h2>
+                  <p className="mt-0.5 text-[11px] font-medium text-slate-500">
+                    Optional — add GSTIN for a GST tax invoice.
+                  </p>
+                </div>
+                <label className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-neutral-200 bg-slate-50 px-2 py-1">
+                  <input
+                    checked={hasGst}
+                    className="h-3.5 w-3.5 accent-[#6338E0]"
+                    onChange={(event) => {
+                      const enabled = event.target.checked
+                      setHasGst(enabled)
+                      if (!enabled) {
+                        setGstin('')
+                        setCompanyName('')
+                        setCheckoutError('')
+                      }
+                    }}
+                    type="checkbox"
+                  />
+                  <span className="text-[11px] font-bold text-slate-700">I have GST</span>
+                </label>
+              </div>
+            </div>
+
+            {hasGst ? (
+              <div className="grid gap-1.5 px-3.5 py-2.5 sm:grid-cols-2">
+                <label className="block sm:col-span-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Company / business name</span>
+                  <input
+                    className="mt-0.5 h-8 w-full rounded-md border border-neutral-200 bg-slate-50 px-2.5 text-sm font-semibold text-slate-800 outline-none transition focus:border-[#6338E0] focus:bg-white"
+                    onChange={(event) => setCompanyName(event.target.value)}
+                    placeholder="Registered business name"
+                    value={companyName}
+                  />
+                </label>
+                <label className="block sm:col-span-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500">GSTIN</span>
+                  <input
+                    className="mt-0.5 h-8 w-full rounded-md border border-neutral-200 bg-slate-50 px-2.5 text-sm font-semibold uppercase tracking-wide text-slate-800 outline-none transition focus:border-[#6338E0] focus:bg-white"
+                    maxLength={15}
+                    onChange={(event) => setGstin(event.target.value.toUpperCase().replace(/[^0-9A-Z]/g, ''))}
+                    placeholder="22AAAAA0000A1Z5"
+                    value={gstin}
+                  />
+                  <span className="mt-0.5 block text-[10px] font-medium text-slate-400">
+                    15-character GSTIN for invoice claim.
+                  </span>
+                </label>
+                {gstin && !gstRegex.test(gstin.trim()) ? (
+                  <p className="sm:col-span-2 text-[11px] font-semibold text-rose-600">
+                    Enter a valid GSTIN (e.g. 09ABCDE1234F1Z5).
+                  </p>
+                ) : null}
+              </div>
+            ) : (
+              <div className="px-3.5 py-2 text-[11px] font-medium text-slate-500">
+                Turn this on only if your business needs GST billing on the invoice.
+              </div>
+            )}
+          </section>
         </div>
 
         <BillSummary
@@ -649,7 +772,12 @@ function CheckoutPage({
           couponMessage={couponMessage}
           couponMessageType={couponMessageType}
           discount={discount}
-          errorMessage={checkoutError}
+          errorMessage={
+            checkoutError === insufficientWalletMessage && !isWalletPayment
+              ? ''
+              : checkoutError
+          }
+          gstClaim={hasGst ? { companyName: companyName.trim(), gstin: gstin.trim().toUpperCase() } : null}
           isApplyingCoupon={isApplyingCoupon}
           isLoggedIn={isLoggedIn}
           isPlacingBooking={isPlacingBooking}

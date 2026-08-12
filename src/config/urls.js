@@ -66,3 +66,33 @@ export const buildStorageUrl = (path = '') => {
 
   return buildBackendUrl(`storage/${value}`)
 }
+
+/**
+ * Resolve vendor/admin document paths to a publicly reachable backend URL.
+ * Newer uploads live under public/documents/...; legacy KYC paths were stored as
+ * vendor-kyc/... (and briefly under storage/app/public) — normalize those too.
+ */
+export const buildDocumentUrl = (path = '') => {
+  const value = String(path || '')
+  if (!value || isAbsoluteUrl(value)) return value
+
+  let cleanPath = trimSlashes(value)
+
+  if (cleanPath.startsWith('storage/')) {
+    cleanPath = cleanPath.slice('storage/'.length)
+  }
+
+  if (cleanPath.startsWith('vendor-kyc/')) {
+    cleanPath = `documents/${cleanPath}`
+  }
+
+  if (
+    cleanPath.startsWith('documents/') ||
+    cleanPath.startsWith('banners/') ||
+    cleanPath.startsWith('settings-images/')
+  ) {
+    return buildBackendUrl(cleanPath)
+  }
+
+  return buildStorageUrl(cleanPath)
+}

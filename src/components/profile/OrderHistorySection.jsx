@@ -208,15 +208,19 @@ export function InvoiceView({ invoiceSettings, order }) {
   const discount = Number(order.metadata?.coupon?.discount || order.metadata?.discount || 0)
   const discountLabel = order.metadata?.coupon?.code ? `Discount (${order.metadata.coupon.code})` : 'Discount'
   const taxable = Math.max(0, subtotal + serviceFee - discount)
-  
-  const showGst = settingEnabled(invoiceSettings, 'show_gst_on_invoice', false) || Boolean(order.metadata?.gstin)
+  const hasCustomerGstin = Boolean(order.metadata?.gstin)
+  const sellerGstEnabled = settingEnabled(invoiceSettings, 'show_gst_on_invoice', false)
+  // Customer GSTIN is billing identity only — do not invent 18% tax unless seller GST invoice is enabled
+  // or the paid amount already includes a tax delta.
   const existingTax = Math.max(0, Number(order.amount || 0) - taxable)
-  const tax = showGst ? (existingTax > 0 ? existingTax : taxable * 0.18) : 0
+  const showGstTax = sellerGstEnabled || existingTax > 0
+  const tax = showGstTax ? (existingTax > 0 ? existingTax : taxable * 0.18) : 0
   const total = taxable + tax
+  const showTaxInvoice = showGstTax || hasCustomerGstin
   const prefix = settingValue(invoiceSettings, 'invoice_prefix', 'INV')
   const qrImage = publicAssetUrl(settingValue(invoiceSettings, 'qr_image'))
   const signatureImage = publicAssetUrl(settingValue(invoiceSettings, 'signature_image'))
-  const itemColumnCount = showGst ? 8 : 7
+  const itemColumnCount = showGstTax ? 8 : 7
 
   const renderRow = (item, index, startIndex) => {
     const quantity = item.quantity
@@ -231,8 +235,8 @@ export function InvoiceView({ invoiceSettings, order }) {
         <td className="border-r-2 border-[#003F86] px-1.5 py-1 text-center">{quantity} NOS</td>
         <td className="border-r-2 border-[#003F86] px-1.5 py-1 text-right">{money(rate)}</td>
         <td className="border-r-2 border-[#003F86] px-1.5 py-1 text-right">{money(itemTaxable)}</td>
-        {showGst ? <td className="border-r-2 border-[#003F86] px-1.5 py-1 text-right">{money(isFirst ? tax : 0)}</td> : null}
-        <td className="px-1.5 py-1 text-right">{money(itemTaxable + (showGst && isFirst ? tax : 0))}</td>
+        {showGstTax ? <td className="border-r-2 border-[#003F86] px-1.5 py-1 text-right">{money(isFirst ? tax : 0)}</td> : null}
+        <td className="px-1.5 py-1 text-right">{money(itemTaxable + (showGstTax && isFirst ? tax : 0))}</td>
       </tr>
     )
   }
@@ -261,7 +265,7 @@ export function InvoiceView({ invoiceSettings, order }) {
         </div>
         <div className="grid grid-cols-[1fr_1fr_1fr] border-b-2 border-[#003F86] text-sm font-semibold">
           <p className="p-1.5">PAN : <span className="font-medium">{settingValue(invoiceSettings, 'pan_number', '-')}</span></p>
-          <p className="border-x-2 border-[#003F86] p-1.5 text-center text-lg font-semibold">{showGst ? 'TAX INVOICE' : 'INVOICE'}</p>
+          <p className="border-x-2 border-[#003F86] p-1.5 text-center text-lg font-semibold">{showTaxInvoice ? 'TAX INVOICE' : 'INVOICE'}</p>
           <p className="p-1.5 text-right text-xs">ORIGINAL FOR RECIPIENT</p>
         </div>
         <div className="grid grid-cols-[1.1fr_1.4fr] border-b-2 border-[#003F86]">
@@ -271,7 +275,7 @@ export function InvoiceView({ invoiceSettings, order }) {
               ['M/S', order.metadata?.company_name || order.customer_name || order.customerName || order.metadata?.customer_name || 'Customer'],
               ['Address', order.address],
               ['Phone', order.customer_phone || order.customerPhone || order.metadata?.customer_phone || '-'],
-              ...(showGst ? [['GSTIN', order.metadata?.gstin || '-']] : []),
+              ...(hasCustomerGstin ? [['GSTIN', order.metadata?.gstin || '-']] : []),
               ['Place of Supply', order.metadata?.place_of_supply || '-'],
             ].map(([label, value]) => (
               <div className="grid grid-cols-[88px_1fr] px-2 py-0.5" key={label}>
@@ -287,7 +291,7 @@ export function InvoiceView({ invoiceSettings, order }) {
               ['Booking No', order.bookingNo || order.id],
               ['Booking Date', shortDate(order.createdAt)],
               ['Payment', order.payment || 'Paid'],
-              ...(showGst ? [['GST No.', settingValue(invoiceSettings, 'gst_number', '-')]] : []),
+              ...(sellerGstEnabled ? [['GST No.', settingValue(invoiceSettings, 'gst_number', '-')]] : []),
             ].map(([label, value]) => (
               <div className="grid grid-cols-[78px_1fr] py-0.5" key={label}>
                 <span>{label}</span>
@@ -299,7 +303,7 @@ export function InvoiceView({ invoiceSettings, order }) {
         <table className="w-full border-collapse text-[10.5px]">
           <thead>
             <tr className="border-b-2 border-[#003F86]">
-              {['Sr. No.', 'Name of Product / Service', 'HSN / SAC', 'Qty', 'Rate', 'Taxable Value', ...(showGst ? ['Tax'] : []), 'Total'].map((head) => (
+              {['Sr. No.', 'Name of Product / Service', 'HSN / SAC', 'Qty', 'Rate', 'Taxable Value', ...(showGstTax ? ['Tax'] : []), 'Total'].map((head) => (
                 <th className="border-r-2 border-[#003F86] px-1.5 py-1.5 font-semibold last:border-r-0" key={head}>{head}</th>
               ))}
             </tr>
@@ -316,8 +320,8 @@ export function InvoiceView({ invoiceSettings, order }) {
             <tr className="border-y-2 border-[#003F86] font-semibold">
               <td className="px-1.5 py-1.5 text-right" colSpan="5">Total</td>
               <td className="border-x-2 border-[#003F86] px-1.5 py-1.5 text-right">{money(subtotal)}</td>
-              {showGst ? <td className="border-r-2 border-[#003F86] px-1.5 py-1.5 text-right">{money(tax)}</td> : null}
-              <td className="px-1.5 py-1.5 text-right">{money(subtotal + (showGst ? tax : 0))}</td>
+              {showGstTax ? <td className="border-r-2 border-[#003F86] px-1.5 py-1.5 text-right">{money(tax)}</td> : null}
+              <td className="px-1.5 py-1.5 text-right">{money(subtotal + (showGstTax ? tax : 0))}</td>
             </tr>
           </tbody>
         </table>
@@ -347,9 +351,9 @@ export function InvoiceView({ invoiceSettings, order }) {
               {serviceFee > 0 ? <p className="grid grid-cols-[1fr_92px] border-b border-[#003F86] px-2 py-1.5"><span>Service Fee</span><span className="text-right">{money(serviceFee)}</span></p> : null}
               {discount > 0 ? <p className="grid grid-cols-[1fr_92px] border-b border-[#003F86] px-2 py-1.5 text-[#67B529]"><span>{discountLabel}</span><span className="text-right">- {money(discount)}</span></p> : null}
               <p className="grid grid-cols-[1fr_92px] border-b border-[#003F86] px-2 py-1.5"><span>Payable Amount</span><span className="text-right">{money(taxable)}</span></p>
-              {showGst ? <p className="grid grid-cols-[1fr_92px] border-b border-[#003F86] px-2 py-1.5"><span>Add : GST</span><span className="text-right">{money(tax)}</span></p> : null}
-              {showGst ? <p className="grid grid-cols-[1fr_92px] border-b border-[#003F86] px-2 py-1.5"><span>Total Tax</span><span className="text-right">{money(tax)}</span></p> : null}
-              <p className="grid grid-cols-[1fr_92px] px-2 py-1.5 text-sm font-bold"><span>{showGst ? 'Total Amount After Tax' : 'Total Amount'}</span><span className="text-right">Rs. {money(total)}</span></p>
+              {showGstTax ? <p className="grid grid-cols-[1fr_92px] border-b border-[#003F86] px-2 py-1.5"><span>Add : GST</span><span className="text-right">{money(tax)}</span></p> : null}
+              {showGstTax ? <p className="grid grid-cols-[1fr_92px] border-b border-[#003F86] px-2 py-1.5"><span>Total Tax</span><span className="text-right">{money(tax)}</span></p> : null}
+              <p className="grid grid-cols-[1fr_92px] px-2 py-1.5 text-sm font-bold"><span>{showGstTax ? 'Total Amount After Tax' : 'Total Amount'}</span><span className="text-right">Rs. {money(total)}</span></p>
             </div>
             <div className="p-3 text-center">
               <p className="text-[10px] font-semibold">Certified that the particulars given above are true and correct.</p>

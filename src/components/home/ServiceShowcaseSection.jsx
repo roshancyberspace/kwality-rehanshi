@@ -120,7 +120,7 @@ function ServiceShowcaseSection({
                 {/* Price */}
                 <div className="mt-0.5 flex items-center gap-2 text-sm sm:text-[15px] text-[#1D1D1D]">
                   <span className="font-medium text-[#1A1A1A]">
-                    {item.price || '₹499'}
+                    {item.price || 'Rs.499'}
                   </span>
                   {item.originalPrice && (
                     <span className="text-[13px] font-normal text-[#888888] line-through">

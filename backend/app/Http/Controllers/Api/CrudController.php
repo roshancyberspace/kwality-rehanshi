@@ -25,13 +25,29 @@ abstract class CrudController extends Controller
         
         $callback = function () use ($request) {
             $query = $this->model::query()->latest('id');
-            
-            if (!empty($this->with)) {
+            $lite = $request->boolean('lite') || $request->boolean('options');
+
+            if (! $lite && ! empty($this->with)) {
                 $query->with($this->with);
+            }
+
+            if ($lite) {
+                $columns = $this->liteColumns();
+                if (! empty($columns)) {
+                    $query->select($columns);
+                }
             }
 
             if ($request->filled('status') && $this->hasColumn('status')) {
                 $query->where('status', $request->string('status'));
+            }
+
+            if ($request->filled('service_id') && $this->hasColumn('service_id')) {
+                $query->where('service_id', $request->integer('service_id'));
+            }
+
+            if ($request->filled('partner_id') && $this->hasColumn('partner_id')) {
+                $query->where('partner_id', $request->integer('partner_id'));
             }
 
             if ($request->filled('q') || $request->filled('search')) {
@@ -52,7 +68,13 @@ abstract class CrudController extends Controller
 
             $perPageParam = $request->input('per_page');
             if ($perPageParam === 'all' || (int) $perPageParam === -1 || $request->boolean('all')) {
-                $items = $query->get();
+                // Cap unbounded dumps so dropdown/options loads stay fast.
+                $limit = max(1, min(2000, (int) $request->integer('limit', $lite ? 1000 : 500)));
+                $items = $query->limit($limit)->get();
+                if ($lite) {
+                    $items = $items->map(fn ($item) => $this->presentLite($item));
+                }
+
                 return response()->json([
                     'data' => $items,
                     'total' => $items->count(),
@@ -63,7 +85,14 @@ abstract class CrudController extends Controller
             }
 
             $perPage = (int) $request->integer('per_page', 25);
-            return response()->json($query->paginate(max(1, $perPage)));
+            $paginator = $query->paginate(max(1, min(100, $perPage)));
+            if ($lite) {
+                $paginator->setCollection(
+                    $paginator->getCollection()->map(fn ($item) => $this->presentLite($item))
+                );
+            }
+
+            return response()->json($paginator);
         };
 
         if ($this->cacheable) {
@@ -139,6 +168,55 @@ abstract class CrudController extends Controller
     private function hasColumn(string $column): bool
     {
         return in_array($column, (new $this->model)->getFillable(), true);
+    }
+
+    protected function liteColumns(): array
+    {
+        $model = new $this->model;
+        $candidates = [
+            'id',
+            'name',
+            'title',
+            'booking_no',
+            'job_no',
+            'customer_name',
+            'service_name',
+            'partner_name',
+            'status',
+            'service_id',
+            'sub_service_id',
+            'category_id',
+            'category_key',
+            'partner_id',
+            'role_id',
+            'availability',
+            'phone',
+            'email',
+            'price',
+            'image',
+            'kyc_status',
+            'business_name',
+        ];
+
+        $available = array_values(array_intersect(
+            array_unique(array_merge(['id'], $model->getFillable())),
+            $candidates,
+        ));
+
+        return $available ?: ['id'];
+    }
+
+    protected function presentLite(mixed $item): array
+    {
+        if (is_array($item)) {
+            return $item;
+        }
+
+        if ($item instanceof Model) {
+            return $item->toArray();
+        }
+
+        return (array) $item;
     }
 
     protected function validatedData(Request $request): array

@@ -18,6 +18,9 @@ function useRealtimeRefresh({
 
     let isRefreshing = false
     const refresh = async (payload = {}) => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden' && payload?.source === 'poll') {
+        return
+      }
       if (!shouldHandleRealtimeTarget(payload, target) || isRefreshing) return
       isRefreshing = true
       try {
@@ -30,9 +33,17 @@ function useRealtimeRefresh({
     const unsubscribe = subscribeRealtimeRefresh(refresh)
     const timer = window.setInterval(() => refresh({ source: 'poll', targets: [target || 'all'] }), intervalMs)
 
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        refresh({ source: 'broadcast', targets: [target || 'all'] })
+      }
+    }
+    document.addEventListener('visibilitychange', onVisible)
+
     return () => {
       unsubscribe()
       window.clearInterval(timer)
+      document.removeEventListener('visibilitychange', onVisible)
     }
   }, [enabled, intervalMs, target])
 }

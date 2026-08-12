@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { adminApi } from '../../../services/adminApi'
 import { buildBackendUrl } from '../../../config/urls'
 import { StatusBadge } from '../../../components/admin/AdminUI'
+import { resolvePartnerProfilePicturePath } from '../../../utils/partnerProfile'
 
 function SearchThumbnail({ isPerson = false, name, src }) {
   const [error, setError] = useState(false)
@@ -57,11 +58,11 @@ export default function GlobalSearchBar({ globalSearch, onGlobalSearchChange, on
     const timer = setTimeout(async () => {
       try {
         const [servicesRes, customersRes, partnersRes, bookingsRes, packagesRes] = await Promise.all([
-          adminApi.list('/services', { per_page: 6, q: query }),
-          adminApi.list('/customers', { per_page: 6, q: query }),
-          adminApi.list('/partners', { per_page: 6, q: query }),
-          adminApi.list('/bookings', { per_page: 6, q: query }),
-          adminApi.list('/service-packages', { per_page: 6, q: query }),
+          adminApi.list('/services', { per_page: 6, q: query, lite: 1 }),
+          adminApi.list('/customers', { per_page: 6, q: query, lite: 1 }),
+          adminApi.list('/partners', { per_page: 6, q: query, lite: 1 }),
+          adminApi.list('/bookings', { per_page: 6, q: query, lite: 1 }),
+          adminApi.list('/service-packages', { per_page: 6, q: query, lite: 1 }),
         ])
 
         const extractData = (res) => (Array.isArray(res?.data) ? res.data : res?.data?.data ? res.data.data : Array.isArray(res) ? res : [])
@@ -203,8 +204,10 @@ export default function GlobalSearchBar({ globalSearch, onGlobalSearchChange, on
                           : null
 
                       const photoSrc =
-                        cat.key === 'Customers' || cat.key === 'Partners'
+                        cat.key === 'Customers'
                           ? item.profile_picture || item.metadata?.profile_picture || item.avatar_url
+                          : cat.key === 'Partners'
+                          ? resolvePartnerProfilePicturePath(item)
                           : item.image || item.logo || item.icon || item.metadata?.image
 
                       const statusText = item.status || (cat.key === 'Bookings' ? 'Pending' : 'Active')

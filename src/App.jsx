@@ -96,7 +96,7 @@ function App() {
   const [currentAdmin, setCurrentAdmin] = useState(() => {
     const token = window.localStorage.getItem('admin_jwt')
     const saved = window.localStorage.getItem('admin_user')
-    if (token && saved) {
+    if (token && token !== 'undefined' && token !== 'null' && saved) {
       try { return JSON.parse(saved) } catch {}
     }
     return null
@@ -104,7 +104,7 @@ function App() {
   const [currentVendor, setCurrentVendor] = useState(() => {
     const token = window.localStorage.getItem('vendor_jwt')
     const saved = window.localStorage.getItem('vendor_user')
-    if (token && saved) {
+    if (token && token !== 'undefined' && token !== 'null' && saved) {
       try { return JSON.parse(saved) } catch {}
     }
     return null
@@ -149,7 +149,7 @@ function App() {
         name: item.name,
         image: item.image || parentService?.image,
         rating,
-        price: !isNaN(item.price) && item.price !== '' ? '₹' + Number(item.price).toLocaleString('en-IN') : (String(item.price || '').startsWith('₹') ? item.price : String(item.price || '').replace('Rs. ', '₹')),
+        price: !isNaN(item.price) && item.price !== '' ? 'Rs.' + Number(item.price).toLocaleString('en-IN') : (String(item.price || '').startsWith('Rs.') ? item.price : String(item.price || '').replace('Rs. ', 'Rs.')),
         subServiceName: parentSubService?.name || '',
         serviceName: parentService?.name || '',
         searchText: [
@@ -264,9 +264,15 @@ function App() {
     }
   }
 
-  const loginAdmin = (admin) => {
-    window.localStorage.setItem('admin_jwt', admin.auth_token || admin.token)
-    const adminObj = admin.admin || admin
+  const loginAdmin = (payload) => {
+    const token = payload?.auth_token || payload?.token || payload?.admin?.auth_token
+    const adminObj = payload?.admin || payload
+    if (!token || !adminObj) {
+      setToast('Login succeeded but session token is missing. Please try again.')
+      return
+    }
+
+    window.localStorage.setItem('admin_jwt', token)
     window.localStorage.setItem('admin_user', JSON.stringify(adminObj))
     setCurrentAdmin(adminObj)
     setToast('Super admin login successful')
@@ -278,9 +284,15 @@ function App() {
     setCurrentAdmin(admin)
   }
 
-  const loginVendor = (vendor) => {
-    window.localStorage.setItem('vendor_jwt', vendor.partner?.auth_token || vendor.auth_token)
-    const vendorObj = vendor.partner || vendor
+  const loginVendor = (payload) => {
+    const vendorObj = payload?.partner || payload
+    const token = vendorObj?.auth_token || payload?.auth_token || payload?.token
+    if (!token || !vendorObj) {
+      setToast('Login succeeded but session token is missing. Please try again.')
+      return
+    }
+
+    window.localStorage.setItem('vendor_jwt', token)
     window.localStorage.setItem('vendor_user', JSON.stringify(vendorObj))
     setCurrentVendor(vendorObj)
     setToast('Vendor login successful')
@@ -512,7 +524,7 @@ function App() {
       }
 
       const adminToken = window.localStorage.getItem('admin_jwt')
-      if (adminToken) {
+      if (adminToken && adminToken !== 'undefined' && adminToken !== 'null') {
         try {
           const response = await adminApi.me()
           if (!ignore && response.admin) {
@@ -524,15 +536,19 @@ function App() {
             window.localStorage.removeItem('admin_jwt')
             window.localStorage.removeItem('admin_user')
             setCurrentAdmin(null)
-            if (path.startsWith(routes.admin)) {
+            if (toAppRoutePath().startsWith(routes.admin)) {
               navigate(routes.staffLogin)
             }
           }
         }
+      } else if (adminToken === 'undefined' || adminToken === 'null') {
+        window.localStorage.removeItem('admin_jwt')
+        window.localStorage.removeItem('admin_user')
+        if (!ignore) setCurrentAdmin(null)
       }
 
       const vendorToken = window.localStorage.getItem('vendor_jwt')
-      if (vendorToken) {
+      if (vendorToken && vendorToken !== 'undefined' && vendorToken !== 'null') {
         try {
           const response = await vendorApi.me()
           if (!ignore && response.partner) {
@@ -544,11 +560,15 @@ function App() {
             window.localStorage.removeItem('vendor_jwt')
             window.localStorage.removeItem('vendor_user')
             setCurrentVendor(null)
-            if (path.startsWith(routes.vendor)) {
+            if (toAppRoutePath().startsWith(routes.vendor)) {
               navigate(routes.staffLogin)
             }
           }
         }
+      } else if (vendorToken === 'undefined' || vendorToken === 'null') {
+        window.localStorage.removeItem('vendor_jwt')
+        window.localStorage.removeItem('vendor_user')
+        if (!ignore) setCurrentVendor(null)
       }
     }
 

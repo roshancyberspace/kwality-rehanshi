@@ -60,7 +60,17 @@ export const vendorApi = {
   wallet: async (partnerName, partnerId) => request('/vendor-wallets', { params: { q: partnerName, partner_id: partnerId, per_page: 1 } }),
   walletTransactions: async (partnerId) => request('/wallet-transactions', { params: { wallet_type: 'Vendor', partner_id: partnerId, per_page: 100 } }),
   partner: async (partnerId) => request(`/partners/${partnerId}`),
-  jobs: async (params = {}) => request('/vendor-jobs', { params: { per_page: 50, ...params } }),
+  jobs: async (params = {}) => {
+    const { skip_sync: skipSync, ...rest } = params
+    return request('/vendor-jobs', {
+      params: {
+        per_page: 40,
+        lite: 1,
+        ...(skipSync ? { skip_sync: 1 } : {}),
+        ...rest,
+      },
+    })
+  },
   publicProfile: async (partnerId) => request(`/partners/${partnerId}/public-profile`),
   updatePartner: async (partnerId, body) => request(`/partners/${partnerId}`, {
     body,
@@ -112,5 +122,11 @@ export const vendorApi = {
     body,
     method: 'POST',
   }),
-  rateItems: async () => request('/rate-items', { params: { all: true } }),
+  rateItems: async (params = {}) => request('/rate-items', {
+    params: {
+      all: true,
+      lite: 1,
+      ...params,
+    },
+  }),
 }

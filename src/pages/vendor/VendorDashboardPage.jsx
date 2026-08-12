@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { buildVendorPublicPath, defaultMembership, IdentityCard, MembershipCertificate } from '../../components/vendor/MembershipAssets'
-import { buildBackendUrl, buildFrontendUrl } from '../../config/urls'
+import { buildBackendUrl, buildDocumentUrl, buildFrontendUrl } from '../../config/urls'
 import { vendorApi } from '../../services/vendorApi'
 import useRealtimeRefresh from '../../hooks/useRealtimeRefresh'
 import { getBrandingDisplay, logoFallbackClass, logoImageClass } from '../../utils/branding'
 import { askAppConfirmation, notify } from '../../utils/feedback'
+import { resolvePartnerProfilePicturePath } from '../../utils/partnerProfile'
 import { broadcastRealtimeRefresh } from '../../utils/realtime'
 import { downloadInvoiceFile } from '../../components/profile/OrderHistorySection'
 
@@ -358,16 +359,18 @@ function AddExtraItemsModal({ job, onClose, onConfirm }) {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    vendorApi.rateItems()
+    const serviceId = Number(job.service_id || job.metadata?.service_id) || undefined
+    vendorApi.rateItems({
+      ...(serviceId ? { service_id: serviceId } : {}),
+      status: 'Active',
+    })
       .then((res) => {
         const items = res.data || []
-        const serviceId = Number(job.service_id || job.metadata?.service_id)
         const serviceName = getServiceName(job)
-        const relevantItems = items.filter((item) => {
-          const match = serviceId ? Number(item.service_id) === serviceId : item.service?.name === serviceName
-          return match && item.status === 'Active'
-        })
-        setRateItems(relevantItems)
+        const relevantItems = serviceId
+          ? items
+          : items.filter((item) => item.service?.name === serviceName && item.status === 'Active')
+        setRateItems(relevantItems.filter((item) => item.status === 'Active' || !item.status))
       })
       .catch((err) => setError('Failed to load rate items: ' + err.message))
       .finally(() => setIsLoading(false))
@@ -606,7 +609,7 @@ function WorkUploadIndicator({ text }) {
 }
 
 const publicAssetUrl = (path) => {
-  return buildBackendUrl(path)
+  return buildDocumentUrl(path)
 }
 
 const WORK_VIDEO_CHUNK_SIZE = 8 * 1024 * 1024
@@ -714,7 +717,39 @@ function VendorDashboardPage({ appSettings = {}, authenticatedVendor, embedded =
   const assignedJobs = jobs
   const selectedJob = assignedJobs.find((job) => String(getJobId(job)) === String(selectedJobId)) || assignedJobs[0] || { metadata: {}, status: 'No request' }
 
-  const loadPartnerWorkspace = async (activePartner) => {
+  const loadPartnerWorkspace = async (activePartner, options = {}) => {
+    const poll = options.poll === true
+    const jobsOnly = options.jobsOnly === true || poll
+
+    if (jobsOnly) {
+      const jobsResponse = await vendorApi.jobs({
+        partner_id: activePartner.id,
+        skip_sync: poll,
+      })
+      const liveJobs = jobsResponse.data || []
+      const partnerJobs = liveJobs.filter((job) => {
+        const samePartnerId = job.partner_id && activePartner.id && Number(job.partner_id) === Number(activePartner.id)
+        const text = [job.partner_name, job.metadata?.partner_name, job.metadata?.vendor_name].filter(Boolean).join(' ').toLowerCase()
+        return samePartnerId || text.includes(String(activePartner.name || '').toLowerCase())
+      })
+
+      const newRequestIds = partnerJobs.filter((job) => job.status === 'New request').map((job) => String(getJobId(job)))
+      const unseenRequestIds = newRequestIds.filter((jobId) => !seenNewRequestIdsRef.current.has(jobId))
+
+      setJobs(partnerJobs)
+      setSelectedJobId((currentSelectedJobId) => {
+        const selectedJobStillExists = partnerJobs.some((job) => String(getJobId(job)) === String(currentSelectedJobId))
+        if (selectedJobStillExists) return currentSelectedJobId
+        return partnerJobs[0]?.job_no || partnerJobs[0]?.id || ''
+      })
+      if (unseenRequestIds.length) {
+        playVendorAlert()
+        setMessage('New booking assigned. Please accept or reject it.')
+      }
+      seenNewRequestIdsRef.current = new Set(newRequestIds)
+      return
+    }
+
     const [walletResponse, jobsResponse, transactionsResponse, partnerResponse] = await Promise.all([
       vendorApi.wallet(activePartner.name, activePartner.id),
       vendorApi.jobs({ partner_id: activePartner.id }),
@@ -761,8 +796,14 @@ function VendorDashboardPage({ appSettings = {}, authenticatedVendor, embedded =
 
   useRealtimeRefresh({
     enabled: Boolean(partner?.id),
-    intervalMs: 5000,
-    onRefresh: () => loadPartnerWorkspace(partner),
+    intervalMs: 15000,
+    onRefresh: ({ source } = {}) => {
+      if (!partner) return Promise.resolve()
+      if (source === 'poll') {
+        return loadPartnerWorkspace(partner, { poll: true })
+      }
+      return loadPartnerWorkspace(partner)
+    },
     target: 'vendor',
   })
 
@@ -830,7 +871,7 @@ function VendorDashboardPage({ appSettings = {}, authenticatedVendor, embedded =
   const membership = defaultMembership(partner)
   const publicPath = buildVendorPublicPath(partner?.id)
   const publicUrl = partner?.id ? buildFrontendUrl(publicPath) : ''
-  const profilePicturePath = partner?.metadata?.profile_picture || partner?.metadata?.avatar_url || ''
+  const profilePicturePath = resolvePartnerProfilePicturePath(partner)
   const profilePicture = publicAssetUrl(profilePicturePath)
   const vendorMessages = Array.isArray(partner?.metadata?.vendor_messages) ? partner.metadata.vendor_messages : []
   const bankAccounts = (Array.isArray(partner?.metadata?.bank_accounts) && partner.metadata.bank_accounts.length)
@@ -2151,11 +2192,10 @@ function VendorDashboardPage({ appSettings = {}, authenticatedVendor, embedded =
       </section>}
 
       {activeVendorPage === 'kyc' && <section id="vendor-kyc" className="mx-auto max-w-7xl px-4 py-6 lg:px-8">
-        <div className="grid gap-5 lg:grid-cols-3">
+        <div className="grid gap-5 sm:grid-cols-2">
           {[
             ['KYC status', partner.kyc_status || 'Pending', partner.kyc_rejected_reason || 'Super admin verification status.'],
             ['Documents', documents.length ? `${submittedDocuments}/${documents.length} submitted` : 'No documents uploaded', 'Upload new files or replace rejected files.'],
-            ['Bank setup', partner.bank_name || 'Bank not added', partner.bank_account_holder ? `Holder: ${partner.bank_account_holder}` : 'Add settlement account details.'],
           ].map(([title, value, helper]) => (
             <article className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm" key={title}>
               <p className="text-sm font-medium text-slate-500">{title}</p>
@@ -2165,70 +2205,50 @@ function VendorDashboardPage({ appSettings = {}, authenticatedVendor, embedded =
           ))}
         </div>
 
-        <div className="mt-5 grid gap-5 lg:grid-cols-[1fr_0.95fr]">
-          <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <p className="text-sm font-black uppercase text-sky-700">KYC documents</p>
-                <h2 className="mt-1 text-xl font-semibold text-slate-900">Uploaded files and verification</h2>
-              </div>
-              <span className="rounded-full bg-sky-50 px-3 py-1 text-xs font-black text-sky-700 ring-1 ring-sky-100">{submittedDocuments} submitted</span>
+        <section className="mt-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-black uppercase text-sky-700">KYC documents</p>
+              <h2 className="mt-1 text-xl font-semibold text-slate-900">Uploaded files and verification</h2>
             </div>
-            <div className="mt-4 grid gap-3 md:grid-cols-2">
-              {documents.map((document, index) => (
-                <div className="rounded-lg border border-slate-200 p-3" key={`${document.label || 'Document'}-${index}`}>
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-black text-slate-800">{document.label || `Document ${index + 1}`}</p>
-                      <p className="mt-1 text-xs font-semibold text-slate-500">{document.status || 'Pending'}</p>
-                    </div>
-                    {document.path && (
-                      <a className="shrink-0 rounded-md border border-slate-200 px-2.5 py-1.5 text-xs font-black text-slate-700 hover:bg-slate-50" href={publicAssetUrl(document.path)} rel="noreferrer" target="_blank">
-                        View
-                      </a>
-                    )}
+            <span className="rounded-full bg-sky-50 px-3 py-1 text-xs font-black text-sky-700 ring-1 ring-sky-100">{submittedDocuments} submitted</span>
+          </div>
+          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {documents.map((document, index) => (
+              <div className="rounded-lg border border-slate-200 p-3" key={`${document.label || 'Document'}-${index}`}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-black text-slate-800">{document.label || `Document ${index + 1}`}</p>
+                    <p className="mt-1 text-xs font-semibold text-slate-500">{document.status || 'Pending'}</p>
                   </div>
-                  {document.rejection_reason && <p className="mt-2 text-xs font-semibold text-rose-600">{document.rejection_reason}</p>}
+                  {document.path && (
+                    <a className="shrink-0 rounded-md border border-slate-200 px-2.5 py-1.5 text-xs font-black text-slate-700 hover:bg-slate-50" href={publicAssetUrl(document.path)} rel="noreferrer" target="_blank">
+                      View
+                    </a>
+                  )}
                 </div>
-              ))}
-              {!documents.length && <p className="rounded-lg border border-dashed border-slate-300 p-4 text-sm font-semibold text-slate-500 md:col-span-2">No documents uploaded yet.</p>}
-            </div>
-
-            <form className="mt-5 grid gap-3 border-t border-slate-200 pt-4" onSubmit={uploadVendorDocument}>
-              <select className="rounded-md border border-slate-200 px-3 py-2.5 text-sm font-semibold text-slate-700" onChange={(event) => setDocumentUpload((current) => ({ ...current, index: event.target.value }))} value={documentUpload.index}>
-                <option value="">Add new document</option>
-                {documents.map((document, index) => (
-                  <option key={`${document.label || 'Document'}-${index}`} value={index}>Replace {document.label || `Document ${index + 1}`}</option>
-                ))}
-              </select>
-              {documentUpload.index === '' && (
-                <input className="rounded-md border border-slate-200 px-3 py-2.5 text-sm font-semibold outline-none focus:border-slate-800" onChange={(event) => setDocumentUpload((current) => ({ ...current, label: event.target.value }))} placeholder="Document label, e.g. Aadhaar, PAN, GST" value={documentUpload.label} />
-              )}
-              <input className="rounded-md border border-slate-200 px-3 py-2.5 text-sm font-semibold" onChange={(event) => setDocumentUpload((current) => ({ ...current, file: event.target.files?.[0] || null }))} type="file" />
-              <button className="rounded-md bg-sky-700 px-4 py-2.5 text-sm font-black text-white hover:bg-sky-800 disabled:opacity-60" disabled={isLoading} type="submit">
-                Upload document
-              </button>
-            </form>
-          </section>
-
-          <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <p className="text-sm font-black uppercase text-[#67B529]">Bank details</p>
-                <h2 className="mt-1 text-xl font-semibold text-slate-900">Settlement account</h2>
-                <p className="mt-1 text-sm font-semibold text-slate-500">Payouts and cash reconciliation use these details.</p>
+                {document.rejection_reason && <p className="mt-2 text-xs font-semibold text-rose-600">{document.rejection_reason}</p>}
               </div>
-            </div>
-            <div className="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-4">
-              <p className="text-xs font-black uppercase text-slate-400">Active bank</p>
-              <p className="mt-1 text-lg font-black text-slate-900">{activeBankAccount?.bank_name || 'No active bank added'}</p>
-              <p className="mt-1 text-sm font-semibold text-slate-500">{activeBankAccount?.account_number ? `****${String(activeBankAccount.account_number).slice(-4)}` : 'Add account details before payout.'}</p>
-            </div>
-            <button className="mt-5 rounded-md bg-[#67B529] px-4 py-2.5 text-sm font-black text-white hover:bg-[#5CA827]" onClick={() => setActiveVendorPage('bank-details')} type="button">
-              Manage bank accounts
+            ))}
+            {!documents.length && <p className="rounded-lg border border-dashed border-slate-300 p-4 text-sm font-semibold text-slate-500 md:col-span-2 xl:col-span-3">No documents uploaded yet.</p>}
+          </div>
+
+          <form className="mt-5 grid gap-3 border-t border-slate-200 pt-4 md:max-w-xl" onSubmit={uploadVendorDocument}>
+            <select className="rounded-md border border-slate-200 px-3 py-2.5 text-sm font-semibold text-slate-700" onChange={(event) => setDocumentUpload((current) => ({ ...current, index: event.target.value }))} value={documentUpload.index}>
+              <option value="">Add new document</option>
+              {documents.map((document, index) => (
+                <option key={`${document.label || 'Document'}-${index}`} value={index}>Replace {document.label || `Document ${index + 1}`}</option>
+              ))}
+            </select>
+            {documentUpload.index === '' && (
+              <input className="rounded-md border border-slate-200 px-3 py-2.5 text-sm font-semibold outline-none focus:border-slate-800" onChange={(event) => setDocumentUpload((current) => ({ ...current, label: event.target.value }))} placeholder="Document label, e.g. Aadhaar, PAN, GST" value={documentUpload.label} />
+            )}
+            <input className="rounded-md border border-slate-200 px-3 py-2.5 text-sm font-semibold" onChange={(event) => setDocumentUpload((current) => ({ ...current, file: event.target.files?.[0] || null }))} type="file" />
+            <button className="rounded-md bg-sky-700 px-4 py-2.5 text-sm font-black text-white hover:bg-sky-800 disabled:opacity-60" disabled={isLoading} type="submit">
+              Upload document
             </button>
-          </section>
-        </div>
+          </form>
+        </section>
       </section>}
 
       {activeVendorPage === 'bank-details' && <section id="vendor-bank-details" className="mx-auto max-w-7xl px-4 py-6 lg:px-8">
@@ -3083,9 +3103,9 @@ function VendorDashboardPage({ appSettings = {}, authenticatedVendor, embedded =
                 ['Commission', walletSummary.commission, 'Company share'],
                 ['Company due', walletSummary.companyDue, 'To be settled'],
               ].map(([label, value, helper]) => (
-                <div className="border-b border-slate-200 p-5 sm:border-r xl:border-b-0" key={label}>
+                <div className="border-b border-slate-200 p-4 sm:border-r xl:border-b-0" key={label}>
                   <p className="text-sm font-medium text-slate-500">{label}</p>
-                  <p className="mt-2 text-2xl font-semibold text-slate-900">{formatMoney(value)}</p>
+                  <p className="mt-2 text-xl font-semibold text-slate-900">{formatMoney(value)}</p>
                   <p className="mt-1 text-xs font-semibold text-slate-400">{helper}</p>
                 </div>
               ))}

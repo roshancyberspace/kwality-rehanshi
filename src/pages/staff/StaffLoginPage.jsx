@@ -102,7 +102,7 @@ function StaffLoginPage({
         } else {
           window.localStorage.removeItem(REMEMBER_KEY)
         }
-        onAdminLogin?.(response.admin)
+        onAdminLogin?.(response)
         return
       }
 
@@ -115,7 +115,7 @@ function StaffLoginPage({
       } else {
         window.localStorage.removeItem(REMEMBER_KEY)
       }
-      onVendorLogin?.(response.partner)
+      onVendorLogin?.(response)
     } catch (error) {
       notify(error.message, { tone: 'error' })
     } finally {

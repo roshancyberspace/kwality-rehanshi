@@ -36,30 +36,24 @@ const fallbackRequirements = {
     { id: 6, name: 'Carpenter', category_name: 'Home Repair', sub_services: [] },
     { id: 7, name: 'Painting', category_name: 'Home Repair', sub_services: [] },
   ],
-  documents: {
-    'AC Repair': [{ label: 'Technical certificate or work experience proof', required: true }],
-    Cleaning: [{ label: 'Work experience proof', required: true }],
-    Salon: [{ label: 'Salon training certificate or portfolio', required: true }],
-    Electrician: [{ label: 'Electrical license or experience proof', required: true }],
-    Plumber: [{ label: 'Work experience proof', required: true }],
-    Carpenter: [{ label: 'Work experience proof', required: true }],
-    Painting: [{ label: 'Work experience proof', required: true }],
-  },
+  documents: {},
   common_documents: [
-    { label: 'Profile photo', required: true },
-    { label: 'Aadhaar', required: true },
-    { label: 'PAN', required: true },
-    { label: 'Address proof', required: true },
-    { label: 'Police Verification Certificate', required: true },
+    { id: 1, label: 'Profile photo', required: true },
+    { id: 2, label: 'Aadhaar', required: true },
+    { id: 3, label: 'PAN', required: true },
+    { id: 4, label: 'Address proof', required: true },
+    { id: 5, label: 'Police Verification Certificate', required: true },
+    { id: 6, label: 'Work experience proof', required: false },
   ],
 }
 
 const normalizeDocumentEntry = (document) => {
   if (typeof document === 'string') {
-    return { label: document, required: true }
+    return { id: null, label: document, required: true }
   }
 
   return {
+    id: document?.id ?? null,
     label: document?.label || document?.name || 'Document',
     required: document?.required !== false,
   }
@@ -466,13 +460,7 @@ function BecomeServiceProviderPage({ appSettings = {}, onBackHome, onOpenVendorL
   }, [requirements.services])
 
   const requiredDocuments = useMemo(() => {
-    const docs = [
-      ...(requirements.common_documents || []).map(normalizeDocumentEntry),
-    ]
-    form.services.forEach((service) => {
-      const serviceDocs = requirements.documents?.[service] || [{ label: 'Work experience proof', required: true }]
-      docs.push(...serviceDocs.map(normalizeDocumentEntry))
-    })
+    const docs = (requirements.common_documents || []).map(normalizeDocumentEntry)
 
     const unique = []
     const seen = new Set()
@@ -483,7 +471,7 @@ function BecomeServiceProviderPage({ appSettings = {}, onBackHome, onOpenVendorL
       unique.push(document)
     })
     return unique
-  }, [form.services, requirements])
+  }, [requirements])
 
   const selectedStep = steps[activeStep]
   const progress = Math.round(((activeStep + 1) / steps.length) * 100)

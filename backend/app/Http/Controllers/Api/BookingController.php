@@ -53,13 +53,13 @@ class BookingController extends CrudController
     public function index(Request $request)
     {
         $response = parent::index($request);
-        $payload = $response->getData(true);
 
-        if (isset($payload['data']) && is_array($payload['data'])) {
-            $payload['data'] = array_map(fn ($booking) => $this->presentBooking($booking), $payload['data']);
+        // List views stay fast: skip per-row package/rate enrichment (still applied on show).
+        if ($request->boolean('lite') || $request->boolean('options')) {
+            return $response;
         }
 
-        return response()->json($payload, $response->getStatusCode());
+        return $response;
     }
 
     public function show(int|string $id)

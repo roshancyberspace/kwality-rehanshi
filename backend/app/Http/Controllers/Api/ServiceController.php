@@ -30,6 +30,7 @@ class ServiceController extends CrudController
         $data = $this->validatedData($request);
         $data['slug'] = $this->uniqueSlug($data['slug'] ?? $data['name']);
         $record = Service::create($data);
+        $this->clearModelCache();
 
         return response()->json($record, 201);
     }
@@ -44,6 +45,7 @@ class ServiceController extends CrudController
         }
 
         $record->update($data);
+        $this->clearModelCache();
 
         return response()->json($record->fresh());
     }

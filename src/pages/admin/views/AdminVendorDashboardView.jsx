@@ -14,7 +14,7 @@ function AdminVendorDashboardView({ appSettings = {} }) {
   useEffect(() => {
     let ignore = false
     setIsLoading(true)
-    adminApi.list('/partners', { per_page: 200 })
+    adminApi.list('/partners', { per_page: 'all', all: 1, lite: 1, options: 1, limit: 500 })
       .then((response) => {
         if (ignore) return
         const rows = readRows(response)
@@ -45,12 +45,9 @@ function AdminVendorDashboardView({ appSettings = {} }) {
   )
 
   return (
-    <Panel
-      subtitle="Preview any vendor dashboard without leaving the super admin panel."
-      title="Vendor Dashboard"
-    >
+    <Panel>
       <div className="grid gap-4 p-4">
-        <div className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4 md:flex-row md:items-end md:justify-between">
+        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <label className="block md:min-w-80">
             <span className="text-sm font-semibold text-slate-700">Select vendor</span>
             <select

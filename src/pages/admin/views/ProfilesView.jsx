@@ -200,7 +200,7 @@ function ProfilesView({
 
   if (!adminProfile) {
     return (
-      <Panel title="Account Settings">
+      <Panel>
         <div className="p-5 text-sm font-bold text-slate-500">Your profile is loading.</div>
       </Panel>
     )

@@ -37,7 +37,10 @@ export const normalizeForInput = (value, type) => {
       .filter(Boolean)
       .map((item) => (Number.isNaN(Number(item)) ? item : Number(item)))
   }
-  if (!value) return ''
+  if (type === 'select' && typeof value === 'boolean') {
+    return value ? 'Yes' : 'No'
+  }
+  if (value === null || value === undefined) return ''
   if (type === 'datetime-local') return String(value).slice(0, 16)
   if (type === 'date') return String(value).slice(0, 10)
   if (type === 'tags' && Array.isArray(value)) return value.join(', ')

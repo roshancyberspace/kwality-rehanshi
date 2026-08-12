@@ -50,7 +50,7 @@ class Partner extends Model
 
     protected $hidden = ['password'];
 
-    protected $appends = ['service_names', 'sub_service_names'];
+    protected $appends = ['service_names', 'sub_service_names', 'profile_picture'];
 
     protected $casts = [
         'documents' => 'array',
@@ -71,6 +71,28 @@ class Partner extends Model
         $this->attributes['password'] = str_starts_with($value, '$2y$') ? $value : Hash::make($value);
     }
 
+    public function getProfilePictureAttribute(): ?string
+    {
+        $metadata = $this->metadata ?? [];
+        $fromMeta = $metadata['profile_picture'] ?? $metadata['avatar_url'] ?? null;
+        if (is_string($fromMeta) && trim($fromMeta) !== '') {
+            return trim($fromMeta);
+        }
+
+        foreach ($this->documents ?? [] as $document) {
+            if (! is_array($document) || empty($document['path'])) {
+                continue;
+            }
+
+            $label = strtolower(trim((string) ($document['label'] ?? '')));
+            if ($label === 'profile photo' || str_contains($label, 'profile photo') || $label === 'profile') {
+                return $document['path'];
+            }
+        }
+
+        return null;
+    }
+
     public function getServiceNamesAttribute(): array
     {
         $ids = array_values(array_filter(array_map('intval', $this->service_ids ?? [])));
@@ -78,10 +100,12 @@ class Partner extends Model
             return array_values(array_filter($this->services ?? []));
         }
 
-        return Service::query()
-            ->whereIn('id', $ids)
-            ->orderBy('name')
-            ->pluck('name')
+        $lookup = self::serviceNameLookup();
+
+        return collect($ids)
+            ->map(fn ($id) => $lookup[$id] ?? null)
+            ->filter()
+            ->values()
             ->all();
     }
 
@@ -92,10 +116,32 @@ class Partner extends Model
             return [];
         }
 
-        return SubService::query()
-            ->whereIn('id', $ids)
-            ->orderBy('name')
-            ->pluck('name')
+        $lookup = self::subServiceNameLookup();
+
+        return collect($ids)
+            ->map(fn ($id) => $lookup[$id] ?? null)
+            ->filter()
+            ->values()
             ->all();
+    }
+
+    private static function serviceNameLookup(): array
+    {
+        static $cache = null;
+        if ($cache === null) {
+            $cache = Service::query()->pluck('name', 'id')->all();
+        }
+
+        return $cache;
+    }
+
+    private static function subServiceNameLookup(): array
+    {
+        static $cache = null;
+        if ($cache === null) {
+            $cache = SubService::query()->pluck('name', 'id')->all();
+        }
+
+        return $cache;
     }
 }

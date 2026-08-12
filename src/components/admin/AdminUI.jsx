@@ -21,7 +21,7 @@ const badgeStyles = {
 
 export function StatusBadge({ children }) {
   return (
-    <span className={`inline-flex h-6 items-center rounded-full px-2.5 text-xs font-bold ring-1 ring-inset ${badgeStyles[children] || 'bg-slate-100 text-slate-700 ring-slate-200'}`}>
+    <span className={`inline-flex h-5 max-w-full items-center truncate rounded-full px-2 text-[11px] font-bold ring-1 ring-inset ${badgeStyles[children] || 'bg-slate-100 text-slate-700 ring-slate-200'}`}>
       {children}
     </span>
   )
@@ -62,7 +62,7 @@ export const ActionIconButton = forwardRef(function ActionIconButton({ children,
   return (
     <button
       aria-label={label}
-      className={`relative grid h-9 w-9 shrink-0 place-items-center rounded-lg border shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-y-0 disabled:hover:shadow-sm ${tones[tone]}`}
+      className={`relative grid h-8 w-8 shrink-0 place-items-center rounded-md border shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-y-0 disabled:hover:shadow-sm ${tones[tone]}`}
       disabled={isLoading || props.disabled}
       ref={ref}
       title={label}
@@ -213,49 +213,59 @@ export function DataTable({
   }, [columns])
   const getColumnClass = (column) => {
     if (column.className) return column.className
-    if (column.key === 's_no') return 'w-16 min-w-16 whitespace-nowrap text-center'
-    const columnMinimums = {
-      actions: 'min-w-[160px] whitespace-nowrap',
-      address: 'min-w-[230px]',
-      area: 'min-w-[150px]',
-      availability: 'min-w-[130px] whitespace-nowrap',
-      booking_no: 'min-w-[170px] whitespace-nowrap',
-      bookings: 'min-w-[110px] text-center',
-      bookings_count: 'min-w-[110px] text-center',
-      commission_percentage: 'min-w-[120px]',
-      customer: 'min-w-[230px]',
-      customer_name: 'min-w-[230px]',
-      documents: 'min-w-[140px]',
-      email: 'min-w-[220px]',
-      earnings: 'min-w-[130px]',
-      kyc: 'min-w-[130px]',
-      kyc_status: 'min-w-[130px]',
-      name: 'min-w-[240px]',
-      payment: 'min-w-[140px]',
-      payment_amount: 'min-w-[150px]',
-      phone: 'min-w-[140px] whitespace-nowrap',
-      mobile: 'min-w-[140px] whitespace-nowrap',
-      professional: 'min-w-[220px]',
-      professional_name: 'min-w-[220px]',
-      partner_name: 'min-w-[220px]',
-      rating: 'min-w-[120px]',
-      scheduled_at: 'min-w-[160px] whitespace-nowrap',
-      service: 'min-w-[220px]',
-      service_name: 'min-w-[220px]',
-      services: 'min-w-[250px]',
-      skill: 'min-w-[180px]',
-      status: 'min-w-[130px]',
-      title: 'min-w-[200px]',
-      subject: 'min-w-[200px]',
-    }
-    return columnMinimums[column.key] || 'min-w-[140px]'
+    if (column.key === 's_no') return 'w-12 min-w-12 whitespace-nowrap text-center'
+    const columnMinimums = fitToWidth
+      ? {
+          actions: 'w-[120px] whitespace-nowrap',
+          booking_no: 'w-[140px] whitespace-nowrap',
+          customer_name: 'w-[150px]',
+          payment_amount: 'w-[130px]',
+          professional_name: 'w-[130px]',
+          service_name: 'min-w-0',
+          status: 'w-[120px] whitespace-nowrap',
+        }
+      : {
+          actions: 'min-w-[160px] whitespace-nowrap',
+          address: 'min-w-[230px]',
+          area: 'min-w-[150px]',
+          availability: 'min-w-[130px] whitespace-nowrap',
+          booking_no: 'min-w-[170px] whitespace-nowrap',
+          bookings: 'min-w-[110px] text-center',
+          bookings_count: 'min-w-[110px] text-center',
+          commission_percentage: 'min-w-[120px]',
+          customer: 'min-w-[230px]',
+          customer_name: 'min-w-[230px]',
+          documents: 'min-w-[140px]',
+          email: 'min-w-[220px]',
+          earnings: 'min-w-[130px]',
+          kyc: 'min-w-[130px]',
+          kyc_status: 'min-w-[130px]',
+          name: 'min-w-[240px]',
+          payment: 'min-w-[140px]',
+          payment_amount: 'min-w-[150px]',
+          phone: 'min-w-[140px] whitespace-nowrap',
+          mobile: 'min-w-[140px] whitespace-nowrap',
+          professional: 'min-w-[220px]',
+          professional_name: 'min-w-[220px]',
+          partner_name: 'min-w-[220px]',
+          rating: 'min-w-[120px]',
+          scheduled_at: 'min-w-[160px] whitespace-nowrap',
+          service: 'min-w-[220px]',
+          service_name: 'min-w-[220px]',
+          services: 'min-w-[250px]',
+          skill: 'min-w-[180px]',
+          status: 'min-w-[130px]',
+          title: 'min-w-[200px]',
+          subject: 'min-w-[200px]',
+        }
+    return columnMinimums[column.key] || (fitToWidth ? 'min-w-0' : 'min-w-[140px]')
   }
-  const denseCellPadding = 'px-3 py-2.5'
+  const denseCellPadding = 'px-2.5 py-1.5'
   const headCellClass = dense
-    ? `border-b border-[#67B529]/20 bg-[#EEF9E8] ${denseCellPadding} text-xs font-black uppercase tracking-wide text-[#2F6412]`
+    ? `border-b border-[#67B529]/20 bg-[#EEF9E8] ${denseCellPadding} text-[11px] font-black uppercase tracking-wide text-[#2F6412]`
     : 'border-b border-[#67B529]/20 bg-[#EEF9E8] px-4 py-3 text-xs font-black uppercase tracking-wide text-[#2F6412]'
   const bodyCellClass = dense
-    ? `break-words border-b border-slate-300 ${denseCellPadding} align-middle text-sm font-semibold text-slate-700`
+    ? `break-words border-b border-slate-200 ${denseCellPadding} align-middle text-sm font-semibold text-slate-700`
     : 'break-words border-b border-slate-300 px-4 py-3 align-top font-semibold text-slate-700'
   const isServerPaginated = Boolean(pagination)
   const totalPages = isServerPaginated
@@ -299,7 +309,7 @@ export function DataTable({
     <div className="overflow-hidden">
       {toolbar}
       <div className="overflow-x-auto custom-thin-scrollbar">
-      <table className="w-full table-auto border-separate border-spacing-0 text-left text-sm min-w-[920px]">
+      <table className={`w-full border-separate border-spacing-0 text-left text-sm ${fitToWidth ? 'table-fixed' : 'table-auto min-w-[920px]'}`}>
         <thead>
           <tr>
             {tableColumns.map((column) => (
@@ -360,16 +370,27 @@ export function DataTable({
   )
 }
 
-export function Panel({ action, children, subtitle, title }) {
+export function Panel({ action, bare = false, children, subtitle, title }) {
+  const showHeader = Boolean(title || subtitle || action)
+
   return (
-    <section className="overflow-hidden rounded-lg border border-[#67B529]/20 bg-white shadow-sm">
-      <div className="flex flex-col gap-2.5 border-b border-[#67B529]/20 bg-[#F6FBFF] px-3.5 py-3 sm:px-5 sm:py-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0">
-          <h2 className="truncate text-base sm:text-lg font-black text-slate-800">{title}</h2>
-          {subtitle && <p className="mt-0.5 sm:mt-1 truncate text-xs sm:text-sm font-semibold text-slate-500">{subtitle}</p>}
+    <section className={`overflow-hidden bg-white ${bare ? '' : 'rounded-lg border border-[#67B529]/20 shadow-sm'}`}>
+      {showHeader && (
+        <div className={`flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between ${
+          title || subtitle
+            ? 'border-b border-[#67B529]/20 bg-[#F6FBFF] px-3.5 py-3 sm:px-5 sm:py-4'
+            : 'border-b border-slate-100 px-3.5 py-2.5 sm:px-4'
+        }`}
+        >
+          {(title || subtitle) ? (
+            <div className="min-w-0">
+              {title ? <h2 className="truncate text-base sm:text-lg font-black text-slate-800">{title}</h2> : null}
+              {subtitle ? <p className="mt-0.5 sm:mt-1 truncate text-xs sm:text-sm font-semibold text-slate-500">{subtitle}</p> : null}
+            </div>
+          ) : <div className="min-w-0" />}
+          {action ? <div className="shrink-0">{action}</div> : null}
         </div>
-        <div className="shrink-0">{action}</div>
-      </div>
+      )}
       <div>{children}</div>
     </section>
   )

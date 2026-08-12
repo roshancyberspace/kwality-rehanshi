@@ -177,11 +177,9 @@ function RolesPermissionsView({
   return (
     <Panel
       action={<ActionButton onClick={startCreate} tone="primary">Add New</ActionButton>}
-      subtitle="Manage role names and permission keys used by the admin panel."
-      title="Roles & Permissions"
     >
-      <div className="flex flex-col gap-2 border-b border-slate-200 bg-white p-3 lg:flex-row lg:items-center lg:justify-between">
-        <input className="h-9 w-full rounded-lg border border-slate-400 bg-slate-50 px-3 text-xs font-bold outline-none focus:border-[#67B529] lg:max-w-xs" onChange={(event) => setSearch(event.target.value)} placeholder="Search Roles & Permissions" value={search} />
+      <div className="flex flex-col gap-2 border-b border-slate-100 px-3 py-3 lg:flex-row lg:items-center lg:justify-between">
+        <input className="h-9 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 text-xs font-bold outline-none focus:border-[#67B529] lg:max-w-xs" onChange={(event) => setSearch(event.target.value)} placeholder="Search roles" value={search} />
       </div>
       <DataTable
         columns={[
