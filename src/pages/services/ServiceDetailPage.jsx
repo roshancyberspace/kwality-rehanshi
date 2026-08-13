@@ -276,6 +276,7 @@ function ServiceDetailPage({
   searchSuggestions,
   selectedPackageName = '',
   selectedSubServiceId = null,
+  onClearSelectedPackage,
   onClearSubService,
   service,
   user,
@@ -900,7 +901,10 @@ function ServiceDetailPage({
         brands={brands}
         cart={cart}
         onAdd={(addedItem) => onAddToCart({ ...addedItem, serviceName: service.name, originalPrice: addedItem.originalPrice || addedItem.original_price })}
-        onClose={() => setSelectedDetails(null)}
+        onClose={() => {
+          setSelectedDetails(null)
+          onClearSelectedPackage?.()
+        }}
         onOpenReviews={(item) => setReviewsTarget({ type: 'package', item })}
         onSaveReview={onSaveReview}
         onUpdateQuantity={onUpdateQuantity}

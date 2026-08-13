@@ -50,6 +50,7 @@ export const serviceToCard = (service) => {
     originalPrice: cleanOrig && Number(cleanOrig) > Number(cleanPrice) ? `Rs.${cleanOrig}` : '',
     rating: service.rating || service.parentService?.rating || '4.75',
     reviews,
+    packageItem: service.isPackage ? service : null,
     service: service.isPackage ? service.parentService : service,
     title: service.name,
   };

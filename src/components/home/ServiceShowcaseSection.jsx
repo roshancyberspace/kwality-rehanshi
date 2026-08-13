@@ -21,11 +21,11 @@ function ServiceShowcaseSection({
   if (!items || items.length === 0) return null;
 
   return (
-    <section className="bg-white py-7">
+    <section className="bg-white py-3 sm:py-7 overflow-x-hidden">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Section Title & Navigation Arrows */}
-        <div className="mb-5 flex items-center justify-between">
-          <h2 className="text-[24px] sm:text-[28px] font-bold tracking-tight text-[#1D1D1D] leading-tight">
+        <div className="mb-3 flex items-center justify-between sm:mb-5">
+          <h2 className="min-w-0 pr-2 text-[22px] font-bold leading-tight tracking-tight text-[#1D1D1D] sm:text-[28px]">
             {title}
           </h2>
 
@@ -86,11 +86,11 @@ function ServiceShowcaseSection({
         {/* Horizontal Carousel / 5-Column Cards Grid */}
         <div 
           ref={scrollRef}
-          className="flex gap-5 overflow-x-auto pb-4 pt-1 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] scroll-smooth"
+          className="flex gap-5 overflow-x-auto pb-1 pt-1 snap-x snap-mandatory sm:pb-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] scroll-smooth"
         >
           {items.map((item, idx) => (
             <article
-              onClick={() => onItemSelect?.(item.service)}
+              onClick={() => onItemSelect?.(item)}
               className="group shrink-0 w-[210px] sm:w-[230px] lg:w-[calc((100%-80px)/5)] snap-start flex flex-col cursor-pointer bg-transparent"
               key={`${item.title}-${idx}`}
             >

@@ -1,6 +1,16 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 const CUSTOM_SELECT_VALUE = '__custom__'
+
+function looksLikeImageSource(previewUrl, value, fieldType) {
+  if (value instanceof File) return true
+  if (typeof previewUrl !== 'string' || !previewUrl) return false
+  if (previewUrl.startsWith('blob:') || previewUrl.startsWith('data:')) return true
+  if (/^https?:\/\//i.test(previewUrl)) return true
+  if (previewUrl.startsWith('/') || previewUrl.includes('/')) return true
+  if (previewUrl.match(/\.(jpeg|jpg|gif|png|webp|svg|bmp)(?:\?.*)?$/i)) return true
+  return fieldType === 'image' && previewUrl.length > 8
+}
 
 function normalizeSelectOptions(options = []) {
   return options.map((option) => ({
@@ -8,6 +18,117 @@ function normalizeSelectOptions(options = []) {
     value: String(option.value ?? option),
     ...((option && typeof option === 'object') ? option : {}),
   }))
+}
+
+function RichTextField({ field, onChange, value }) {
+  const editorRef = useRef(null)
+  const [mode, setMode] = useState('visual')
+  const htmlValue = typeof value === 'string' ? value : ''
+
+  useEffect(() => {
+    if (mode !== 'visual' || !editorRef.current) return
+    if (editorRef.current.innerHTML !== htmlValue) {
+      editorRef.current.innerHTML = htmlValue || ''
+    }
+  }, [htmlValue, mode])
+
+  const syncFromEditor = () => {
+    if (!editorRef.current) return
+    onChange(field.name, editorRef.current.innerHTML)
+  }
+
+  const execCommand = (command, commandValue = null) => {
+    editorRef.current?.focus()
+    document.execCommand(command, false, commandValue)
+    syncFromEditor()
+  }
+
+  const applyTextColor = () => {
+    const color = window.prompt('Text color (hex or name)', '#FFFFFF')
+    if (!color) return
+    execCommand('foreColor', color)
+  }
+
+  const applyFontSize = (size) => {
+    execCommand('fontSize', size)
+  }
+
+  const toolbarBtn = 'px-2 py-1 text-xs font-semibold rounded border border-slate-300 bg-white hover:bg-slate-100'
+
+  return (
+    <div className="block col-span-full">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="text-sm font-bold text-slate-700">{field.label}</span>
+        <div className="flex rounded-md bg-slate-200 p-0.5">
+          <button
+            className={`rounded px-2.5 py-0.5 text-xs font-bold transition ${mode === 'visual' ? 'bg-white text-[#003F86] shadow-xs' : 'text-slate-600'}`}
+            onClick={() => setMode('visual')}
+            type="button"
+          >
+            Visual
+          </button>
+          <button
+            className={`rounded px-2.5 py-0.5 text-xs font-bold transition ${mode === 'html' ? 'bg-white text-[#003F86] shadow-xs' : 'text-slate-600'}`}
+            onClick={() => {
+              if (mode === 'visual') syncFromEditor()
+              setMode('html')
+            }}
+            type="button"
+          >
+            HTML
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-1.5 overflow-hidden rounded-lg border border-slate-400 bg-white">
+        {mode === 'visual' ? (
+          <>
+            <div className="flex flex-wrap items-center gap-1 border-b border-slate-200 bg-slate-50 px-2 py-1.5">
+              <button className={toolbarBtn} onClick={() => execCommand('bold')} title="Bold" type="button">B</button>
+              <button className={`${toolbarBtn} italic`} onClick={() => execCommand('italic')} title="Italic" type="button">I</button>
+              <button className={`${toolbarBtn} underline`} onClick={() => execCommand('underline')} title="Underline" type="button">U</button>
+              <span className="text-slate-300 px-0.5">|</span>
+              <button className={toolbarBtn} onClick={() => applyFontSize('3')} title="Normal size" type="button">A</button>
+              <button className={toolbarBtn} onClick={() => applyFontSize('5')} title="Large size" type="button">A+</button>
+              <button className={toolbarBtn} onClick={() => applyFontSize('6')} title="XL size" type="button">A++</button>
+              <span className="text-slate-300 px-0.5">|</span>
+              <button className={toolbarBtn} onClick={applyTextColor} title="Text color" type="button">Color</button>
+              <button className={toolbarBtn} onClick={() => execCommand('justifyLeft')} title="Align left" type="button">Left</button>
+              <button className={toolbarBtn} onClick={() => execCommand('justifyCenter')} title="Align center" type="button">Center</button>
+              <button
+                className={toolbarBtn}
+                onClick={() => {
+                  const url = window.prompt('Enter link URL')
+                  if (url) execCommand('createLink', url)
+                }}
+                title="Insert link"
+                type="button"
+              >
+                Link
+              </button>
+              <button className={toolbarBtn} onClick={() => execCommand('removeFormat')} title="Clear formatting" type="button">Clear</button>
+            </div>
+            <div
+              className="min-h-28 max-h-56 overflow-y-auto px-3 py-2 text-sm text-slate-800 outline-none prose prose-sm max-w-none [&_p]:my-1"
+              contentEditable
+              onBlur={syncFromEditor}
+              onInput={syncFromEditor}
+              ref={editorRef}
+              suppressContentEditableWarning
+            />
+          </>
+        ) : (
+          <textarea
+            className="min-h-28 w-full bg-slate-900 px-3 py-2 font-mono text-xs text-emerald-300 outline-none"
+            onChange={(event) => onChange(field.name, event.target.value)}
+            placeholder="<p>Your formatted text...</p>"
+            value={htmlValue}
+          />
+        )}
+      </div>
+      {field.hint ? <span className="mt-1 block text-xs font-semibold text-slate-500">{field.hint}</span> : null}
+    </div>
+  )
 }
 
 function SelectField({ commonClass, field, onChange, value }) {
@@ -64,6 +185,89 @@ function SelectField({ commonClass, field, onChange, value }) {
   )
 }
 
+const COLOR_PRESETS = [
+  '#6D28D9',
+  '#003F86',
+  '#67B529',
+  '#0F172A',
+  '#000000',
+  '#FFFFFF',
+  '#DC2626',
+  '#F97316',
+  '#EC4899',
+  '#0EA5E9',
+]
+
+function toPickerHex(value, fallback = '#000000') {
+  const raw = String(value || '').trim()
+  if (/^#[0-9a-fA-F]{6}$/.test(raw)) return raw.toUpperCase()
+  if (/^#[0-9a-fA-F]{3}$/.test(raw)) {
+    return `#${raw[1]}${raw[1]}${raw[2]}${raw[2]}${raw[3]}${raw[3]}`.toUpperCase()
+  }
+  if (/^[0-9a-fA-F]{6}$/.test(raw)) return `#${raw}`.toUpperCase()
+  if (/^[0-9a-fA-F]{3}$/.test(raw)) {
+    return `#${raw[0]}${raw[0]}${raw[1]}${raw[1]}${raw[2]}${raw[2]}`.toUpperCase()
+  }
+  return fallback
+}
+
+function ColorField({ commonClass, field, onChange, value }) {
+  const hexValue = String(value || field.defaultValue || '')
+  const pickerValue = toPickerHex(hexValue, toPickerHex(field.defaultValue, '#000000'))
+  const selectedHex = toPickerHex(hexValue, '')
+
+  const commitHex = (next) => {
+    onChange(field.name, toPickerHex(next, next))
+  }
+
+  return (
+    <div className="block">
+      <span className="text-sm font-bold text-slate-700">{field.label}</span>
+      <div className="mt-1.5 flex items-center gap-2">
+        <input
+          aria-label={`${field.label} palette`}
+          className="h-10 w-12 shrink-0 cursor-pointer rounded-lg border border-slate-400 bg-white p-0.5 outline-none focus:border-[#67B529] focus:ring-2 focus:ring-[#67B529]/20"
+          onChange={(event) => commitHex(event.target.value)}
+          title="Open color palette"
+          type="color"
+          value={pickerValue}
+        />
+        <input
+          className={`${commonClass} !mt-0 font-mono uppercase`}
+          onBlur={() => {
+            if (!hexValue.trim()) return
+            commitHex(hexValue)
+          }}
+          onChange={(event) => onChange(field.name, event.target.value)}
+          placeholder="#6D28D9"
+          required={field.required}
+          type="text"
+          value={hexValue}
+        />
+      </div>
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        {COLOR_PRESETS.map((preset) => {
+          const isActive = selectedHex === preset
+          return (
+            <button
+              aria-label={`Choose ${preset}`}
+              className={`h-6 w-6 rounded-md border shadow-xs transition hover:scale-110 ${
+                isActive ? 'ring-2 ring-[#67B529] ring-offset-1 border-slate-700' : 'border-slate-300'
+              }`}
+              key={preset}
+              onClick={() => commitHex(preset)}
+              style={{ backgroundColor: preset }}
+              title={preset}
+              type="button"
+            />
+          )
+        })}
+      </div>
+      {field.hint ? <span className="mt-1 block text-xs font-semibold text-slate-500">{field.hint}</span> : null}
+    </div>
+  )
+}
+
 function FieldControl({ field, value, onChange }) {
   const safeValue = value ?? ''
   const commonClass = 'mt-1.5 w-full rounded-lg border border-slate-400 bg-white px-3 py-2 text-sm font-semibold outline-none focus:border-[#67B529] focus:ring-2 focus:ring-[#67B529]/20 read-only:cursor-not-allowed read-only:border-slate-300 read-only:bg-slate-100 read-only:text-slate-600 read-only:focus:border-slate-300 read-only:focus:ring-0'
@@ -74,6 +278,21 @@ function FieldControl({ field, value, onChange }) {
     }
     return 'file'
   })
+
+  if (field.type === 'richtext') {
+    return <RichTextField field={field} onChange={onChange} value={safeValue} />
+  }
+
+  if (field.type === 'color') {
+    return (
+      <ColorField
+        commonClass={commonClass}
+        field={field}
+        onChange={onChange}
+        value={safeValue}
+      />
+    )
+  }
 
   if (field.type === 'textarea' || field.type === 'json') {
     return (
@@ -163,12 +382,20 @@ function FieldControl({ field, value, onChange }) {
 
         {previewUrl && typeof previewUrl === 'string' && (
           <div className="mt-1.5 flex flex-wrap items-center gap-2.5 overflow-hidden rounded-lg border border-slate-200 bg-slate-50 p-1.5 shadow-2xs">
-            {previewUrl.match(/\.(jpeg|jpg|gif|png|webp|svg|bmp)(?:\?.*)?$/i) || field.type === 'image' || value instanceof File ? (
+            {looksLikeImageSource(previewUrl, value, field.type) ? (
               <div className="flex w-full items-center gap-2.5">
                 <img alt="Preview" className="h-12 w-20 shrink-0 rounded object-contain bg-white border border-slate-200" src={previewUrl} />
                 <div className="overflow-hidden text-left font-sans">
                   <p className="text-xs font-bold text-slate-700 truncate max-w-sm">{value instanceof File ? value.name : value}</p>
                   <span className="mt-0.5 inline-block rounded bg-[#EEF9E8] px-1.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-[#67B529]">Image Selected</span>
+                </div>
+              </div>
+            ) : field.type === 'image' ? (
+              <div className="flex w-full items-center gap-2.5">
+                <span className="grid h-12 w-12 shrink-0 place-items-center rounded border border-slate-200 bg-white text-2xl">{previewUrl}</span>
+                <div className="overflow-hidden text-left font-sans">
+                  <p className="text-xs font-bold text-slate-700 truncate max-w-sm">{previewUrl}</p>
+                  <span className="mt-0.5 inline-block rounded bg-[#EEF9E8] px-1.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-[#67B529]">Icon Selected</span>
                 </div>
               </div>
             ) : (

@@ -23,6 +23,16 @@ class SubServiceController extends CrudController
         'metadata' => ['nullable', 'array'],
     ];
 
+    protected function imageFields(): array
+    {
+        return ['icon'];
+    }
+
+    protected function imageDirectory(): string
+    {
+        return 'sub-service-icons';
+    }
+
     public function store(Request $request)
     {
         $data = $this->validatedData($request);

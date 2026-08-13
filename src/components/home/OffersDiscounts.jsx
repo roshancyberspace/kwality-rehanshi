@@ -68,23 +68,23 @@ function OffersDiscounts({ content, coupons, onShowServices }) {
   if (!offers.length) return null;
 
   return (
-    <section className="mx-auto max-w-7xl px-5 py-12 lg:px-8">
+    <section className="mx-auto max-w-7xl overflow-x-hidden px-4 py-8 sm:px-5 sm:py-12 lg:px-8">
       {/* Heading */}
-      <div className="mb-6 w-full">
+      <div className="mb-5 w-full min-w-0 sm:mb-6">
         <span className="inline-flex items-center gap-1.5 rounded-full bg-[#67B529]/15 px-3.5 py-1 text-xs font-bold uppercase tracking-widest text-[#67B529] mb-2 shadow-2xs">
           <span className="h-1.5 w-1.5 rounded-full bg-[#67B529]"></span>
           {content?.subtitle || "Exclusive Deals"}
         </span>
 
-        <div className="flex flex-row items-center justify-between gap-4 w-full">
-          <h2 className="text-2xl font-black text-[#003F86] sm:text-3xl md:text-4xl tracking-tight leading-tight">
+        <div className="flex w-full min-w-0 flex-row items-center justify-between gap-3">
+          <h2 className="min-w-0 flex-1 text-xl font-black leading-tight tracking-tight text-[#003F86] sm:text-2xl lg:text-[26px]">
             {content?.title || "Offers & Discounts"}
           </h2>
           {onShowServices && (
             <button
               onClick={onShowServices}
               type="button"
-              className="inline-flex items-center gap-1.5 rounded-full bg-[#67B529] px-5 py-2 text-xs md:text-sm font-extrabold text-white shadow-md transition duration-200 hover:bg-[#579c21] hover:scale-105 shrink-0"
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[#67B529] px-3.5 py-1.5 text-xs font-extrabold text-white shadow-md transition duration-200 hover:bg-[#579c21] hover:scale-105 sm:px-5 sm:py-2 md:text-sm"
             >
               <span>View All</span>
               <span>→</span>
@@ -93,7 +93,7 @@ function OffersDiscounts({ content, coupons, onShowServices }) {
         </div>
       </div>
 
-      <div className="relative">
+      <div className="relative w-full min-w-0 max-w-full">
         {/* Left Arrow */}
         {offers.length > 1 && (
           <button
@@ -122,12 +122,12 @@ function OffersDiscounts({ content, coupons, onShowServices }) {
         {/* Cards */}
         <div
           ref={scrollRef}
-          className="flex snap-x snap-mandatory gap-5 overflow-x-auto scroll-smooth pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="flex w-full min-w-0 max-w-full snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth pb-2 sm:gap-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           {offers.map((offer) => (
             <article
               key={offer.code}
-              className="group relative h-60 w-[75%] flex-none snap-start overflow-hidden rounded-3xl shadow-xl sm:w-[420px] lg:w-[calc((100%-2rem)/3)]"
+              className="group relative h-40 w-[260px] max-w-[78vw] flex-none snap-start overflow-hidden rounded-2xl shadow-xl sm:h-44 sm:w-[340px] sm:max-w-none sm:rounded-3xl lg:h-44 lg:w-[calc((100%-2rem)/3)]"
             >
               {/* Background */}
               <img
@@ -146,20 +146,20 @@ function OffersDiscounts({ content, coupons, onShowServices }) {
               <div className="absolute -bottom-10 -left-10 h-36 w-36 rounded-full bg-[#67B529]/20 blur-2xl"></div>
 
               {/* Content */}
-              <div className="relative flex h-full flex-col justify-end p-6">
-                <div className="mb-3 inline-flex w-fit rounded-full bg-[#67B529] px-4 py-1 text-xs font-bold tracking-wider text-white shadow">
+              <div className="relative flex h-full flex-col justify-end gap-1 p-4 sm:gap-1.5 sm:p-5">
+                <div className="inline-flex w-fit max-w-full truncate rounded-full bg-[#67B529] px-3 py-0.5 text-[10px] font-bold tracking-wider text-white shadow sm:px-3.5 sm:text-xs">
                   {offer.code}
                 </div>
 
-                <h3 className="text-3xl font-bold text-white">
+                <h3 className="truncate text-xl font-bold text-white sm:text-2xl">
                   {offer.title}
                 </h3>
 
-                <p className="mt-2 text-sm leading-6 text-white/90">
+                <p className="line-clamp-2 text-xs leading-5 text-white/90 sm:text-sm sm:leading-5">
                   {offer.text}
                 </p>
 
-                <button className="mt-5 w-fit rounded-lg bg-white px-5 py-2 text-sm font-semibold text-[#003F86] transition hover:bg-[#67B529] hover:text-white">
+                <button className="mt-1 w-fit rounded-lg bg-white px-4 py-1.5 text-xs font-semibold text-[#003F86] transition hover:bg-[#67B529] hover:text-white sm:px-4 sm:py-1.5 sm:text-sm">
                   Redeem Offer
                 </button>
               </div>

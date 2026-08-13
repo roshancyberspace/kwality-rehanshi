@@ -88,6 +88,25 @@ const normalizeBrand = (brand) => ({
   name: brand.name || '',
 })
 
+const normalizeMobileBanner = (banner) => ({
+  ...banner,
+  bgColor: banner.bg_color || banner.bgColor || '#6D28D9',
+  body: banner.body || '',
+  bodyColor: banner.body_color || banner.bodyColor || '#FFFFFF',
+  buttonColor: banner.button_color || banner.buttonColor || '#FFFFFF',
+  buttonText: banner.button_text || banner.buttonText || '',
+  buttonUrl: banner.button_url || banner.buttonUrl || '',
+  image: banner.image || '',
+  subtitle: banner.subtitle || '',
+  subtitleColor: banner.subtitle_color || banner.subtitleColor || '#E5E7EB',
+  subtitleSize: banner.subtitle_size || banner.subtitleSize || 'sm',
+  textAlign: banner.text_align || banner.textAlign || 'left',
+  title: banner.title || '',
+  titleColor: banner.title_color || banner.titleColor || '#FFFFFF',
+  titleSize: banner.title_size || banner.titleSize || '2xl',
+  titleWeight: banner.title_weight || banner.titleWeight || 'extrabold',
+})
+
 const normalizeAppContent = (items = []) =>
   items.reduce((groups, item) => {
     const normalized = {
@@ -125,6 +144,7 @@ export const frontendApi = {
       services: (body.services || []).map(normalizeService),
       servicePackages: (body.service_packages || []).map(normalizePackage),
       brands: (body.brands || []).map(normalizeBrand),
+      mobileBanners: (body.mobile_banners || []).map(normalizeMobileBanner),
       coupons: body.coupons || [],
       reviews: (body.reviews || []).map(normalizeReview),
       appContent: body.app_content || [],
@@ -276,6 +296,48 @@ export const frontendApi = {
     }),
     method: 'POST',
   }),
+  guestCartCheckIdentifier: async ({ login }) => requestJson('/customers/guest-cart/check', {
+    body: JSON.stringify({ login: String(login || '').trim() }),
+    method: 'POST',
+  }),
+  guestCartSendOtp: async ({ login }) => requestJson('/customers/guest-cart/send-otp', {
+    body: JSON.stringify({ login: String(login || '').trim() }),
+    method: 'POST',
+  }),
+  guestCartVerifyOtp: async ({ login, otp }) => {
+    const response = await requestJson('/customers/guest-cart/verify-otp', {
+      body: JSON.stringify({
+        login: String(login || '').trim(),
+        otp: String(otp || '').trim(),
+      }),
+      method: 'POST',
+    })
+
+    if (response?.auth_status === 'authenticated' || response?.auth_token) {
+      return {
+        ...response,
+        session: normalizeCustomerSession(response),
+      }
+    }
+
+    return response
+  },
+  guestCartCompleteRegistration: async ({ verificationToken, name, email, phone }) => {
+    const response = await requestJson('/customers/guest-cart/complete-registration', {
+      body: JSON.stringify({
+        verification_token: verificationToken,
+        name,
+        email: email || undefined,
+        phone: phone || undefined,
+      }),
+      method: 'POST',
+    })
+
+    return {
+      ...response,
+      session: normalizeCustomerSession(response),
+    }
+  },
   me: async () => {
     const customer = await requestJson('/customers/me')
     return normalizeCustomerSession(customer)
@@ -345,17 +407,39 @@ export const frontendApi = {
   savedAddresses: async (customerId) => {
     if (!customerId) return []
 
-    const body = await requestJson('/saved-addresses', { params: { customer_id: customerId, customer_profile_id: customerId, per_page: 100 } })
-    return (body.data || [])
-      .filter((item) => String(item.customer_profile_id || '') === String(customerId))
-      .map(normalizeSavedAddress)
+    try {
+      const body = await requestJson('/customers/me/saved-addresses')
+      return (body.data || [])
+        .filter((item) => String(item.customer_profile_id || '') === String(customerId))
+        .map(normalizeSavedAddress)
+    } catch {
+      // Fallback for older backends — still ID-scoped only (never by name)
+      const body = await requestJson('/saved-addresses', { params: { customer_id: customerId, customer_profile_id: customerId, per_page: 100 } })
+      return (body.data || [])
+        .filter((item) => String(item.customer_profile_id || '') === String(customerId))
+        .map(normalizeSavedAddress)
+    }
   },
-  customerBookings: async (customerId, customerName) => {
-    const body = await requestJson('/bookings', { params: { per_page: 100 } })
-    return (body.data || []).filter((booking) => {
-      const metadataCustomerId = booking.metadata?.customer_id
-      return String(metadataCustomerId || '') === String(customerId || '') || booking.customer_name === customerName
-    })
+  customerBookings: async (customerId) => {
+    if (!customerId) return []
+
+    try {
+      const body = await requestJson('/customers/me/bookings')
+      return (body.data || []).filter((booking) => {
+        const metadataCustomerId = booking.metadata?.customer_id
+        // Prefer strict customer_id match; allow phone-matched rows only when metadata has no other owner
+        if (metadataCustomerId !== undefined && metadataCustomerId !== null && metadataCustomerId !== '') {
+          return String(metadataCustomerId) === String(customerId)
+        }
+        return true
+      })
+    } catch {
+      const body = await requestJson('/bookings', { params: { per_page: 100 } })
+      return (body.data || []).filter((booking) => {
+        const metadataCustomerId = booking.metadata?.customer_id
+        return String(metadataCustomerId || '') === String(customerId || '')
+      })
+    }
   },
   saveReview: async (review) => {
     const payload = {
@@ -376,9 +460,13 @@ export const frontendApi = {
     return normalizeReview(savedReview)
   },
   customerWallet: async (customerName, customerId) => {
-    const body = await requestJson('/customer-wallets', { params: { q: customerId ? undefined : customerName, per_page: 100 } })
-    const wallets = body.data || []
-    if (customerId) {
+    if (!customerId) return null
+
+    try {
+      return await requestJson('/customers/me/wallet')
+    } catch {
+      const body = await requestJson('/customer-wallets', { params: { per_page: 100 } })
+      const wallets = body.data || []
       return wallets.find((wallet) => String(wallet.customer_profile_id || '') === String(customerId)) || {
         balance: 0,
         customer_name: customerName,
@@ -386,19 +474,46 @@ export const frontendApi = {
         status: 'Active',
       }
     }
-    return wallets.find((wallet) => wallet.customer_name?.toLowerCase() === customerName?.toLowerCase()) || null
   },
   customerWalletTransactions: async (customerId) => {
     if (!customerId) return []
 
-    const body = await requestJson('/wallet-transactions', { params: { per_page: 100 } })
-    return (body.data || [])
-      .filter((transaction) => transaction.wallet_type === 'Customer' && String(transaction.customer_profile_id || '') === String(customerId))
+    try {
+      const body = await requestJson('/customers/me/wallet-transactions')
+      return body.data || []
+    } catch {
+      const body = await requestJson('/wallet-transactions', { params: { per_page: 100 } })
+      return (body.data || [])
+        .filter((transaction) => transaction.wallet_type === 'Customer' && String(transaction.customer_profile_id || '') === String(customerId))
+    }
   },
-  customerReviews: async (customerId, customerName) => {
-    const body = await requestJson('/reviews', { params: { q: customerName, per_page: 100 } })
-    return (body.data || [])
-      .filter((review) => String(review.metadata?.customer_id || '') === String(customerId || '') || review.customer_name === customerName)
-      .map(normalizeReview)
+  customerReviews: async (customerId) => {
+    if (!customerId) return []
+
+    try {
+      const body = await requestJson('/customers/me/reviews')
+      return (body.data || [])
+        .filter((review) => String(review.metadata?.customer_id || '') === String(customerId))
+        .map(normalizeReview)
+    } catch {
+      const body = await requestJson('/reviews', { params: { per_page: 100 } })
+      return (body.data || [])
+        .filter((review) => String(review.metadata?.customer_id || '') === String(customerId || ''))
+        .map(normalizeReview)
+    }
+  },
+  raiseSupportTicket: async ({ subject, description, type, image }) => {
+    const body = new FormData()
+    body.append('subject', subject)
+    body.append('description', description)
+    body.append('type', type)
+    if (image instanceof File) {
+      body.append('image', image)
+    }
+
+    return requestJson('/customers/me/support-tickets', {
+      body,
+      method: 'POST',
+    })
   },
 }

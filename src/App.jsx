@@ -1,6 +1,7 @@
 import { useEffect, useState, lazy, Suspense } from 'react'
 import Toast from './components/common/Toast'
 import AuthModal from './components/auth/AuthModal'
+import MobileTabletGuestAuthBottomSheet from './components/auth/MobileTabletGuestAuthBottomSheet'
 import FloatingCart from './components/layout/FloatingCart'
 import { addPackageToCart, getCartItemKey } from './components/services/ServiceCartUtils'
 import { COUPON_STORAGE_KEY, TIP_STORAGE_KEY } from './utils/checkoutPricing'
@@ -77,9 +78,38 @@ const formatDetectedAddress = (place, fallback) => {
   return parts.length ? parts.join(', ') : place?.display_name?.split(',').slice(0, 3).join(', ') || fallback
 }
 
+const GUEST_CART_SNAPSHOT_KEY = 'rehanshi_guest_cart_snapshot'
+
+const readGuestCartSnapshot = () => {
+  try {
+    const raw = window.sessionStorage.getItem(GUEST_CART_SNAPSHOT_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+const writeGuestCartSnapshot = (items) => {
+  try {
+    if (!Array.isArray(items) || items.length === 0) {
+      window.sessionStorage.removeItem(GUEST_CART_SNAPSHOT_KEY)
+      return
+    }
+    window.sessionStorage.setItem(GUEST_CART_SNAPSHOT_KEY, JSON.stringify(items))
+  } catch {
+    // ignore quota / private mode failures
+  }
+}
+
+const isDesktopViewport = () => (
+  typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches
+)
+
 function App() {
   const [path, setPath] = useState(() => toAppRoutePath())
-  const [cart, setCart] = useState([])
+  const [cart, setCart] = useState(() => readGuestCartSnapshot())
   const [customerSession, setCustomerSession] = useState(() => {
     const token = window.localStorage.getItem('customer_jwt')
     if (token) return { token, user: null }
@@ -117,6 +147,7 @@ function App() {
   const [frontendData, setFrontendData] = useState(null)
   const [isContentLoading, setIsContentLoading] = useState(true)
   const [isProtectedLoginOpen, setIsProtectedLoginOpen] = useState(false)
+  const [isGuestCartAuthOpen, setIsGuestCartAuthOpen] = useState(false)
   const [toast, setToast] = useState(null)
   const liveServices = frontendData?.services || []
   const liveCategories = frontendData?.categories?.length
@@ -175,6 +206,24 @@ function App() {
     const basePath = `/services/${slugify(service.slug || service.name)}`
     const nextPath = subService ? `${basePath}/${slugify(subService.slug || subService.name)}` : basePath
     navigate(nextPath)
+  }
+
+  const openPackageDetails = (pkg, parentService = null) => {
+    if (!pkg) return
+
+    const service = parentService
+      || pkg.parentService
+      || liveServices.find((item) => String(item.id) === String(pkg.service_id))
+
+    if (!service) return
+
+    // Reset first so reopening the same package from home still triggers the modal
+    setSelectedSearchPackage('')
+    window.setTimeout(() => setSelectedSearchPackage(pkg.name), 0)
+
+    const subServiceList = service.sub_services || service.subServices || []
+    const matchedSubService = subServiceList.find((sub) => String(sub.id) === String(pkg.sub_service_id))
+    openServiceDetails(service, matchedSubService || null)
   }
 
   const openAdminTab = (tab) => {
@@ -647,7 +696,10 @@ function App() {
     return () => window.clearTimeout(toastTimer)
   }, [toast])
 
-  // Removed cart localStorage sync
+  // Persist cart in sessionStorage so guest OTP onboarding / refresh never drops items
+  useEffect(() => {
+    writeGuestCartSnapshot(cart)
+  }, [cart])
 
   useEffect(() => {
     if (locationLabel && locationLabel !== defaultLocationLabel && locationLabel !== 'Location not detected') {
@@ -683,6 +735,8 @@ function App() {
     appSettings: frontendData?.settings || {},
     pages: frontendData?.pages || [],
     coupons: frontendData?.coupons || [],
+    mobileBanners: frontendData?.mobileBanners || [],
+    reviews: frontendData?.reviews || [],
     cartCount: cart.reduce((total, item) => total + item.quantity, 0),
     isLoggedIn: Boolean(currentUser),
     locationLabel,
@@ -779,6 +833,7 @@ function App() {
           onUpdateQuantity={updateCartQuantity}
           searchQuery={globalSearchQuery}
           selectedPackageName={selectedSearchPackage}
+          onClearSelectedPackage={() => setSelectedSearchPackage('')}
         />
         <Toast message={toast} />
         {mobileBottomNav}
@@ -787,6 +842,17 @@ function App() {
   }
 
   if (path === routes.cart) {
+    const requireCartLogin = () => {
+      writeGuestCartSnapshot(cart)
+      if (isDesktopViewport()) {
+        setIsGuestCartAuthOpen(false)
+        setIsProtectedLoginOpen(true)
+        return
+      }
+      setIsProtectedLoginOpen(false)
+      setIsGuestCartAuthOpen(true)
+    }
+
     return (
       <>
         <CartPage
@@ -795,11 +861,12 @@ function App() {
           currentUser={currentUser}
           onBackHome={() => navigate(routes.home)}
           onOpenProfile={() => navigate(routes.profile)}
-          onRequireLogin={() => setIsProtectedLoginOpen(true)}
+          onRequireLogin={requireCartLogin}
 
           onUpdateQuantity={updateCartQuantity}
         />
-        {isProtectedLoginOpen && !currentUser && (
+        {/* Desktop: existing AuthModal only */}
+        {isProtectedLoginOpen && !currentUser && isDesktopViewport() && (
           <AuthModal
             defaultMode="login"
             onClose={() => setIsProtectedLoginOpen(false)}
@@ -809,6 +876,22 @@ function App() {
               navigate(routes.cart)
             }}
             onOpenBecomeProvider={() => navigate(routes.becomeProvider)}
+          />
+        )}
+        {/* Mobile + Tablet: isolated guest OTP bottom sheet */}
+        {isGuestCartAuthOpen && !currentUser && !isDesktopViewport() && (
+          <MobileTabletGuestAuthBottomSheet
+            onClose={() => setIsGuestCartAuthOpen(false)}
+            onAuthenticated={async (session) => {
+              const preservedCart = cart.length ? cart : readGuestCartSnapshot()
+              await loginUser(session)
+              if (preservedCart.length) {
+                setCart(preservedCart)
+                writeGuestCartSnapshot(preservedCart)
+              }
+              setIsGuestCartAuthOpen(false)
+              navigate(routes.cart)
+            }}
           />
         )}
         <Toast message={toast} />
@@ -1169,6 +1252,7 @@ function App() {
         onOpenCart={() => navigate(routes.cart)}
         onOpenProfile={() => navigate(routes.profile)}
         onOpenServiceDetails={openServiceDetails}
+        onOpenPackageDetails={openPackageDetails}
       />
       <Toast message={toast} />
       {mobileBottomNav}

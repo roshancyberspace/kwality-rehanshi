@@ -1,12 +1,11 @@
-import FeaturedOffers from '../../components/home/FeaturedOffers'
 import HeroSection from '../../components/home/HeroSection'
 import MakeupServices from '../../components/home/MakeupServices'
-import MobilePromoCarousel from '../../components/home/MobilePromoCarousel'
 import MostBookedServices from '../../components/home/MostBookedServices'
 import OffersDiscounts from '../../components/home/OffersDiscounts'
 import PopularServices from '../../components/home/PopularServices'
 import SalonServices from '../../components/home/SalonServices'
 import ServicesSection from '../../components/home/ServicesSection'
+import TestimonialsSection from '../../components/home/TestimonialsSection'
 import Footer from '../../components/layout/Footer'
 import Navbar from '../../components/layout/Navbar'
 import ServiceShowcaseSection from '../../components/home/ServiceShowcaseSection'
@@ -24,6 +23,8 @@ function HomePage({
   content = {},
   cartCount,
   coupons,
+  mobileBanners = [],
+  reviews = [],
   onGlobalSearch,
   onLocationChange,
   onLogin,
@@ -32,6 +33,7 @@ function HomePage({
   onOpenCart,
   onOpenProfile,
   onOpenServiceDetails,
+  onOpenPackageDetails,
   onSearchSuggestionSelect,
   onShowServices,
   searchSuggestions,
@@ -50,14 +52,26 @@ function HomePage({
     }
   }
 
+  const handleShowcaseItemClick = (item) => {
+    if (item?.packageItem) {
+      onOpenPackageDetails?.(item.packageItem, item.service || item.packageItem.parentService)
+      return
+    }
+    if (item?.service) {
+      handleServiceClick(item.service)
+      return
+    }
+    handleServiceClick(item)
+  }
+
   return (
-    <main className="min-h-screen bg-[#F6FBFF] text-[#003F86]">
+    <main className="min-h-screen overflow-x-hidden bg-[#F6FBFF] text-[#003F86]">
       <Navbar
         isLoggedIn={isLoggedIn}
         appSettings={appSettings}
         cartCount={cartCount}
         locationLabel={locationLabel}
-        mobileBanner={<MobilePromoCarousel />}
+        mobileBannerSlides={mobileBanners}
         onGlobalSearch={onGlobalSearch}
         onLocationChange={onLocationChange}
         onLogin={onLogin}
@@ -84,7 +98,7 @@ function HomePage({
           )}
           <OffersDiscounts content={content.offers?.[0]} coupons={coupons} onShowServices={onShowServices} />
           <ServicesSection content={content.services_section?.[0]} services={services} onOpenServiceDetails={handleServiceClick} onShowServices={onShowServices} />
-          <MostBookedServices content={content.most_booked?.[0]} services={services} onOpenServiceDetails={handleServiceClick} onShowServices={onShowServices} />
+          <MostBookedServices content={content.most_booked?.[0]} services={services} onOpenServiceDetails={handleShowcaseItemClick} onShowServices={onShowServices} />
           
           {(() => {
             const renderSection = (eyebrow, title, keywords) => {
@@ -98,14 +112,14 @@ function HomePage({
               if (!items?.length) return null;
             
               return (
-                <div className="bg-white py-2" key={eyebrow}>
+                <div className="bg-white" key={eyebrow}>
                   <div className="mx-auto max-w-7xl">
                     <ServiceShowcaseSection
                       eyebrow={eyebrow}
                       title={title}
                       items={items}
                       onExplore={onShowServices}
-                      onItemSelect={handleServiceClick}
+                      onItemSelect={handleShowcaseItemClick}
                     />
                   </div>
                 </div>
@@ -122,9 +136,9 @@ function HomePage({
             );
           })()}
 
-          <SalonServices content={content.salon_services?.[0]} services={services} onOpenServiceDetails={handleServiceClick} onShowServices={onShowServices} />
-          <MakeupServices content={content.makeup_services?.[0]} services={services} onOpenServiceDetails={handleServiceClick} onShowServices={onShowServices} />
-          <FeaturedOffers coupons={coupons} />
+          <SalonServices content={content.salon_services?.[0]} services={services} onOpenServiceDetails={handleShowcaseItemClick} onShowServices={onShowServices} />
+          <MakeupServices content={content.makeup_services?.[0]} services={services} onOpenServiceDetails={handleShowcaseItemClick} onShowServices={onShowServices} />
+          <TestimonialsSection contentItems={content.testimonial || []} reviews={reviews} />
           
           <PopularServices content={content.popular_services?.[0]} services={services} onSearch={onGlobalSearch} />
         </>

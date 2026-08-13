@@ -7,24 +7,27 @@ export default function SubServicesModal({ onClose, onSelectSubService, service 
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-modal-fade"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 backdrop-blur-xs animate-modal-fade lg:items-center lg:p-4"
       onClick={onClose}
     >
-      <div className="relative w-full max-w-[540px] animate-modal-slide" onClick={(e) => e.stopPropagation()}>
-        {/* Floating Close Button outside top right */}
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close modal"
-          className="absolute -top-11 right-0 sm:-right-2 sm:-top-11 flex h-9 w-9 items-center justify-center rounded-full bg-white text-slate-800 shadow-lg transition duration-200 hover:bg-slate-100 hover:scale-105 focus:outline-none z-10"
-        >
-          <svg className="h-5 w-5 font-extrabold text-slate-800" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
+      <div
+        className="relative flex w-full flex-col justify-end animate-modal-slide lg:max-w-[540px] lg:justify-center"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex shrink-0 justify-end pb-3 pr-4 lg:absolute lg:-top-11 lg:right-0 lg:pb-0 lg:pr-0">
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close modal"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-slate-800 shadow-lg transition duration-200 hover:bg-slate-100 hover:scale-105 focus:outline-none z-10"
+          >
+            <svg className="h-5 w-5 font-extrabold text-slate-800" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
 
-        {/* Clean Urban Company style Modal Box */}
-        <div className="relative max-h-[85vh] w-full overflow-y-auto custom-thin-scrollbar rounded-xl bg-white p-5 sm:p-6 shadow-2xl transition-all">
+        <div className="relative max-h-[85vh] w-full overflow-y-auto custom-thin-scrollbar rounded-t-[28px] bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:p-6 sm:pb-[max(1.5rem,env(safe-area-inset-bottom))] shadow-2xl transition-all lg:rounded-xl lg:pb-6">
           <h2 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight mb-4 sm:mb-5">
             {service.name}
           </h2>

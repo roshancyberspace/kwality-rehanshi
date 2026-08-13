@@ -40,7 +40,7 @@ function HeroSection({
     .slice(0, 3);
 
   return (
-    <section className="mx-auto grid max-w-7xl gap-8 px-4 pt-8 pb-10 sm:pt-10 sm:pb-12 md:grid-cols-[1.05fr_0.95fr] lg:items-center lg:gap-10 lg:px-6 lg:pt-12 lg:pb-14">
+    <section className="mx-auto grid max-w-7xl gap-8 overflow-x-hidden px-4 pt-8 pb-10 sm:pt-10 sm:pb-12 md:grid-cols-[1.05fr_0.95fr] md:items-center md:gap-8 lg:gap-10 lg:px-6 lg:pt-12 lg:pb-14">
       <div className="flex flex-col justify-center">
         {/* <p className="mb-4 text-sm font-semibold uppercase text-blue-700">Expert home services</p> */}
         <h1 className="max-w-xl text-3xl sm:text-4xl lg:text-[40px] font-extrabold leading-tight text-[#67B529] tracking-tight">
@@ -129,7 +129,7 @@ function HeroSection({
         </div> */}
       </div>
 
-      <div className="hidden h-[460px] xl:h-[480px] grid-cols-2 gap-4 lg:grid">
+      <div className="hidden h-[380px] md:grid md:h-[420px] lg:h-[460px] xl:h-[480px] grid-cols-2 gap-3 lg:gap-4">
         {/* Top Large Image */}
         <div className="col-span-2 overflow-hidden rounded-2xl shadow-md group border border-slate-100">
           {heroImages[0] && (

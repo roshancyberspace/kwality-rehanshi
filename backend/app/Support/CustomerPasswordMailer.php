@@ -34,6 +34,53 @@ class CustomerPasswordMailer
         );
     }
 
+    public function sendGuestCartOtp(string $toEmail, string $customerName, string $otp): void
+    {
+        $this->send(
+            $toEmail,
+            $customerName,
+            $otp,
+            'Your KwalityCare verification OTP',
+            'Use this OTP to continue checkout on KwalityCare:',
+            'This OTP expires in 10 minutes. If you did not request this, you can ignore this email.',
+            'guest_cart'
+        );
+    }
+
+    public function sendSupportTicketAcknowledgement(
+        string $toEmail,
+        string $customerName,
+        string $ticketNo,
+        string $subject,
+        string $issueType
+    ): void {
+        $safeName = e($customerName ?: 'Customer');
+        $safeTicket = e($ticketNo);
+        $safeSubject = e($subject);
+        $safeType = e($issueType);
+
+        $html = <<<HTML
+            <div style="font-family: Arial, sans-serif; color: #111; line-height: 1.6;">
+                <p>Hi {$safeName},</p>
+                <p>We have received your support ticket. Our team will review it shortly.</p>
+                <p><strong>Ticket number:</strong> {$safeTicket}</p>
+                <p><strong>Issue type:</strong> {$safeType}</p>
+                <p><strong>Title:</strong> {$safeSubject}</p>
+                <p>Please keep this ticket number for future reference.</p>
+                <p>— KwalityCare Support</p>
+            </div>
+        HTML;
+
+        $this->sendHtml(
+            $toEmail,
+            $customerName,
+            "Ticket raised: {$ticketNo}",
+            $html,
+            "Your KwalityCare support ticket {$ticketNo} has been raised for \"{$subject}\". Issue type: {$issueType}.",
+            'support_ticket'
+        );
+    }
+
     private function send(
         string $toEmail,
         string $customerName,
@@ -52,6 +99,44 @@ class CustomerPasswordMailer
             return;
         }
 
+        $this->deliverMail(
+            $toEmail,
+            $customerName,
+            $subject,
+            $this->htmlBody($customerName, $otp, $intro, $footer),
+            "{$intro} {$otp}. {$footer}",
+            $context
+        );
+    }
+
+    private function sendHtml(
+        string $toEmail,
+        string $customerName,
+        string $subject,
+        string $htmlBody,
+        string $altBody,
+        string $context
+    ): void {
+        if (config('mail.default') === 'log') {
+            Log::info("Customer {$context} mail", [
+                'email' => $toEmail,
+                'subject' => $subject,
+            ]);
+
+            return;
+        }
+
+        $this->deliverMail($toEmail, $customerName, $subject, $htmlBody, $altBody, $context);
+    }
+
+    private function deliverMail(
+        string $toEmail,
+        string $customerName,
+        string $subject,
+        string $htmlBody,
+        string $altBody,
+        string $context
+    ): void {
         $mail = new PHPMailer(true);
 
         try {
@@ -64,11 +149,11 @@ class CustomerPasswordMailer
             $mail->addAddress($toEmail, $customerName);
             $mail->Subject = $subject;
             $mail->isHTML(true);
-            $mail->Body = $this->htmlBody($customerName, $otp, $intro, $footer);
-            $mail->AltBody = "{$intro} {$otp}. {$footer}";
+            $mail->Body = $htmlBody;
+            $mail->AltBody = $altBody;
             $mail->send();
         } catch (MailerException $exception) {
-            Log::error("Customer {$context} OTP mail failed", [
+            Log::error("Customer {$context} mail failed", [
                 'email' => $toEmail,
                 'error' => $exception->getMessage(),
             ]);

@@ -7,26 +7,25 @@ function PopularServices({ content, services = [], onSearch }) {
   if (!popularSearches.length) return null
 
   return (
-    <section id="popular" className="mx-auto max-w-7xl px-5 py-12 lg:px-8">
-      <div className="rounded-lg bg-white p-6 shadow-sm">
-        <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="text-sm font-semibold uppercase text-blue-700">{content?.subtitle || 'Popular right now'}</p>
-            <h2 className="mt-2 text-3xl font-bold">{content?.title || 'Book trusted experts near you'}</h2>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            {popularSearches.map((item) => (
-              <button
-                key={item}
-                className="rounded-md border border-blue-100 px-4 py-3 text-sm font-semibold hover:bg-blue-50"
-                onClick={() => onSearch?.(item)}
-                type="button"
-              >
-                {item}
-              </button>
-            ))}
-          </div>
-        </div>
+    <section id="popular" className="mx-auto max-w-7xl px-4 py-8 sm:px-5 sm:py-12 lg:px-8">
+      <p className="text-xs font-semibold uppercase tracking-wide text-blue-700 sm:text-sm">
+        {content?.subtitle || 'Popular right now'}
+      </p>
+      <h2 className="mt-1.5 text-2xl font-bold text-[#003F86] sm:text-3xl">
+        {content?.title || 'Book trusted experts near you'}
+      </h2>
+
+      <div className="mt-4 flex flex-wrap gap-2 sm:mt-5 sm:gap-2.5">
+        {popularSearches.map((item) => (
+          <button
+            key={item}
+            className="whitespace-nowrap rounded-full border border-blue-100 bg-white px-3 py-1.5 text-xs font-semibold text-[#003F86] transition hover:border-[#67B529] hover:bg-[#EEF9E8] sm:px-3.5 sm:py-2 sm:text-sm"
+            onClick={() => onSearch?.(item)}
+            type="button"
+          >
+            {item}
+          </button>
+        ))}
       </div>
     </section>
   )

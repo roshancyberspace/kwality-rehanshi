@@ -32,8 +32,8 @@ function MostBookedServices({
       : content.description;
 
   return (
-    <section className="bg-white py-6">
-      <div className="mx-auto max-w-7xl  ">
+    <section className="bg-white">
+      <div className="mx-auto max-w-7xl">
         <ServiceShowcaseSection
           eyebrow="Most Booked Services"
           title={displayTitle}

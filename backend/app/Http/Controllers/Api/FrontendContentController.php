@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AppContent;
 use App\Models\Booking;
 use App\Models\Brand;
+use App\Models\MobileBanner;
 use App\Models\Category;
 use App\Models\Coupon;
 use App\Models\Review;
@@ -120,6 +121,11 @@ class FrontendContentController extends Controller
                 ->orderBy('id')
                 ->get(),
             'brands' => Brand::query()
+                ->where('status', 'Active')
+                ->orderBy('sort_order')
+                ->orderBy('id')
+                ->get(),
+            'mobile_banners' => MobileBanner::query()
                 ->where('status', 'Active')
                 ->orderBy('sort_order')
                 ->orderBy('id')

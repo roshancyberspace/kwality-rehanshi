@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import AuthModal from '../auth/AuthModal'
 import LocationModal from './LocationModal'
+import MobilePromoCarousel from '../home/MobilePromoCarousel'
 import { buildBackendUrl } from '../../config/urls'
 import { getBrandingDisplay } from '../../utils/branding'
 
@@ -83,6 +84,7 @@ function Navbar({
   isLoggedIn,
   locationLabel = 'Location not detected',
   mobileBanner = null,
+  mobileBannerSlides = null,
   mobileNavTitle,
   onMobileBack,
   onBackHome,
@@ -113,6 +115,7 @@ function Navbar({
     .join('')
     .slice(0, 2)
     .toUpperCase()
+  const hasMobileHero = !mobileNavTitle && (Boolean(mobileBanner) || (Array.isArray(mobileBannerSlides) && mobileBannerSlides.length > 0))
 
   const updateLocationLabel = useCallback((label) => {
     onLocationChange?.(label)
@@ -142,10 +145,146 @@ function Navbar({
       .slice(0, 8)
     : []
 
+  const searchSuggestionsDropdown = isSearchFocused && visibleSuggestions.length > 0 ? (
+    <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-40 max-h-[70vh] overflow-y-auto rounded-lg border border-slate-200/80 bg-white py-1 shadow-xl divide-y divide-slate-100">
+      {visibleSuggestions.map((suggestion, idx) => (
+        <button
+          className="flex w-full items-start gap-4 px-4 py-3 text-left transition hover:bg-[#F6FBFF] sm:px-4 sm:py-3.5"
+          key={`${suggestion.type}-${suggestion.name}-${idx}`}
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={() => selectSuggestion(suggestion)}
+          type="button"
+        >
+          <span className="h-14 w-14 sm:h-16 sm:w-16 shrink-0 overflow-hidden rounded-xl bg-slate-50 mt-0.5 border border-slate-100/80">
+            <img className="h-full w-full object-cover" src={suggestion.image} alt="" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="text-sm sm:text-[15px] text-slate-800 font-normal leading-snug">
+              {highlightMatch(suggestion.name, searchQuery)}
+            </div>
+            <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs sm:text-[13px] text-slate-600 font-normal leading-relaxed">
+              {suggestion.rating && (
+                <span className="inline-flex items-center gap-1 text-slate-700 font-medium">
+                  <span>★</span>
+                  <span>{suggestion.rating}</span>
+                </span>
+              )}
+              {suggestion.price && (
+                <>
+                  {suggestion.rating && <span className="text-slate-300 font-bold">•</span>}
+                  <span className="text-slate-700 font-medium">{suggestion.price}</span>
+                </>
+              )}
+              {suggestion.serviceName && (
+                <>
+                  <span className="text-slate-300 font-bold">•</span>
+                  <span className="text-slate-600">{suggestion.serviceName}</span>
+                </>
+              )}
+              {suggestion.subServiceName && suggestion.subServiceName !== suggestion.serviceName && (
+                <>
+                  <span className="text-slate-300 font-bold">•</span>
+                  <span className="text-slate-600">{suggestion.subServiceName}</span>
+                </>
+              )}
+            </div>
+          </div>
+        </button>
+      ))}
+    </div>
+  ) : null
+
+  const mobileHeroOverlay = (
+    <div className="flex flex-col gap-2 px-4 pt-2.5 pb-1">
+      <div className="flex items-center justify-between min-h-[28px]">
+        <button className="flex min-w-0 flex-1 items-start gap-2 text-left" onClick={() => setIsLocationModalOpen(true)} type="button">
+          <svg className="w-4.5 h-4.5 w-[18px] h-[18px] text-white shrink-0 mt-0.5 drop-shadow" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 010-5 2.5 2.5 0 010 5z"/>
+          </svg>
+          <div className="min-w-0 flex flex-col">
+            <span className="text-sm font-bold text-white tracking-wide drop-shadow">Your location</span>
+            <span className="flex items-center gap-1 text-xs text-white/85 mt-0.5 drop-shadow">
+              <span className="truncate">{locationLabel}</span>
+              <svg className="w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+              </svg>
+            </span>
+          </div>
+        </button>
+
+        <div className="flex shrink-0 items-center ml-3">
+          {isLoggedIn ? (
+            <button
+              aria-label="Open profile"
+              className="grid h-9 w-9 place-items-center overflow-hidden rounded-full border-2 border-white/80 bg-white text-[10px] font-black text-[#15171C] shadow-md"
+              onClick={onOpenProfile}
+              type="button"
+            >
+              {profileImage ? (
+                <img className="h-full w-full object-cover" src={profileImage} alt="" />
+              ) : (
+                <span>{profileInitials}</span>
+              )}
+            </button>
+          ) : (
+            <button
+              className="rounded-md bg-white px-2.5 py-1 text-xs font-bold text-[#15171C] shadow-md"
+              onClick={() => setAuthMode('login')}
+              type="button"
+            >
+              Login
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="relative min-w-0">
+        <form
+          className="flex min-w-0 items-center gap-2 rounded-xl bg-white px-3 py-2 shadow-md"
+          onSubmit={submitSearch}
+        >
+          <button
+            aria-label="Search services"
+            className="grid h-5 w-5 shrink-0 place-items-center text-slate-400"
+            type="submit"
+          >
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+          </button>
+          <input
+            className="w-full bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400 font-medium"
+            placeholder={typingPlaceholder}
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            onFocus={() => setIsSearchFocused(true)}
+            onBlur={() => window.setTimeout(() => setIsSearchFocused(false), 150)}
+          />
+          {searchQuery && (
+            <button
+              aria-label="Clear search"
+              className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-slate-200 text-xs font-bold text-slate-600"
+              onClick={clearSearch}
+              type="button"
+            >
+              x
+            </button>
+          )}
+        </form>
+        {searchSuggestionsDropdown}
+      </div>
+    </div>
+  )
+
   return (
     <>
-      <nav className={`sticky top-0 z-20 ${mobileNavTitle ? 'bg-white border-b border-blue-100 shadow-sm' : 'bg-[#15171C]'} lg:bg-white lg:border-b lg:border-blue-100 lg:shadow-md`}>
-        <div className={`mx-auto flex max-w-7xl flex-col gap-3 px-4 pt-3 lg:flex-row lg:items-center lg:justify-between lg:px-6 lg:py-2 lg:gap-2 ${!mobileNavTitle && mobileBanner ? 'pb-2 lg:pb-2' : 'pb-3'}`}>
+      {Array.isArray(mobileBannerSlides) && mobileBannerSlides.length > 0 ? (
+        <MobilePromoCarousel overlayTop={mobileHeroOverlay} slides={mobileBannerSlides} />
+      ) : null}
+
+      <nav className={`${hasMobileHero && mobileBannerSlides?.length ? 'hidden lg:block' : ''} sticky top-0 z-20 ${mobileNavTitle ? 'bg-white border-b border-blue-100 shadow-sm' : 'bg-[#15171C]'} lg:bg-white lg:border-b lg:border-blue-100 lg:shadow-md`}>
+        <div className={`mx-auto flex max-w-7xl flex-col gap-3 px-4 pt-3 lg:flex-row lg:items-center lg:justify-between lg:px-6 lg:py-2 lg:gap-2 ${!mobileNavTitle && (mobileBanner || mobileBannerSlides?.length) ? 'pb-2 lg:pb-2' : 'pb-3'}`}>
           
           {/* MOBILE TOP ROW */}
           <div className="flex items-center justify-between lg:hidden min-h-[32px]">
@@ -175,32 +314,31 @@ function Navbar({
                   </div>
                 </button>
 
-
-            <div className="flex shrink-0 items-center ml-4">
-              {isLoggedIn ? (
-                <button
-                  aria-label="Open profile"
-                  className="grid h-12 w-12 place-items-center overflow-hidden rounded-full border border-slate-600 bg-slate-800 text-[10px] font-black text-white bg-white"
-                  onClick={onOpenProfile}
-                  type="button"
-                >
-                  {profileImage ? (
-                    <img className="h-full w-full object-cover" src={profileImage} alt="" />
+                <div className="flex shrink-0 items-center ml-4">
+                  {isLoggedIn ? (
+                    <button
+                      aria-label="Open profile"
+                      className="grid h-12 w-12 place-items-center overflow-hidden rounded-full border border-slate-600 bg-slate-800 text-[10px] font-black text-white bg-white"
+                      onClick={onOpenProfile}
+                      type="button"
+                    >
+                      {profileImage ? (
+                        <img className="h-full w-full object-cover" src={profileImage} alt="" />
+                      ) : (
+                        <span>{profileInitials}</span>
+                      )}
+                    </button>
                   ) : (
-                    <span>{profileInitials}</span>
+                    <button
+                      className="rounded-md bg-white px-3 py-1.5 text-xs font-bold text-[#15171C]"
+                      onClick={() => setAuthMode('login')}
+                      type="button"
+                    >
+                      Login
+                    </button>
                   )}
-                </button>
-              ) : (
-                <button
-                  className="rounded-md bg-white px-3 py-1.5 text-xs font-bold text-[#15171C]"
-                  onClick={() => setAuthMode('login')}
-                  type="button"
-                >
-                  Login
-                </button>
-              )}
-            </div>
-            </>
+                </div>
+              </>
             )}
           </div>
 
@@ -213,7 +351,6 @@ function Navbar({
 
           {/* SEARCH & DESKTOP LOCATION */}
           <div className={`${mobileNavTitle ? 'hidden lg:grid' : 'grid'} w-full grid-cols-1 gap-2 lg:max-w-3xl lg:grid-cols-[280px_1fr] lg:gap-3`}>
-            {/* Desktop Location Button */}
             <button
               className="hidden min-w-0 items-center justify-center gap-2 rounded-md border border-blue-900 bg-white px-2.5 py-2 text-left shadow-sm hover:border-green-900 lg:order-1 lg:flex lg:justify-between lg:px-4 lg:py-2.5"
               onClick={() => setIsLocationModalOpen(true)}
@@ -241,7 +378,6 @@ function Navbar({
               </span>
             </button>
 
-            {/* Search Input (Mobile & Desktop) */}
             <div className="relative min-w-0 lg:order-2">
               <form
                 className="flex min-w-0 items-center gap-2 rounded-xl bg-white px-3 py-2.5 shadow-sm lg:border lg:border-blue-900 lg:rounded-md lg:px-4 focus-within:ring-2 focus-within:ring-[#003F86] lg:focus-within:border-[#67B529] lg:focus-within:ring-0"
@@ -276,55 +412,7 @@ function Navbar({
                   </button>
                 )}
               </form>
-
-              {isSearchFocused && visibleSuggestions.length > 0 && (
-                <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-40 max-h-[70vh] overflow-y-auto rounded-lg border border-slate-200/80 bg-white py-1 shadow-xl divide-y divide-slate-100">
-                  {visibleSuggestions.map((suggestion, idx) => (
-                    <button
-                      className="flex w-full items-start gap-4 px-4 py-3 text-left transition hover:bg-[#F6FBFF] sm:px-4 sm:py-3.5"
-                      key={`${suggestion.type}-${suggestion.name}-${idx}`}
-                      onMouseDown={(event) => event.preventDefault()}
-                      onClick={() => selectSuggestion(suggestion)}
-                      type="button"
-                    >
-                      <span className="h-14 w-14 sm:h-16 sm:w-16 shrink-0 overflow-hidden rounded-xl bg-slate-50 mt-0.5 border border-slate-100/80">
-                        <img className="h-full w-full object-cover" src={suggestion.image} alt="" />
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <div className="text-sm sm:text-[15px] text-slate-800 font-normal leading-snug">
-                          {highlightMatch(suggestion.name, searchQuery)}
-                        </div>
-                        <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs sm:text-[13px] text-slate-600 font-normal leading-relaxed">
-                          {suggestion.rating && (
-                            <span className="inline-flex items-center gap-1 text-slate-700 font-medium">
-                              <span>★</span>
-                              <span>{suggestion.rating}</span>
-                            </span>
-                          )}
-                          {suggestion.price && (
-                            <>
-                              {suggestion.rating && <span className="text-slate-300 font-bold">•</span>}
-                              <span className="text-slate-700 font-medium">{suggestion.price}</span>
-                            </>
-                          )}
-                          {suggestion.serviceName && (
-                            <>
-                              <span className="text-slate-300 font-bold">•</span>
-                              <span className="text-slate-600">{suggestion.serviceName}</span>
-                            </>
-                          )}
-                          {suggestion.subServiceName && suggestion.subServiceName !== suggestion.serviceName && (
-                            <>
-                              <span className="text-slate-300 font-bold">•</span>
-                              <span className="text-slate-600">{suggestion.subServiceName}</span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
+              {searchSuggestionsDropdown}
             </div>
           </div>
 
@@ -386,8 +474,8 @@ function Navbar({
         </div>
       </nav>
 
-      {/* Mobile / tablet promo — outside sticky nav so it scrolls away */}
-      {!mobileNavTitle && mobileBanner ? (
+      {/* Legacy mobile banner slot (non-CRUD fallback) */}
+      {!mobileNavTitle && mobileBanner && !(mobileBannerSlides?.length) ? (
         <div className="bg-[#15171C] px-4 pb-3 lg:hidden">
           {mobileBanner}
         </div>

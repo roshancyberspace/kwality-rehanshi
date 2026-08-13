@@ -25,6 +25,7 @@ export const adminNavItems = [
   ['Payouts', 'cash'],
   ['Offers & Coupons', 'tag'],
   ['App Content', 'image'],
+  ['Mobile Banners', 'image'],
   ['Notifications', 'bell'],
   ['Support Tickets', 'headset'],
   ['Locations', 'pin'],
@@ -90,6 +91,7 @@ export const adminNavSections = [
     items: [
       ['Offers & Coupons', 'tag'],
       ['App Content', 'image'],
+      ['Mobile Banners', 'image'],
       ['Notifications', 'bell'],
       ['Support Tickets', 'headset'],
     ],

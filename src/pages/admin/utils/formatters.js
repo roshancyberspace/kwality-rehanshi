@@ -4,6 +4,9 @@ export const formatValue = (value) => {
   if (Array.isArray(value)) return value.join(', ')
   if (value === null || value === undefined) return ''
   if (typeof value === 'object') return JSON.stringify(value)
+  if (typeof value === 'string' && /<[a-z][\s\S]*>/i.test(value)) {
+    return value.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+  }
   return value
 }
 

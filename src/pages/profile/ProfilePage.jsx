@@ -4,6 +4,7 @@ import CurrentBookingCard from '../../components/profile/CurrentBookingCard'
 import OrderHistorySection, { OrderHistoryDetailView } from '../../components/profile/OrderHistorySection'
 import ProfileHeader from '../../components/profile/ProfileHeader'
 import ProfileSidebar from '../../components/profile/ProfileSidebar'
+import RaiseTicketForm from '../../components/profile/RaiseTicketForm'
 import SavedAddressesSection from '../../components/profile/SavedAddressesSection'
 import WalletSection from '../../components/profile/WalletSection'
 import Footer from '../../components/layout/Footer'
@@ -199,6 +200,7 @@ function ProfilePage({
     ratings: 'My rating',
     addresses: 'Manage addresses',
     settings: 'Settings',
+    raise_ticket: 'Raise a Ticket',
     about: 'About UC',
   }
   const orderStatusRef = useRef(new Map())
@@ -243,7 +245,7 @@ function ProfilePage({
   const loadCustomerOrders = async () => {
     if (!profileUser?.id) return
 
-    const bookings = await frontendApi.customerBookings(profileUser.id, profileUser.name)
+    const bookings = await frontendApi.customerBookings(profileUser.id)
     const nextOrders = bookings.map(toProfileOrder)
 
     if (ordersLoadedRef.current) {
@@ -368,7 +370,7 @@ function ProfilePage({
 
     Promise.all([
       frontendApi.customerWalletTransactions(profileUser.id),
-      frontendApi.customerReviews(profileUser.id, profileUser.name),
+      frontendApi.customerReviews(profileUser.id),
     ])
       .then(([transactions, customerReviews]) => {
         if (!isMounted) return
@@ -699,6 +701,7 @@ function ProfilePage({
               onChangeProfilePicture={chooseProfilePicture}
               onEditProfile={openProfileEditor}
               onLogout={onLogout}
+              onRaiseTicket={() => setActiveMobileTab('raise_ticket')}
               onOpenCart={onOpenCart}
               onMenuSelect={setActiveMobileTab}
               stats={profileStats}
@@ -707,7 +710,9 @@ function ProfilePage({
           </div>
 
         <div className={`${activeMobileTab !== 'menu' ? 'block' : 'hidden'} lg:block grid gap-6 p-4 lg:p-0 w-full`}>
-          {activeMobileTab === 'settings' ? (
+          {activeMobileTab === 'raise_ticket' ? (
+            <RaiseTicketForm user={profileUser} variant="page" />
+          ) : activeMobileTab === 'settings' ? (
             <div className="rounded-xl border border-slate-100 bg-white p-5 shadow-sm">
               <h3 className="text-xl font-black text-slate-900 mb-4">Settings</h3>
               <div className="max-w-md">

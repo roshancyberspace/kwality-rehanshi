@@ -88,7 +88,7 @@ function ServicesSection({
   return (
     <section
       id="services"
-      className="bg-white py-10"
+      className="hidden bg-white py-10 lg:block"
     >
       <div className="mx-auto max-w-7xl px-4">
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import BillSummary from '../../components/checkout/BillSummary'
 import SelectedServices from '../../components/checkout/SelectedServices'
 import SlotSelectionModal from '../../components/checkout/SlotSelectionModal'
@@ -348,8 +348,11 @@ function CartPage({
     }
   }
 
+  const didAutoPromptLogin = useRef(false)
+
   useEffect(() => {
-    if (isLoggedIn || displayCart.length === 0) return
+    if (isLoggedIn || displayCart.length === 0 || didAutoPromptLogin.current) return
+    didAutoPromptLogin.current = true
     onRequireLogin?.()
   }, [displayCart.length, isLoggedIn, onRequireLogin])
 
@@ -878,12 +881,25 @@ function CartPage({
                 {availableCoupons.length === 0 ? (
                   <p className="text-sm text-neutral-500">No active coupons right now. Enter a code above if you have one.</p>
                 ) : (
-                  availableCoupons.map((coupon) => (
-                  <div
+                  availableCoupons.map((coupon) => {
+                    const isApplied = appliedCoupon?.code?.toLowerCase() === String(coupon.code).toLowerCase()
+                    const isApplyingThis = isApplyingCoupon && applyingCouponCode.toLowerCase() === coupon.code.toLowerCase()
+                    return (
+                  <button
                     key={coupon.code}
-                    className="border border-dashed border-[#6338E0]/50 bg-[#F4EFFF]/30 rounded-2xl p-4 flex items-center justify-between gap-4"
+                    type="button"
+                    disabled={isApplyingCoupon || isApplied}
+                    onClick={async () => {
+                      const applied = await handleApplyCoupon(coupon.code)
+                      if (applied) setIsCouponsModalOpen(false)
+                    }}
+                    className={`w-full border border-dashed rounded-2xl p-4 flex items-center justify-between gap-4 text-left transition active:scale-[0.99] disabled:opacity-70 ${
+                      isApplied
+                        ? 'border-[#67B529]/50 bg-[#F3FBED]'
+                        : 'border-[#6338E0]/50 bg-[#F4EFFF]/30 hover:border-[#6338E0]/80'
+                    }`}
                   >
-                    <div>
+                    <div className="min-w-0">
                       <span className="inline-block px-2.5 py-1 rounded-md bg-[#F4EFFF] border border-[#D5C5FD] text-[#6338E0] font-black text-xs uppercase tracking-wider">
                         {coupon.code}
                       </span>
@@ -892,23 +908,22 @@ function CartPage({
                       </p>
                       <p className="text-xs text-neutral-500">{formatCouponDescription(coupon)}</p>
                     </div>
-                    <button
-                      disabled={isApplyingCoupon}
-                      onClick={async () => {
-                        const applied = await handleApplyCoupon(coupon.code)
-                        if (applied) setIsCouponsModalOpen(false)
-                      }}
-                      type="button"
-                      className="min-w-[72px] rounded-xl bg-[#6338E0] px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-[#5229C0] active:scale-95 transition disabled:opacity-70"
-                    >
-                      {isApplyingCoupon && applyingCouponCode.toLowerCase() === coupon.code.toLowerCase() ? (
-                        <span className="inline-flex items-center justify-center gap-1">
+                    <span className="shrink-0 text-xs font-bold text-[#6338E0]">
+                      {isApplied ? (
+                        <span className="text-[#167634]">Applied</span>
+                      ) : isApplyingThis ? (
+                        <span className="inline-flex items-center justify-center">
                           <span className="coupon-spinner" />
                         </span>
-                      ) : 'APPLY'}
-                    </button>
-                  </div>
-                  ))
+                      ) : (
+                        <svg className="h-5 w-5 text-[#6338E0]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.2">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                        </svg>
+                      )}
+                    </span>
+                  </button>
+                    )
+                  })
                 )}
               </div>
               {appliedCoupon && (

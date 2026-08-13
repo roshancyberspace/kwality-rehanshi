@@ -12,8 +12,11 @@ use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\CouponController;
 use App\Http\Controllers\Api\CustomerAuthController;
 use App\Http\Controllers\Api\CustomerController;
+use App\Http\Controllers\Api\CustomerPortalController;
+use App\Http\Controllers\Api\GuestCartAuthController;
 use App\Http\Controllers\Api\CustomerWalletController;
 use App\Http\Controllers\Api\FrontendContentController;
+use App\Http\Controllers\Api\MobileBannerController;
 use App\Http\Controllers\Api\MobileNotificationController;
 use App\Http\Controllers\Api\PartnerController;
 use App\Http\Controllers\Api\PartnerKycController;
@@ -39,6 +42,12 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('v1')->group(function () {
     Route::middleware('auth:customer')->group(function () {
         Route::get('customers/me', [CustomerAuthController::class, 'me']);
+        Route::get('customers/me/bookings', [CustomerPortalController::class, 'bookings']);
+        Route::get('customers/me/reviews', [CustomerPortalController::class, 'reviews']);
+        Route::get('customers/me/wallet', [CustomerPortalController::class, 'wallet']);
+        Route::get('customers/me/wallet-transactions', [CustomerPortalController::class, 'walletTransactions']);
+        Route::get('customers/me/saved-addresses', [CustomerPortalController::class, 'savedAddresses']);
+        Route::post('customers/me/support-tickets', [SupportTicketController::class, 'raiseFromCustomer']);
     });
     
     Route::middleware('auth:partner')->group(function () {
@@ -57,6 +66,7 @@ Route::prefix('v1')->group(function () {
     Route::apiResource('sub-services', SubServiceController::class);
     Route::apiResource('service-packages', ServicePackageController::class);
     Route::apiResource('brands', BrandController::class);
+    Route::apiResource('mobile-banners', MobileBannerController::class);
     Route::apiResource('kyc-documents', KycDocumentController::class);
     Route::apiResource('service-package-sections', ServicePackageSectionController::class);
     Route::apiResource('rate-items', RateItemController::class);
@@ -65,6 +75,10 @@ Route::prefix('v1')->group(function () {
     Route::post('customers/login', [CustomerAuthController::class, 'login']);
     Route::post('customers/login/send-otp', [CustomerAuthController::class, 'sendLoginOtp']);
     Route::post('customers/login/verify-otp', [CustomerAuthController::class, 'verifyLoginOtp']);
+    Route::post('customers/guest-cart/check', [GuestCartAuthController::class, 'checkIdentifier']);
+    Route::post('customers/guest-cart/send-otp', [GuestCartAuthController::class, 'sendOtp']);
+    Route::post('customers/guest-cart/verify-otp', [GuestCartAuthController::class, 'verifyOtp']);
+    Route::post('customers/guest-cart/complete-registration', [GuestCartAuthController::class, 'completeRegistration']);
     Route::post('customers/session', [CustomerAuthController::class, 'session']);
     Route::post('customers/logout', [CustomerAuthController::class, 'logout']);
     Route::post('customers/password/send-otp', [CustomerAuthController::class, 'sendPasswordOtp']);
