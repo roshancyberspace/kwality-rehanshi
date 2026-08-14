@@ -24,6 +24,7 @@ function HomePage({
   cartCount,
   coupons,
   mobileBanners = [],
+  testimonials = [],
   reviews = [],
   onGlobalSearch,
   onLocationChange,
@@ -138,7 +139,7 @@ function HomePage({
 
           <SalonServices content={content.salon_services?.[0]} services={services} onOpenServiceDetails={handleShowcaseItemClick} onShowServices={onShowServices} />
           <MakeupServices content={content.makeup_services?.[0]} services={services} onOpenServiceDetails={handleShowcaseItemClick} onShowServices={onShowServices} />
-          <TestimonialsSection contentItems={content.testimonial || []} reviews={reviews} />
+          <TestimonialsSection items={testimonials} />
           
           <PopularServices content={content.popular_services?.[0]} services={services} onSearch={onGlobalSearch} />
         </>

@@ -83,12 +83,17 @@ class BookingController extends CrudController
             }
             $isAutoApprove = app(BookingAutoAssignmentManager::class)->autoApprove();
             $status = $payload['status'] ?? null;
-            if (! $status) {
-                $status = $isAutoApprove ? 'Accepted' : 'Pending Approval';
+            // Checkout often sends "Pending Approval" — still honor auto-approve setting.
+            if ($isAutoApprove && in_array($status, [null, '', 'Pending Approval', 'Pending'], true)) {
+                $status = 'Accepted';
+            } elseif (! $status) {
+                $status = 'Pending Approval';
             }
             $payload['status'] = $status;
             
-            $timelineEntry = $isAutoApprove ? 'Booking accepted by super admin' : 'Waiting for super admin approval';
+            $timelineEntry = $isAutoApprove && $status === 'Accepted'
+                ? 'Booking accepted by auto assignment'
+                : 'Waiting for super admin approval';
             $payload['timeline'] = array_values(array_unique(array_filter([
                 ...($payload['timeline'] ?? []),
                 'Booking placed',
@@ -99,14 +104,14 @@ class BookingController extends CrudController
                 'items' => $normalizedItems,
                 'service_otp' => (string) random_int(1000, 9999),
                 'service_location' => $this->serviceLocationFromMetadata($payload['metadata'] ?? []),
-                'approval' => $isAutoApprove ? [
+                'approval' => ($isAutoApprove && $status === 'Accepted') ? [
                     'status' => 'accepted',
                     'accepted_at' => now()->toDateTimeString(),
                     'mode' => 'auto',
                 ] : ['status' => 'pending'],
                 'status_times' => [
                     'pending_approval' => now()->toISOString(),
-                    ...($isAutoApprove ? ['accepted' => now()->toISOString()] : []),
+                    ...(($isAutoApprove && $status === 'Accepted') ? ['accepted' => now()->toISOString()] : []),
                 ],
                 'work' => [
                     'before_photos' => [],
@@ -135,7 +140,7 @@ class BookingController extends CrudController
             }
 
             app(WalletManager::class)->syncBooking($booking);
-            $adminMessage = $isAutoApprove 
+            $adminMessage = ($isAutoApprove && $status === 'Accepted')
                 ? "{$booking->booking_no} - {$booking->service_name} has been auto-approved."
                 : "{$booking->booking_no} - {$booking->service_name} is waiting for approval.";
 
@@ -155,7 +160,7 @@ class BookingController extends CrudController
         $mailer = app(BookingCustomerMailer::class);
         $mailer->sendBookingConfirmation($booking);
         $mailer->sendPaymentReceipt($booking);
-        if (app(BookingAutoAssignmentManager::class)->autoApprove()) {
+        if (app(BookingAutoAssignmentManager::class)->autoApprove() && $booking->status === 'Accepted') {
             $mailer->sendStatusUpdate($booking, 'Pending Approval');
         }
         app(BookingAutoAssignmentManager::class)->scheduleIfEnabled($booking);

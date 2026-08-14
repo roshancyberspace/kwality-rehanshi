@@ -15,6 +15,6 @@ class RateItemController extends CrudController
         'name' => ['required', 'string', 'max:255'],
         'image' => ['nullable', 'string'],
         'price' => ['required', 'numeric', 'min:0'],
-        'status' => ['nullable', 'string', 'max:50'],
+        'status' => ['nullable', 'string', 'in:Active,Inactive'],
     ];
 }

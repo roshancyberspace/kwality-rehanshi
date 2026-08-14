@@ -172,7 +172,6 @@ function MetricTile({ helper, icon = 'wallet', label, tone = 'indigo', value }) 
     emerald: 'bg-[#EEF9E8] text-[#67B529]',
     indigo: 'bg-[#EEF9E8] text-[#67B529]',
     rose: 'bg-rose-50 text-rose-700',
-    blue: 'bg-[#EEF9E8] text-[#67B529]',
   }
   const icons = {
     briefcase: (
@@ -221,17 +220,17 @@ function MetricTile({ helper, icon = 'wallet', label, tone = 'indigo', value }) 
   }
 
   return (
-    <article className="flex min-w-0 items-center gap-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-      <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-lg ${tones[tone] || tones.indigo}`}>
-        <svg aria-hidden="true" className="h-5 w-5" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" viewBox="0 0 24 24">
-          {icons[icon] || icons.wallet}
-        </svg>
-      </span>
-      <div className="min-w-0">
-        <p className="text-xl font-semibold leading-tight text-slate-800">{value}</p>
-        <p className="mt-1 text-xs font-semibold leading-snug text-slate-600">{label}</p>
-        <p className="mt-1 text-[10px] font-normal uppercase text-slate-400">{helper}</p>
+    <article className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-sm">
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-[11px] font-semibold leading-4 text-slate-500">{label}</p>
+        <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-md ${tones[tone] || tones.indigo}`}>
+          <svg aria-hidden="true" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" viewBox="0 0 24 24">
+            {icons[icon] || icons.wallet}
+          </svg>
+        </span>
       </div>
+      <p className="mt-2 break-words text-lg font-bold leading-6 text-slate-800">{value}</p>
+      <p className="mt-1 text-[10px] font-medium uppercase tracking-wide text-slate-400">{helper}</p>
     </article>
   )
 }
@@ -239,8 +238,8 @@ function MetricTile({ helper, icon = 'wallet', label, tone = 'indigo', value }) 
 function BusinessField({ label, value }) {
   return (
     <div className="min-w-0">
-      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</p>
-      <p className="mt-1.5 break-words text-sm font-normal leading-relaxed text-slate-800">{value || '-'}</p>
+      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">{label}</p>
+      <p className="mt-1 break-words text-sm font-semibold leading-relaxed text-slate-800">{value || '—'}</p>
     </div>
   )
 }
@@ -283,58 +282,30 @@ function EditField({ editForm, field, onChange }) {
 
 function StatusSummaryItem({ label, status, tone = 'emerald' }) {
   const tones = {
-    emerald: {
-      card: 'border-[#67B529]/35 bg-[#EEF9E8]/70',
-      icon: 'bg-emerald-100 text-[#67B529] ring-[#67B529]/30',
-      status: 'text-[#67B529]',
-    },
-    indigo: {
-      card: 'border-[#67B529]/30 bg-[#EEF9E8]/70',
-      icon: 'bg-[#D9F3C8] text-[#67B529] ring-[#67B529]/30',
-      status: 'text-[#67B529]',
-    },
-    amber: {
-      card: 'border-amber-200 bg-amber-50/80',
-      icon: 'bg-amber-100 text-amber-700 ring-amber-200',
-      status: 'text-amber-700',
-    },
-    rose: {
-      card: 'border-rose-200 bg-rose-50/70',
-      icon: 'bg-rose-100 text-rose-700 ring-rose-200',
-      status: 'text-rose-700',
-    },
-    slate: {
-      card: 'border-slate-300 bg-slate-100/80',
-      icon: 'bg-slate-200 text-slate-700 ring-slate-300',
-      status: 'text-slate-700',
-    },
+    emerald: 'text-[#2F6412]',
+    indigo: 'text-[#003F86]',
+    amber: 'text-amber-800',
+    rose: 'text-rose-700',
+    slate: 'text-slate-600',
   }
-  const toneClasses = tones[tone] || tones.emerald
 
   return (
-    <div className={`flex min-w-0 items-center gap-4 rounded-lg border px-4 py-4 shadow-sm ${toneClasses.card}`}>
-      <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-lg ring-1 ${toneClasses.icon}`}>
-        <svg aria-hidden="true" className="h-4.5 w-4.5" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" viewBox="0 0 24 24">
-          {tone === 'rose' ? <path d="M12 8v5m0 4h.01M10.3 4.3 2.8 17.2A2 2 0 0 0 4.5 20h15a2 2 0 0 0 1.7-2.8L13.7 4.3a2 2 0 0 0-3.4 0Z" /> : <path d="m5 12 4 4L19 6" />}
-        </svg>
-      </span>
-      <div className="min-w-0 overflow-hidden">
-        <p className="truncate text-sm font-semibold text-slate-800">{label}</p>
-        <p className={`mt-1 truncate text-sm font-normal ${toneClasses.status}`}>{status}</p>
-      </div>
+    <div className="min-w-0 px-4 py-3">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">{label}</p>
+      <p className={`mt-1 truncate text-sm font-semibold ${tones[tone] || tones.emerald}`}>{status}</p>
     </div>
   )
 }
 
 function SideAction({ children, tone = 'default', ...props }) {
   const tones = {
-    default: 'text-slate-600 hover:border-[#67B529]/30 hover:bg-[#EEF9E8] hover:text-[#67B529]',
-    primary: 'border-[#67B529] text-[#67B529] hover:bg-[#EEF9E8]',
-    danger: 'text-rose-600 hover:border-rose-200 hover:bg-rose-50',
+    default: 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50',
+    primary: 'border-[#67B529] bg-white text-[#2F6412] hover:bg-[#EEF9E8]',
+    danger: 'border-rose-200 bg-white text-rose-600 hover:bg-rose-50',
   }
 
   return (
-    <button className={`flex h-10 w-full items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-xs font-black shadow-sm transition ${tones[tone]}`} type="button" {...props}>
+    <button className={`inline-flex h-8 items-center justify-center rounded-md border px-3 text-xs font-semibold transition ${tones[tone]}`} type="button" {...props}>
       {children}
     </button>
   )
@@ -367,13 +338,13 @@ function DocumentVerificationPanel({
   verifiedDocuments,
 }) {
   return (
-    <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h3 className="text-base font-black text-slate-800">Document Verification</h3>
-          <p className="mt-1 text-xs font-bold text-slate-500">Review, approve, reject, or replace uploaded KYC files.</p>
+          <h3 className="text-lg font-bold text-slate-800">Document Verification</h3>
+          <p className="mt-1 text-sm text-slate-500">Review, approve, reject, or replace uploaded KYC files.</p>
         </div>
-        <span className="inline-flex h-7 w-fit items-center rounded-full bg-[#EEF9E8] px-3 text-xs font-black text-[#67B529] ring-1 ring-[#67B529]/20">
+        <span className="inline-flex h-7 w-fit items-center rounded-full bg-[#EEF9E8] px-3 text-xs font-bold text-[#67B529] ring-1 ring-[#67B529]/20">
           {verifiedDocuments} of {documents.length} Verified
         </span>
       </div>
@@ -383,7 +354,7 @@ function DocumentVerificationPanel({
         </div>
         <span className="w-10 text-right text-xs font-black text-[#67B529]">{documentCompletion}%</span>
       </div>
-      <div className="mt-5 grid gap-3 min-[900px]:grid-cols-2 min-[1180px]:grid-cols-3 min-[1600px]:grid-cols-1">
+      <div className="mt-5 grid gap-3 md:grid-cols-2">
         {documentCards.map((document, index) => {
           const status = document.status || 'Pending'
           const isVerified = status === 'Verified' || status === 'Approved'
@@ -466,54 +437,47 @@ function DocumentVerificationPanel({
   )
 }
 
-function BusinessInformationSection({ partner, servicesLabel }) {
+function BusinessInformationSection({ partner, servicesLabel, formatDateTime }) {
   const businessInfo = getBusinessInfo(partner, servicesLabel)
+  const kycReason = partner.kyc_rejected_reason || partner.metadata?.kyc_rejected_reason
 
   return (
-    <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm lg:p-5">
-      <div className="flex flex-col gap-2 border-b border-slate-200 pb-4 lg:flex-row lg:items-end lg:justify-between">
+    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm lg:p-6">
+      <div className="flex flex-col gap-2 border-b border-slate-100 pb-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h3 className="text-xl font-semibold leading-tight text-slate-800">Business Information</h3>
-          <p className="mt-1 text-sm font-semibold text-slate-500">Business profile, contact details, and service operations.</p>
+          <h3 className="text-lg font-bold text-slate-800">Business Information</h3>
+          <p className="mt-1 text-sm text-slate-500">Identity, contact, operations, and KYC timeline.</p>
         </div>
         <StatusBadge>{partner.status || 'Active'}</StatusBadge>
       </div>
-      <div className="mt-4 grid gap-4 xl:grid-cols-[1fr_1fr_1.15fr]">
-        <div className="rounded-lg border border-slate-200 bg-white p-4">
-          <h4 className="text-sm font-semibold text-slate-800">Identity</h4>
-          <div className="mt-4 grid gap-3.5">
-            <BusinessField label="Business Name" value={partner.business_name || partner.name} />
-            <BusinessField label="Owner Name" value={partner.name || 'Amit Kumar'} />
-            <BusinessField label="Category" value={businessInfo.category} />
-            <BusinessField label="Experience" value={businessInfo.experience} />
-            <BusinessField label="GST Number" value={businessInfo.gstNumber} />
-          </div>
-        </div>
-        <div className="rounded-lg border border-slate-200 bg-white p-4">
-          <h4 className="text-sm font-semibold text-slate-800">Contact & Location</h4>
-          <div className="mt-4 grid gap-3.5">
-            <BusinessField label="Phone" value={partner.phone} />
-            <BusinessField label="Email" value={partner.email || 'styleathome@gmail.com'} />
-            <BusinessField label="Service Area" value={businessInfo.serviceArea} />
-            <BusinessField label="Pincode" value={partner.pincode || '226016'} />
-            <BusinessField label="Address" value={businessInfo.address} />
-          </div>
-        </div>
-        <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-          <h4 className="text-sm font-semibold text-slate-800">About Business</h4>
-          <p className="mt-3 text-sm font-semibold leading-6 text-slate-700">{businessInfo.about}</p>
-          <div className="mt-4 grid gap-3 border-t border-slate-200 pt-4 text-sm font-semibold text-slate-600">
-            <div className="flex justify-between gap-4"><span>Working Hours</span><span className="text-right text-slate-800">{businessInfo.workingHours}</span></div>
-            <div className="flex justify-between gap-4"><span>Service Radius</span><span className="text-right text-slate-800">{businessInfo.serviceRadius}</span></div>
-            <div className="flex justify-between gap-4"><span>Languages</span><span className="text-right text-slate-800">{businessInfo.languages}</span></div>
-          </div>
-        </div>
+      {businessInfo.about ? (
+        <p className="mt-4 rounded-xl bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-700">{businessInfo.about}</p>
+      ) : null}
+      <div className="mt-5 grid gap-x-8 gap-y-5 sm:grid-cols-2 xl:grid-cols-3">
+        <BusinessField label="Business Name" value={partner.business_name || partner.name} />
+        <BusinessField label="Owner Name" value={partner.name} />
+        <BusinessField label="Category" value={businessInfo.category} />
+        <BusinessField label="Experience" value={businessInfo.experience} />
+        <BusinessField label="GST Number" value={businessInfo.gstNumber} />
+        <BusinessField label="Phone" value={partner.phone} />
+        <BusinessField label="Email" value={partner.email} />
+        <BusinessField label="Service Area" value={businessInfo.serviceArea} />
+        <BusinessField label="City" value={partner.city} />
+        <BusinessField label="Pincode" value={partner.pincode} />
+        <BusinessField label="Address" value={businessInfo.address} />
+        <BusinessField label="Working Hours" value={businessInfo.workingHours} />
+        <BusinessField label="Service Radius" value={businessInfo.serviceRadius} />
+        <BusinessField label="Languages" value={businessInfo.languages} />
+        <BusinessField label="KYC Status" value={partner.kyc_status} />
+        <BusinessField label="KYC Submitted" value={partner.kyc_submitted_at ? formatDateTime(partner.kyc_submitted_at) : ''} />
+        <BusinessField label="KYC Verified" value={partner.kyc_verified_at ? formatDateTime(partner.kyc_verified_at) : ''} />
+        {kycReason ? <BusinessField label="KYC Rejection Reason" value={kycReason} /> : null}
       </div>
     </section>
   )
 }
 
-function PartnerDetailsPage({ adminProfile, onBackHome, onTabChange, partnerId }) {
+function PartnerDetailsPage({ adminProfile, onBackHome, onOpenPartnerEdit, onTabChange, partnerId }) {
   const [partner, setPartner] = useState(null)
   const [overview, setOverview] = useState(null)
   const [editForm, setEditForm] = useState({})
@@ -829,7 +793,7 @@ function PartnerDetailsPage({ adminProfile, onBackHome, onTabChange, partnerId }
   const completionRate = Number(stats.completion_rate || 0)
   const reviewCoverage = Number(stats.review_coverage || 0)
   const trustLabel = trustScore >= 85 ? 'Excellent' : trustScore >= 70 ? 'Good' : trustScore >= 50 ? 'Average' : totalBookings ? 'Needs attention' : 'No booking data'
-  const formatMoney = (value) => `Rs. ${Number(value || 0).toLocaleString('en-IN')}`
+  const formatMoney = (value) => `Rs. ${Number(value || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`
   const formatDateTime = (value) => {
     if (!value) return '-'
     const date = new Date(value)
@@ -868,7 +832,7 @@ function PartnerDetailsPage({ adminProfile, onBackHome, onTabChange, partnerId }
       onSelectSearchRecord={(cat, rec) => onTabChange?.(cat === 'Service Packages' ? 'Service Packages' : cat === 'Bookings' ? 'Bookings' : cat === 'Customers' ? 'Customers' : cat === 'Partners' ? 'Partners' : 'Services')}
       onTabChange={onTabChange}
     >
-      <div className="mx-auto grid w-full max-w-none gap-4">
+      <div className="mx-auto grid w-full max-w-none gap-5">
         {loading && (
           <Panel title="Loading partner">
             <div className="p-5 text-sm font-bold text-slate-500">Fetching partner details...</div>
@@ -877,243 +841,201 @@ function PartnerDetailsPage({ adminProfile, onBackHome, onTabChange, partnerId }
 
         {partner && (
           <>
-            <div className="grid items-start gap-5 min-[1180px]:grid-cols-[300px_minmax(0,1fr)] min-[1600px]:grid-cols-[300px_minmax(0,1fr)_380px]">
-              <aside className="grid min-w-0 content-start gap-5">
-                <section className="rounded-lg border border-slate-200 bg-white p-5 text-center shadow-sm">
-                  <div className="mx-auto h-32 w-32 overflow-hidden rounded-full border border-slate-200 bg-[#EEF9E8] ring-4 ring-slate-50">
+            <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+              <div className="flex flex-col gap-4 p-5 lg:flex-row lg:items-start lg:justify-between">
+                <div className="flex min-w-0 items-start gap-4">
+                  <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-[#EEF9E8]">
                     {profilePicture ? (
                       <img alt={partner.name || 'Partner'} className="h-full w-full object-cover" src={profilePicture} />
                     ) : (
-                      <span className="grid h-full w-full place-items-center text-3xl font-black text-[#67B529]">
+                      <span className="grid h-full w-full place-items-center text-lg font-black text-[#67B529]">
                         {partner.name?.slice(0, 2)?.toUpperCase() || 'PR'}
                       </span>
                     )}
                   </div>
-                  <div className="-mt-3 flex justify-center">
-                    <StatusBadge>{partner.availability || 'Available'}</StatusBadge>
+                  <div className="min-w-0">
+                    <h1 className="text-xl font-bold leading-snug text-slate-900">{partner.business_name || partner.name || 'Partner'}</h1>
+                    <p className="mt-1 text-sm text-slate-500">
+                      {partner.name && partner.business_name && partner.name !== partner.business_name ? `${partner.name} · ` : ''}
+                      {servicesLabel || 'Service category not set'}
+                    </p>
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <StatusBadge>{partner.availability || 'Available'}</StatusBadge>
+                      <StatusBadge>{partner.status || 'Pending'}</StatusBadge>
+                      <span className="text-sm text-slate-600">★ {averageRating.toFixed(2)} ({reviewCount} reviews)</span>
+                      <span className="text-sm text-slate-400">VEN-{String(partner.id || partnerId).padStart(5, '0')}</span>
+                      <span className="text-sm text-slate-400">Joined {formatDateTime(partner.created_at)}</span>
+                    </div>
                   </div>
-                  <h2 className="mt-5 break-words text-2xl font-semibold leading-tight text-slate-800">{partner.business_name || partner.name || 'Partner'}</h2>
-                  <p className="mt-2 text-sm font-normal text-slate-500">{servicesLabel || 'Service category not set'}</p>
-                  <p className="mt-4 text-sm font-normal text-amber-500">★ <span className="text-slate-800">{averageRating.toFixed(2)}</span><span className="text-slate-500"> ({reviewCount} Reviews)</span></p>
-                  <div className="mt-5 grid gap-3 rounded-lg bg-slate-50 p-4 text-left text-sm font-normal text-slate-600">
-                    <div className="flex justify-between gap-3"><span>Vendor ID</span><span className="font-normal text-slate-800">VEN-{String(partner.id || partnerId).padStart(5, '0')}</span></div>
-                    <div className="flex justify-between gap-3"><span>Joined on</span><span className="font-normal text-slate-800">{formatDateTime(partner.created_at)}</span></div>
-                  </div>
-                  <div className="mt-5 grid gap-2">
-                    {canEditPartner && (
-                      <>
-                        <SideAction disabled={saving} tone="primary" onClick={() => setIsEditing((current) => !current)}>{isEditing ? 'Close Edit' : 'Edit Profile'}</SideAction>
-                        {partner.status === 'Inactive' ? (
-                          <SideAction disabled={saving} onClick={activateVendor} tone="primary">Activate Vendor</SideAction>
-                        ) : (
-                          <SideAction disabled={saving} onClick={suspendVendor} tone="danger">Suspend Vendor</SideAction>
-                        )}
-                        <SideAction disabled={saving} onClick={sendVendorMessage}>Send Message</SideAction>
-                        <SideAction disabled={saving} onClick={loginAsVendor}>Login as Vendor</SideAction>
-                      </>
-                    )}
-                    {canViewPartner && (
-                      <>
-                        <SideAction onClick={() => setIsIdCardOpen(true)}>View ID Card</SideAction>
-                        <SideAction onClick={() => window.open(publicPath, '_blank')}>View Certificate</SideAction>
-                      </>
-                    )}
-                  </div>
-                </section>
+                </div>
+                <div className="flex shrink-0 flex-wrap gap-2 lg:max-w-md lg:justify-end">
+                  {canEditPartner && (
+                    <>
+                      <SideAction
+                        disabled={saving}
+                        tone="primary"
+                        onClick={() => {
+                          if (onOpenPartnerEdit) {
+                            onOpenPartnerEdit(partner.id)
+                            return
+                          }
+                          setIsEditing((current) => !current)
+                        }}
+                      >
+                        {onOpenPartnerEdit ? 'Edit Partner' : (isEditing ? 'Close Edit' : 'Edit Profile')}
+                      </SideAction>
+                      {partner.status === 'Inactive' ? (
+                        <SideAction disabled={saving} onClick={activateVendor} tone="primary">Activate Vendor</SideAction>
+                      ) : (
+                        <SideAction disabled={saving} onClick={suspendVendor} tone="danger">Suspend Vendor</SideAction>
+                      )}
+                      <SideAction disabled={saving} onClick={sendVendorMessage}>Send Message</SideAction>
+                      <SideAction disabled={saving} onClick={loginAsVendor}>Login as Vendor</SideAction>
+                    </>
+                  )}
+                  {canViewPartner && (
+                    <>
+                      <SideAction onClick={() => setIsIdCardOpen(true)}>View ID Card</SideAction>
+                      <SideAction onClick={() => window.open(publicPath, '_blank')}>View Certificate</SideAction>
+                    </>
+                  )}
+                </div>
+              </div>
+              <div className="grid grid-cols-2 border-t border-slate-100 sm:grid-cols-3 xl:grid-cols-6">
+                <StatusSummaryItem label="Profile" status={hasProfileBasics ? 'Complete' : 'Incomplete'} tone={hasProfileBasics ? 'emerald' : 'amber'} />
+                <StatusSummaryItem label="Account" status={partner.status || 'Pending'} tone={String(partner.status || '').toLowerCase() === 'active' ? 'emerald' : 'indigo'} />
+                <StatusSummaryItem label="Documents" status={`${verifiedDocuments}/${documents.length} Verified`} tone={documents.length && verifiedDocuments === documents.length ? 'emerald' : 'amber'} />
+                <StatusSummaryItem label="Payment" status={paymentIsDue ? 'Payment Due' : 'Clear'} tone={paymentIsDue ? 'rose' : 'emerald'} />
+                <StatusSummaryItem label="Subscription" status={subscriptionStatus} tone={subscriptionStatus === 'Not configured' ? 'slate' : 'amber'} />
+                <StatusSummaryItem label="Featured" status={isFeatured ? 'Featured' : 'Not Featured'} tone={isFeatured ? 'emerald' : 'slate'} />
+              </div>
+            </section>
 
-                <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-                  <h3 className="text-base font-semibold text-slate-800">Vendor Performance</h3>
-                  {[
-                    ['Average Rating', `${averageRating.toFixed(2)}/5`],
-                    ['Total Bookings', totalBookings],
-                    ['Completion Rate', `${completionRate}%`],
-                    ['Customer Reviews', reviewCount],
-                  ].map(([label, value]) => (
-                    <div className="mt-4 flex items-center justify-between border-b border-slate-100 pb-3 text-xs font-normal last:border-b-0 last:pb-0" key={label}>
-                      <span className="text-slate-500">{label}</span>
-                      <span className="font-normal text-slate-800">{value}</span>
-                    </div>
-                  ))}
-                </section>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-7">
+              <MetricTile helper="All Time" icon="wallet" label="Total Earnings" tone="blue" value={formatMoney(stats.total_earnings)} />
+              <MetricTile helper="All Time" icon="clock" label="Platform Commission" tone="indigo" value={formatMoney(stats.platform_commission)} />
+              <MetricTile helper="Due Amount" icon="shield" label="Pending Settlement" tone={paymentIsDue ? 'rose' : 'emerald'} value={formatMoney(stats.pending_settlement)} />
+              <MetricTile helper="All Time" icon="calendar" label="Total Bookings" tone="blue" value={totalBookings} />
+              <MetricTile helper="All Time" icon="briefcase" label="Assigned Jobs" tone="indigo" value={assignedJobs} />
+              <MetricTile helper={`${activeBookings} Active`} icon="check" label="Completed Jobs" tone="emerald" value={completedJobs} />
+              <MetricTile helper="All Time" icon="x" label="Cancelled Jobs" tone="rose" value={cancelledJobs} />
+            </div>
 
-                <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-                  <h3 className="text-base font-semibold text-slate-800">Dues / Settlement</h3>
-                  <div className="mt-4 grid gap-3 rounded-lg bg-slate-50 p-4 text-xs font-normal">
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="text-slate-400">Total Due</p>
-                      <p className="text-base font-normal text-rose-600">{formatMoney(stats.pending_settlement)}</p>
-                    </div>
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="text-slate-400">Commission</p>
-                      <p className="text-base font-normal text-[#67B529]">{formatMoney(stats.platform_commission)}</p>
-                    </div>
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="text-slate-400">Settlement</p>
-                      <p className="text-base font-normal text-slate-700">{stats.settlement_status || 'Pending'}</p>
-                    </div>
+            {isEditing && (
+              <Panel title="Edit Partner Profile" subtitle="Update profile, contact, business information, and account status.">
+                <form className="grid gap-4 p-4" onSubmit={savePartnerDetails}>
+                  <div className="grid gap-4 xl:grid-cols-2">
+                    {editFieldGroups.map((group) => (
+                      <section className="rounded-lg border border-slate-200 bg-slate-50/60 p-4" key={group.title}>
+                        <h3 className="text-sm font-black text-slate-800">{group.title}</h3>
+                        <div className="mt-3 grid gap-3 md:grid-cols-2">
+                          {group.fields.map((field) => (
+                            <EditField
+                              editForm={editForm}
+                              field={field}
+                              key={field}
+                              onChange={(nextField, value) => setEditForm((current) => ({ ...current, [nextField]: value }))}
+                            />
+                          ))}
+                        </div>
+                      </section>
+                    ))}
                   </div>
-                </section>
+                  <div className="flex flex-wrap justify-end gap-2">
+                    <ActionButton onClick={() => setIsEditing(false)} type="button">Cancel</ActionButton>
+                    <ActionButton disabled={saving} tone="primary" type="submit">{saving ? 'Saving...' : 'Save changes'}</ActionButton>
+                  </div>
+                </form>
+              </Panel>
+            )}
 
-                <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-                  <h3 className="text-base font-semibold text-slate-800">Trust Score</h3>
+            <div className="grid items-start gap-5 xl:grid-cols-[320px_minmax(0,1fr)]">
+              <aside className="grid min-w-0 content-start gap-5">
+                <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <h3 className="text-base font-bold text-slate-800">Trust & Performance</h3>
                   <div className="mt-4 flex items-center gap-3">
-                    <div className="grid h-14 w-14 place-items-center rounded-lg bg-[#EEF9E8] text-[#67B529] ring-1 ring-[#67B529]/20">
-                      <svg aria-hidden="true" className="h-8 w-8" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" viewBox="0 0 24 24">
+                    <div className="grid h-12 w-12 place-items-center rounded-xl bg-[#EEF9E8] text-[#67B529] ring-1 ring-[#67B529]/20">
+                      <svg aria-hidden="true" className="h-6 w-6" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" viewBox="0 0 24 24">
                         <path d="M12 3 4.5 6v5.5c0 4.8 3.2 8.8 7.5 9.5 4.3-.7 7.5-4.7 7.5-9.5V6L12 3Z" />
                         <path d="m8.8 12 2.1 2.1 4.4-4.6" />
                       </svg>
                     </div>
                     <div>
-                      <p className="text-2xl font-semibold text-[#67B529]">{trustScore}/100</p>
+                      <p className="text-2xl font-bold text-[#67B529]">{trustScore}/100</p>
                       <p className="text-xs font-semibold text-[#67B529]">{trustLabel}</p>
                     </div>
                   </div>
-                  <p className="mt-3 text-xs font-normal text-slate-500">Based on rating, completion rate, and customer review coverage.</p>
-                  <div className="mt-5 h-2 overflow-hidden rounded-full bg-slate-100">
+                  <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100">
                     <div className="h-full rounded-full bg-[#67B529]" style={{ width: `${trustScore}%` }} />
+                  </div>
+                  <p className="mt-3 text-xs leading-5 text-slate-500">Based on rating, completion rate, and customer review coverage ({reviewCoverage}%).</p>
+                  <div className="mt-4 grid gap-2.5 border-t border-slate-100 pt-4 text-sm">
+                    {[
+                      ['Average Rating', `${averageRating.toFixed(2)}/5`],
+                      ['Completion Rate', `${completionRate}%`],
+                      ['Customer Reviews', reviewCount],
+                      ['Total Bookings', totalBookings],
+                    ].map(([label, value]) => (
+                      <div className="flex items-center justify-between gap-3" key={label}>
+                        <span className="text-slate-500">{label}</span>
+                        <span className="font-semibold text-slate-800">{value}</span>
+                      </div>
+                    ))}
                   </div>
                 </section>
 
-                <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-                  <h3 className="text-base font-semibold text-slate-800">Services & Skills</h3>
-                  <div className="mt-5 grid gap-6">
+                <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <h3 className="text-base font-bold text-slate-800">Dues / Settlement</h3>
+                  <div className="mt-4 grid gap-3 text-sm">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-slate-500">Total Due</p>
+                      <p className="font-bold text-rose-600">{formatMoney(stats.pending_settlement)}</p>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-slate-500">Commission</p>
+                      <p className="font-bold text-[#67B529]">{formatMoney(stats.platform_commission)}</p>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-slate-500">Settlement</p>
+                      <p className="font-semibold text-slate-800">{stats.settlement_status || 'Pending'}</p>
+                    </div>
+                  </div>
+                </section>
+
+                <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <h3 className="text-base font-bold text-slate-800">Services & Skills</h3>
+                  <div className="mt-4 grid gap-5">
                     <div>
-                      <p className="text-[11px] font-semibold text-slate-800">Main Services</p>
-                      <div className="mt-3 flex flex-wrap gap-2">
+                      <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Main Services</p>
+                      <div className="mt-2 flex flex-wrap gap-2">
                         {serviceChips.length ? serviceChips.map((item) => (
                           <DetailPill key={item}>{item}</DetailPill>
-                        )) : <span className="text-sm font-normal text-slate-500">No services added.</span>}
+                        )) : <span className="text-sm text-slate-500">No services added.</span>}
                       </div>
                     </div>
                     <div>
-                      <p className="text-[11px] font-semibold text-slate-800">Sub-services</p>
-                      <div className="mt-3 flex flex-wrap gap-2">
+                      <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Sub-services</p>
+                      <div className="mt-2 flex flex-wrap gap-2">
                         {subServiceChips.length ? subServiceChips.map((item) => (
                           <DetailPill key={item}>{item}</DetailPill>
-                        )) : <span className="text-sm font-normal text-slate-500">No sub-services added.</span>}
+                        )) : <span className="text-sm text-slate-500">No sub-services added.</span>}
                       </div>
                     </div>
                     <div>
-                      <p className="text-[11px] font-semibold text-slate-800">Skills / Expertise</p>
-                      <div className="mt-3 flex flex-wrap gap-2">
+                      <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Skills / Expertise</p>
+                      <div className="mt-2 flex flex-wrap gap-2">
                         {skillChips.length ? skillChips.map((item) => (
                           <SkillPill key={item}>{item}</SkillPill>
-                        )) : <span className="text-sm font-normal text-slate-500">No skills added.</span>}
+                        )) : <span className="text-sm text-slate-500">No skills added.</span>}
                       </div>
                     </div>
                   </div>
                 </section>
               </aside>
 
-              <div className="grid min-w-0 max-w-full content-start gap-5">
-                <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-                  <div className="border-b border-slate-200 bg-white px-5 py-4">
-                    <h2 className="text-lg font-semibold text-slate-800">Vendor Status Overview</h2>
-                  </div>
-                  <div className="bg-slate-50/50 p-5">
-                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 min-[1800px]:grid-cols-6">
-                      <StatusSummaryItem label="Profile" status={hasProfileBasics ? 'Complete' : 'Incomplete'} tone={hasProfileBasics ? 'emerald' : 'amber'} />
-                      <StatusSummaryItem label="Account" status={partner.status || 'Pending'} tone={String(partner.status || '').toLowerCase() === 'active' ? 'emerald' : 'indigo'} />
-                      <StatusSummaryItem label="Documents" status={`${verifiedDocuments}/${documents.length} Verified`} tone={documents.length && verifiedDocuments === documents.length ? 'emerald' : 'amber'} />
-                      <StatusSummaryItem label="Payment" status={paymentIsDue ? 'Payment Due' : 'Clear'} tone={paymentIsDue ? 'rose' : 'emerald'} />
-                      <StatusSummaryItem label="Subscription" status={subscriptionStatus} tone={subscriptionStatus === 'Not configured' ? 'slate' : 'amber'} />
-                      <StatusSummaryItem label="Featured" status={isFeatured ? 'Featured' : 'Not Featured'} tone={isFeatured ? 'emerald' : 'slate'} />
-                    </div>
-                  </div>
-                </section>
+              <div className="grid min-w-0 content-start gap-5">
+                <BusinessInformationSection formatDateTime={formatDateTime} partner={partner} servicesLabel={servicesLabel} />
 
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 min-[1800px]:grid-cols-7">
-                  <MetricTile helper="All Time" icon="wallet" label="Total Earnings" tone="blue" value={formatMoney(stats.total_earnings)} />
-                  <MetricTile helper="All Time" icon="clock" label="Platform Commission" tone="indigo" value={formatMoney(stats.platform_commission)} />
-                  <MetricTile helper="Due Amount" icon="shield" label="Pending Settlement" tone={paymentIsDue ? 'rose' : 'emerald'} value={formatMoney(stats.pending_settlement)} />
-                  <MetricTile helper="All Time" icon="calendar" label="Total Bookings" tone="blue" value={totalBookings} />
-                  <MetricTile helper="All Time" icon="briefcase" label="Assigned Jobs" tone="indigo" value={assignedJobs} />
-                  <MetricTile helper={`${activeBookings} Active`} icon="check" label="Completed Jobs" tone="emerald" value={completedJobs} />
-                  <MetricTile helper="All Time" icon="x" label="Cancelled Jobs" tone="rose" value={cancelledJobs} />
-                </div>
-                <div className="min-[1600px]:hidden">
-                  <DocumentVerificationPanel
-                    documentCards={documentCards}
-                    documentCompletion={documentCompletion}
-                    documents={documents}
-                    formatDocumentLabel={formatDocumentLabel}
-                    onRejectDocument={rejectDocument}
-                    onReplaceDocument={uploadDocument}
-                    onVerifyDocument={verifyDocument}
-                    saving={saving}
-                    verifiedDocuments={verifiedDocuments}
-                  />
-                </div>
-              <div className="grid min-w-0 max-w-full gap-5">
-                {isEditing && (
-                  <Panel title="Edit Partner Profile" subtitle="Update profile, contact, business information, and account status.">
-                    <form className="grid gap-4 p-4" onSubmit={savePartnerDetails}>
-                      <div className="grid gap-4 xl:grid-cols-2">
-                        {editFieldGroups.map((group) => (
-                          <section className="rounded-lg border border-slate-200 bg-slate-50/60 p-4" key={group.title}>
-                            <h3 className="text-sm font-black text-slate-800">{group.title}</h3>
-                            <div className="mt-3 grid gap-3 md:grid-cols-2">
-                              {group.fields.map((field) => (
-                                <EditField
-                                  editForm={editForm}
-                                  field={field}
-                                  key={field}
-                                  onChange={(nextField, value) => setEditForm((current) => ({ ...current, [nextField]: value }))}
-                                />
-                              ))}
-                            </div>
-                          </section>
-                        ))}
-                      </div>
-                      <div className="flex flex-wrap justify-end gap-2">
-                        <ActionButton onClick={() => setIsEditing(false)} type="button">Cancel</ActionButton>
-                        <ActionButton disabled={saving} tone="primary" type="submit">{saving ? 'Saving...' : 'Save changes'}</ActionButton>
-                      </div>
-                    </form>
-                  </Panel>
-                )}
-
-                <section className="overflow-hidden rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-                  <div className="mb-4 flex items-center justify-between">
-                    <h3 className="text-lg font-semibold text-slate-800">Recent Bookings</h3>
-                    <span className="text-xs font-normal text-slate-400">{recentBookings.length} shown</span>
-                  </div>
-                  {recentBookings.length ? (
-                    <div className="max-w-full overflow-x-auto rounded-md">
-                      <table className="w-full min-w-[640px] text-left text-sm lg:min-w-full">
-                        <thead className="bg-slate-50 text-[11px] font-semibold text-slate-400">
-                          <tr>
-                            {['S.No.', 'Booking ID', 'Customer', 'Service', 'Date', 'Amount', 'Status'].map((heading) => <th className="px-4 py-3 first:rounded-l-md last:rounded-r-md" key={heading}>{heading}</th>)}
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100 text-xs font-normal text-slate-600">
-                          {recentBookings.map((booking, index) => (
-                            <tr className="hover:bg-slate-50" key={booking.id || booking.booking_no}>
-                              <td className="px-4 py-3.5 font-extrabold text-slate-500">{index + 1}</td>
-                              <td className="px-4 py-3.5">{booking.booking_no || `#${booking.id}`}</td>
-                              <td className="px-4 py-3.5">{booking.customer_name || '-'}</td>
-                              <td className="px-4 py-3.5">{booking.service_name || '-'}</td>
-                              <td className="px-4 py-3.5">{formatDateTime(booking.scheduled_at)}</td>
-                              <td className="px-4 py-3.5">{bookingAmount(booking)}</td>
-                              <td className="px-4 py-3.5"><StatusBadge>{booking.status || 'Pending'}</StatusBadge></td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : (
-                    <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm font-normal text-slate-500">
-                      No bookings found for this vendor.
-                    </div>
-                  )}
-                </section>
-
-                <BusinessInformationSection partner={partner} servicesLabel={servicesLabel} />
-
-              </div>
-              </div>
-
-              <aside className="hidden min-w-0 max-w-full content-start gap-5 min-[1600px]:grid">
                 <DocumentVerificationPanel
                   documentCards={documentCards}
                   documentCompletion={documentCompletion}
@@ -1126,7 +1048,41 @@ function PartnerDetailsPage({ adminProfile, onBackHome, onTabChange, partnerId }
                   verifiedDocuments={verifiedDocuments}
                 />
 
-              </aside>
+                <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <div className="mb-4 flex items-center justify-between">
+                    <h3 className="text-lg font-bold text-slate-800">Recent Bookings</h3>
+                    <span className="text-xs font-medium text-slate-400">{recentBookings.length} shown</span>
+                  </div>
+                  {recentBookings.length ? (
+                    <div className="max-w-full overflow-x-auto rounded-xl">
+                      <table className="w-full min-w-[640px] text-left text-sm lg:min-w-full">
+                        <thead className="bg-slate-50 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                          <tr>
+                            {['S.No.', 'Booking ID', 'Customer', 'Service', 'Date', 'Amount', 'Status'].map((heading) => <th className="px-4 py-3 first:rounded-l-md last:rounded-r-md" key={heading}>{heading}</th>)}
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-600">
+                          {recentBookings.map((booking, index) => (
+                            <tr className="hover:bg-slate-50" key={booking.id || booking.booking_no}>
+                              <td className="px-4 py-3.5 font-bold text-slate-500">{index + 1}</td>
+                              <td className="px-4 py-3.5">{booking.booking_no || `#${booking.id}`}</td>
+                              <td className="px-4 py-3.5">{booking.customer_name || '-'}</td>
+                              <td className="px-4 py-3.5">{booking.service_name || '-'}</td>
+                              <td className="px-4 py-3.5">{formatDateTime(booking.scheduled_at)}</td>
+                              <td className="px-4 py-3.5">{bookingAmount(booking)}</td>
+                              <td className="px-4 py-3.5"><StatusBadge>{booking.status || 'Pending'}</StatusBadge></td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
+                      No bookings found for this vendor.
+                    </div>
+                  )}
+                </section>
+              </div>
             </div>
           </>
         )}

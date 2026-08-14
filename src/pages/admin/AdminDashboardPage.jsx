@@ -10,6 +10,7 @@ import ProcessingOverlay from './components/ProcessingOverlay'
 import { AdminPageSkeleton } from '../../components/common/Shimmer'
 import RecordModal from './components/RecordModal'
 import AppContentMetadataModal from './components/AppContentMetadataModal'
+import NotificationReportModal from './components/NotificationReportModal'
 import { moduleConfigs } from './config/adminModules'
 import { buildBackendUrl, buildStorageUrl } from '../../config/urls'
 import AssignProfessionalView from './views/AssignProfessionalView'
@@ -33,7 +34,7 @@ import { broadcastRealtimeRefresh } from '../../utils/realtime'
 import { invalidateAdminCache, rememberAdminCache } from '../../utils/adminDataCache'
 import { canAccessModule, filterNavSectionsByPermissions, isSuperAdminProfile, normalizePermissions } from './utils/permissions'
 import { slugify } from '../../utils/slugs'
-import { adminNavSections } from './config/adminNav'
+import { ADMIN_NAV_ORDER_EVENT, adminNavSections, applySidebarNavOrder, parseSidebarNavOrder } from './config/adminNav'
 
 const shouldPlayAdminNotificationSound = (notification) => {
   const title = String(notification?.title || '').toLowerCase()
@@ -63,13 +64,14 @@ const SERVER_PAGINATED_TABS = [
   'Payments',
   'Booking Ledger',
   'Vendor Wallet',
+  'Customer Wallet',
   'Wallet Transactions',
   'Payouts',
   'Vendor Jobs',
   'Saved Addresses',
   'Reviews',
   'Support Tickets',
-  'Coupons',
+  'Offers & Coupons',
   'App Content',
   'Notifications',
   'Admin Users',
@@ -83,7 +85,7 @@ const humanizeOptionKey = (value) =>
     .replace(/\b\w/g, (char) => char.toUpperCase())
     .trim()
 
-function AdminDashboardPage({ appSettings = {}, authenticatedAdmin, onAdminProfileUpdated, onBackHome, onLogout, onOpenCustomerDetails, onOpenPartnerDetails }) {
+function AdminDashboardPage({ appSettings = {}, authenticatedAdmin, onAdminProfileUpdated, onBackHome, onLogout, onOpenCustomerDetails, onOpenPartnerDetails, onOpenPartnerEdit }) {
   const [activeTab, setActiveTab] = useState(() => window.sessionStorage.getItem('adminActiveTab') || 'Dashboard')
   const [datasets, setDatasets] = useState({})
   const [optionDatasets, setOptionDatasets] = useState({})
@@ -102,6 +104,7 @@ function AdminDashboardPage({ appSettings = {}, authenticatedAdmin, onAdminProfi
   const [roleViewMode, setRoleViewMode] = useState('list')
   const [permissionViewerAdmin, setPermissionViewerAdmin] = useState(null)
   const [appContentMetadataRecord, setAppContentMetadataRecord] = useState(null)
+  const [notificationReport, setNotificationReport] = useState(null)
   const [bookingDetailsRecord, setBookingDetailsRecord] = useState(null)
   const [toastMessage, setToastMessage] = useState(null)
   const [profileSaveMessage, setProfileSaveMessage] = useState('')
@@ -111,6 +114,7 @@ function AdminDashboardPage({ appSettings = {}, authenticatedAdmin, onAdminProfi
   )
   const latestNotificationIdRef = useRef(null)
   const activeTabRef = useRef(activeTab)
+  const lastFilterFetchKeyRef = useRef('')
 
   useEffect(() => {
     activeTabRef.current = activeTab
@@ -125,7 +129,7 @@ function AdminDashboardPage({ appSettings = {}, authenticatedAdmin, onAdminProfi
       fields: config.fields.map((field) => {
         if (!field.optionsFrom) return field
 
-        const sourceRecords = optionDatasets[field.optionsFrom] || datasets[field.optionsFrom] || []
+        const sourceRecords = optionDatasets[field.optionsFrom] || []
 
         if (field.optionsDistinct) {
           const keyField = field.optionsDistinct === true ? (field.optionValue || field.name) : field.optionsDistinct
@@ -174,22 +178,45 @@ function AdminDashboardPage({ appSettings = {}, authenticatedAdmin, onAdminProfi
               record.service_name && field.optionLabel !== 'service_name' ? record.service_name : '',
             ].filter(Boolean).join(' - ') || `#${record.id}`
 
+            let partnerId = record.partner_id ?? null
+            if (!partnerId && record.professional_name && field.optionsFrom === 'Bookings') {
+              const partners = optionDatasets.Partners || []
+              const matchedPartner = partners.find((partner) => String(partner.name) === String(record.professional_name))
+              if (matchedPartner) partnerId = matchedPartner.id
+            }
+
+            let customerProfileId = record.customer_profile_id ?? null
+            if (!customerProfileId && field.optionsFrom === 'Bookings') {
+              const customers = optionDatasets.Customers || []
+              const matchedCustomer = customers.find((customer) => record.customer_phone && String(customer.phone) === String(record.customer_phone))
+                || customers.find((customer) => record.customer_name && String(customer.name) === String(record.customer_name))
+              if (matchedCustomer) customerProfileId = matchedCustomer.id
+            }
+
             return {
               label: field.type === 'multiselect' ? `${baseLabel} (ID: ${value})` : baseLabel,
               value,
               // Keep relation keys so dependent selects can filter (e.g. sub-services by service_id)
               service_id: record.service_id ?? null,
               category_id: record.category_id ?? null,
-              partner_id: record.partner_id ?? null,
+              partner_id: partnerId,
+              customer_profile_id: customerProfileId,
+              payment_status: record.payment_status ?? null,
+              payment_method: record.payment_method ?? null,
+              amount: record.amount ?? null,
+              booking_no: record.booking_no ?? null,
+              customer_name: record.customer_name ?? null,
+              professional_name: record.professional_name ?? null,
+              name: record.name ?? null,
             }
           }),
         }
       }),
     }
-  }, [activeTab, datasets, optionDatasets])
+  }, [activeTab, optionDatasets])
   const currentAdminProfile = useMemo(() => {
     const adminUsers = datasets['Admin Users'] || []
-    const roles = datasets.Roles || []
+    const roles = optionDatasets.Roles || datasets.Roles || []
     const storedProfile = authenticatedAdmin?.id
       ? adminUsers.find((adminUser) => String(adminUser.id) === String(authenticatedAdmin.id))
       : null
@@ -205,9 +232,26 @@ function AdminDashboardPage({ appSettings = {}, authenticatedAdmin, onAdminProfi
       ...profile,
       permissions: normalizePermissions(role?.permissions).length ? normalizePermissions(role.permissions) : normalizePermissions(profile.permissions),
     }
-  }, [authenticatedAdmin, datasets])
+  }, [authenticatedAdmin, datasets, optionDatasets.Roles])
 
-  const visibleNavSections = useMemo(() => filterNavSectionsByPermissions(adminNavSections, currentAdminProfile), [currentAdminProfile])
+  const [sidebarNavOrder, setSidebarNavOrder] = useState(() => parseSidebarNavOrder(appSettings?.admin?.sidebar_nav_order?.value))
+
+  useEffect(() => {
+    setSidebarNavOrder(parseSidebarNavOrder(appSettings?.admin?.sidebar_nav_order?.value))
+  }, [appSettings?.admin?.sidebar_nav_order?.value])
+
+  useEffect(() => {
+    const onNavOrderUpdated = (event) => {
+      setSidebarNavOrder(parseSidebarNavOrder(event.detail) || event.detail)
+    }
+    window.addEventListener(ADMIN_NAV_ORDER_EVENT, onNavOrderUpdated)
+    return () => window.removeEventListener(ADMIN_NAV_ORDER_EVENT, onNavOrderUpdated)
+  }, [])
+
+  const visibleNavSections = useMemo(
+    () => filterNavSectionsByPermissions(applySidebarNavOrder(adminNavSections, sidebarNavOrder), currentAdminProfile),
+    [currentAdminProfile, sidebarNavOrder],
+  )
 
   const loadModule = async (tab = activeTab, params = {}, options = {}) => {
     const config = moduleConfigs[tab]
@@ -237,29 +281,28 @@ function AdminDashboardPage({ appSettings = {}, authenticatedAdmin, onAdminProfi
     const config = moduleConfigs[tab]
     if (!config) return []
 
-    const cacheKey = `options:${tab}`
+    const distinctColumn = options.distinctColumn || ''
+    const cacheKey = distinctColumn ? `options:${tab}:distinct:${distinctColumn}` : `options:${tab}`
     if (options.force) invalidateAdminCache(cacheKey)
 
     const resolved = await rememberAdminCache(cacheKey, async () => {
-      const payload = await adminApi.list(config.endpoint, {
-        per_page: 'all',
-        all: 1,
-        lite: 1,
-        options: 1,
-      })
+      const payload = distinctColumn
+        ? await adminApi.list(config.endpoint, {
+          distinct: 1,
+          column: distinctColumn,
+          limit: 500,
+        })
+        : await adminApi.list(config.endpoint, {
+          per_page: 'all',
+          all: 1,
+          lite: 1,
+          options: 1,
+          limit: 500,
+        })
       return readRows(payload)
     })
 
     setOptionDatasets((current) => ({ ...current, [tab]: resolved }))
-
-    setDatasets((current) => {
-      // Don't overwrite a currently server-paginated active table with options dump.
-      if (SERVER_PAGINATED_TABS.includes(tab) && activeTabRef.current === tab && current[tab]?.length) {
-        return current
-      }
-      return { ...current, [tab]: resolved }
-    })
-
     return resolved
   }
 
@@ -334,7 +377,7 @@ function AdminDashboardPage({ appSettings = {}, authenticatedAdmin, onAdminProfi
         .filter(Boolean)),
     ].filter((dependencyTab) => {
       if (dependencyTab !== tab) return true
-      // Same-module option sources (e.g. distinct category_key) still need a full options dump.
+      // Same-module option sources (e.g. distinct category_key) still need a options load.
       return (config?.fields || []).some((field) => field.optionsFrom === tab && field.optionsDistinct)
     })
 
@@ -347,7 +390,12 @@ function AdminDashboardPage({ appSettings = {}, authenticatedAdmin, onAdminProfi
 
       await Promise.all([
         loadMain,
-        ...dependencyTabs.map((dependencyTab) => loadOptionDataset(dependencyTab)),
+        ...dependencyTabs.map((dependencyTab) => {
+          if (dependencyTab !== tab) return loadOptionDataset(dependencyTab)
+          const field = (config?.fields || []).find((item) => item.optionsFrom === tab && item.optionsDistinct)
+          const column = field?.optionsDistinct === true ? field.name : field?.optionsDistinct
+          return loadOptionDataset(dependencyTab, column ? { distinctColumn: column } : {})
+        }),
       ])
     } catch (requestError) {
       setError(requestError.message)
@@ -362,6 +410,14 @@ function AdminDashboardPage({ appSettings = {}, authenticatedAdmin, onAdminProfi
 
     const status = tableFilters.status || ''
     const search = tableSearch.trim()
+    const fromDate = tableFilters.from_date || ''
+    const toDate = tableFilters.to_date || ''
+    const extraFilters = Object.fromEntries(
+      Object.entries(tableFilters || {}).filter(([key, value]) => (
+        value
+        && !['status', 'from_date', 'to_date'].includes(key)
+      )),
+    )
 
     if (!options.silent) setIsFetching(true)
     setError('')
@@ -371,6 +427,9 @@ function AdminDashboardPage({ appSettings = {}, authenticatedAdmin, onAdminProfi
         per_page: 15,
         ...(search ? { q: search } : {}),
         ...(status ? { status } : {}),
+        ...(fromDate ? { from_date: fromDate } : {}),
+        ...(toDate ? { to_date: toDate } : {}),
+        ...extraFilters,
       })
       setDatasets((current) => ({ ...current, [tab]: readRows(payload) }))
       setServerPagination((current) => ({ ...current, [tab]: readPagination(payload) }))
@@ -420,7 +479,7 @@ function AdminDashboardPage({ appSettings = {}, authenticatedAdmin, onAdminProfi
         loadPaginatedModulePage('Service Packages', page, { silent }),
         loadOptionDataset('Services'),
         loadOptionDataset('Sub-Services'),
-        loadOptionDataset('Service Packages'),
+        loadOptionDataset('Service Packages', { distinctColumn: 'category_key' }),
       ])
       return
     }
@@ -459,18 +518,25 @@ function AdminDashboardPage({ appSettings = {}, authenticatedAdmin, onAdminProfi
   })
 
   useEffect(() => {
+    lastFilterFetchKeyRef.current = `${activeTab}|${tableSearch}|${JSON.stringify(tableFilters)}`
     loadWorkspaceForTab(activeTab, { silent: false })
   }, [activeTab])
 
+  // Search/filter changes only — tab switches already load via loadWorkspaceForTab.
   useEffect(() => {
-    if (!SERVER_PAGINATED_TABS.includes(activeTab)) return undefined
+    const tab = activeTabRef.current
+    if (!SERVER_PAGINATED_TABS.includes(tab)) return undefined
+
+    const fetchKey = `${tab}|${tableSearch}|${JSON.stringify(tableFilters)}`
+    if (fetchKey === lastFilterFetchKeyRef.current) return undefined
+    lastFilterFetchKeyRef.current = fetchKey
 
     const timer = window.setTimeout(() => {
-      loadPaginatedModulePage(activeTab, 1, { silent: true })
+      loadPaginatedModulePage(tab, 1, { silent: true })
     }, 50)
 
     return () => window.clearTimeout(timer)
-  }, [tableFilters.status, tableSearch])
+  }, [tableSearch, JSON.stringify(tableFilters)])
 
   useEffect(() => {
     if (!visibleNavSections.length || isSuperAdminProfile(currentAdminProfile)) return
@@ -540,6 +606,18 @@ function AdminDashboardPage({ appSettings = {}, authenticatedAdmin, onAdminProfi
       showErrorAlert('Permission denied', 'This role does not have permission for this action.')
       return
     }
+
+    if (activeTab === 'Partners' && record?.id && onOpenPartnerEdit) {
+      const confirmed = await askConfirmation({
+        confirmButtonText: 'Open editor',
+        text: 'Open the full partner edit page?',
+        title: 'Edit partner',
+      })
+      if (!confirmed) return
+      onOpenPartnerEdit(record.id)
+      return
+    }
+
     if (record) {
       const confirmed = await askConfirmation({
         confirmButtonText: 'Edit record',
@@ -554,6 +632,16 @@ function AdminDashboardPage({ appSettings = {}, authenticatedAdmin, onAdminProfi
         let initialValue = normalizeForInput(record?.[field.name], field.type)
         if (!record && field.autoGeneratePrefix) {
           initialValue = `${field.autoGeneratePrefix}${Math.floor(10000 + Math.random() * 90000)}`
+        }
+        if (
+          record
+          && field.name === 'partner_id'
+          && (initialValue === '' || initialValue === null || initialValue === undefined)
+          && record.partner_name
+        ) {
+          const partners = optionDatasets.Partners || datasets.Partners || []
+          const matchedPartner = partners.find((partner) => String(partner.name) === String(record.partner_name))
+          if (matchedPartner) initialValue = matchedPartner.id
         }
         if (!record && field.defaultValue !== undefined && (initialValue === '' || initialValue === null || initialValue === undefined)) {
           initialValue = field.defaultValue
@@ -570,6 +658,30 @@ function AdminDashboardPage({ appSettings = {}, authenticatedAdmin, onAdminProfi
         // Rating stored as number — keep select presets matching string options
         if (field.name === 'rating' && initialValue !== '' && initialValue !== null && initialValue !== undefined) {
           initialValue = String(initialValue)
+        }
+        if (
+          record
+          && field.name === 'booking_id'
+          && (initialValue === '' || initialValue === null || initialValue === undefined)
+          && record.metadata?.booking_no
+        ) {
+          initialValue = '__custom__'
+        }
+        if (
+          record
+          && field.name === 'booking_no'
+          && (initialValue === '' || initialValue === null || initialValue === undefined)
+        ) {
+          initialValue = record.metadata?.booking_no || ''
+        }
+        if (field.name === 'entry_for') {
+          if (record) {
+            if (record.booking_id) {
+              initialValue = record.wallet_type === 'Vendor' ? 'booking_vendor' : 'booking_customer'
+            } else {
+              initialValue = record.wallet_type === 'Vendor' ? 'vendor' : 'customer'
+            }
+          }
         }
         values[field.name] = initialValue
         return values
@@ -597,6 +709,77 @@ function AdminDashboardPage({ appSettings = {}, authenticatedAdmin, onAdminProfi
         if (value !== 'service') next.service_ids = []
         if (value !== 'package') next.service_package_ids = []
       }
+
+      if (name === 'partner_id' && (activeConfig?.fields || []).some((field) => field.name === 'partner_name')) {
+        const partnerOption = (activeConfig?.fields || [])
+          .find((field) => field.name === 'partner_id')
+          ?.options
+          ?.find((option) => String(option.value) === String(value))
+        next.partner_name = partnerOption?.label || partnerOption?.name || ''
+      }
+
+      const sourceField = (activeConfig?.fields || []).find((field) => field.name === name)
+      if (sourceField?.copyFrom) {
+        if (String(value) === '__custom__') {
+          Object.keys(sourceField.copyFrom).forEach((target) => {
+            next[target] = ''
+          })
+          next.booking_no = ''
+        } else {
+          const selectedOption = (sourceField.options || []).find((option) => String(option.value) === String(value))
+          Object.entries(sourceField.copyFrom).forEach(([target, sourceKey]) => {
+            const copied = selectedOption?.[sourceKey]
+            if (copied == null || copied === '') {
+              if (target === 'partner_name' && next.partner_name) return
+              next[target] = ''
+              return
+            }
+            next[target] = copied
+          })
+          const paymentNoField = (activeConfig?.fields || []).find((field) => field.name === 'payment_no' && field.autoGeneratePrefix)
+          if (paymentNoField && selectedOption?.booking_no) {
+            next.payment_no = `${paymentNoField.autoGeneratePrefix}${selectedOption.booking_no}`
+          }
+          if (name === 'booking_id' && sourceField.customSentinel && !sourceField.copyFrom?.booking_no) {
+            next.booking_no = ''
+          }
+        }
+      }
+
+      if (name === 'entry_for') {
+        const isBooking = String(value).startsWith('booking')
+        next.wallet_type = value === 'vendor' || value === 'booking_vendor' ? 'Vendor' : 'Customer'
+        if (!isBooking) {
+          next.booking_id = ''
+          next.booking_no = ''
+        }
+        if (value === 'vendor' || value === 'booking_vendor') next.customer_profile_id = ''
+        if (value === 'customer' || value === 'booking_customer') next.partner_id = ''
+      }
+
+      if (name === 'booking_no' && String(current.booking_id) === '__custom__') {
+        const paymentNoField = (activeConfig?.fields || []).find((field) => field.name === 'payment_no' && field.autoGeneratePrefix)
+        const typed = String(value || '').trim()
+        if (paymentNoField && typed) {
+          next.payment_no = `${paymentNoField.autoGeneratePrefix}${typed}`
+        }
+      }
+
+      ;(activeConfig?.fields || []).forEach((field) => {
+        if (field.filterBy?.field !== name || !current[field.name]) return
+        const stillValid = (field.options || []).some((option) => (
+          String(option.value) === String(current[field.name])
+          && String(option[field.filterBy.recordKey] ?? '') === String(value)
+        ))
+        if (stillValid) return
+        next[field.name] = ''
+        if (field.copyFrom) {
+          Object.keys(field.copyFrom).forEach((target) => {
+            if (target === 'partner_name' && name === 'partner_id') return
+            next[target] = ''
+          })
+        }
+      })
 
       // When parent service changes, clear dependent fields if they no longer match
       if (name === 'service_id' && activeTab === 'Service Packages') {
@@ -1102,6 +1285,18 @@ function AdminDashboardPage({ appSettings = {}, authenticatedAdmin, onAdminProfi
     },
     onViewPermissions: (adminUser) => setPermissionViewerAdmin(adminUser),
     onViewMetadata: (record) => setAppContentMetadataRecord(record),
+    onViewNotificationReport: async (record) => {
+      if (!record?.id) return
+      setActionLoadingId('action')
+      try {
+        const report = await adminApi.notificationReport(record.id)
+        setNotificationReport(report)
+      } catch (requestError) {
+        showErrorAlert('Report unavailable', requestError.message)
+      } finally {
+        setActionLoadingId('')
+      }
+    },
   })
 
   const resetTableControls = () => {
@@ -1199,7 +1394,10 @@ function AdminDashboardPage({ appSettings = {}, authenticatedAdmin, onAdminProfi
   }
 
   const renderContent = () => {
-    if (isFetching) return <AdminPageSkeleton />
+    const hasCachedRows = Boolean(datasets[activeTab]?.length)
+    if (isFetching && !hasCachedRows && !dashboardPayload && activeTab !== 'Package Detail Sections') {
+      return <AdminPageSkeleton />
+    }
     if (activeTab === 'Profiles') {
       return (
         <ProfilesView
@@ -1208,7 +1406,7 @@ function AdminDashboardPage({ appSettings = {}, authenticatedAdmin, onAdminProfi
           onChangePassword={changeProfilePassword}
           onSaveProfile={saveProfile}
           passwordMessage={passwordSaveMessage}
-          roles={datasets.Roles || []}
+          roles={optionDatasets.Roles || datasets.Roles || []}
           saveMessage={profileSaveMessage}
         />
       )
@@ -1229,7 +1427,7 @@ function AdminDashboardPage({ appSettings = {}, authenticatedAdmin, onAdminProfi
           onAcceptBooking={acceptBooking}
           onAssignPartner={assignPartner}
           onRejectBooking={rejectBooking}
-          partners={(datasets.Partners || []).filter((partner) => partner.availability !== 'Unavailable')}
+          partners={(optionDatasets.Partners || datasets.Partners || []).filter((partner) => partner.availability !== 'Unavailable')}
         />
       )
     }
@@ -1250,7 +1448,7 @@ function AdminDashboardPage({ appSettings = {}, authenticatedAdmin, onAdminProfi
           onBackToList={setRoleViewMode}
           onDelete={deleteRole}
           onSave={saveRole}
-          roles={datasets.Roles || []}
+          roles={datasets.Roles || optionDatasets.Roles || []}
           viewMode={roleViewMode}
         />
       )
@@ -1285,7 +1483,10 @@ function AdminDashboardPage({ appSettings = {}, authenticatedAdmin, onAdminProfi
           globalSearch={globalSearch}
           makeColumns={makeColumns}
           onAdd={() => openEditor()}
+          onApplyFilters={(nextFilters) => setTableFilters(nextFilters || {})}
           onClearFilters={resetTableControls}
+          onDelete={deleteRecord}
+          onEdit={openEditor}
           onFilterChange={(name, value) => setTableFilters((current) => ({ ...current, [name]: value }))}
           onPageChange={(page) => SERVER_PAGINATED_TABS.includes(activeTab) && loadPaginatedModulePage(activeTab, page, { silent: true })}
           onTableSearchChange={setTableSearch}
@@ -1385,6 +1586,29 @@ function AdminDashboardPage({ appSettings = {}, authenticatedAdmin, onAdminProfi
         />
       )}
 
+      {notificationReport && (
+        <NotificationReportModal
+          isResending={actionLoadingId === 'resend-notification'}
+          onClose={() => setNotificationReport(null)}
+          onResend={async () => {
+            const id = notificationReport?.notification?.id
+            if (!id) return
+            setActionLoadingId('resend-notification')
+            try {
+              const report = await adminApi.resendNotification(id)
+              setNotificationReport(report)
+              showSuccessAlert('Resend complete', `${report.counts?.sent || 0} sent, ${report.counts?.failed || 0} failed.`)
+              await loadModule('Notifications')
+            } catch (requestError) {
+              showErrorAlert('Resend failed', requestError.message)
+            } finally {
+              setActionLoadingId('')
+            }
+          }}
+          report={notificationReport}
+        />
+      )}
+
       <Toast message={toastMessage} />
     </>
   )
@@ -1458,9 +1682,11 @@ function BookingDetailsModal({ onClose, onInvoice, record }) {
             <h2 className="mt-1 text-base font-medium text-slate-900">{bookingId}</h2>
           </div>
           <div className="flex gap-2">
-            <button className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700" onClick={onInvoice} type="button">
-              View official invoice
-            </button>
+            {!/cancel|reject/i.test(String(record?.status || '')) ? (
+              <button className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700" onClick={onInvoice} type="button">
+                View official invoice
+              </button>
+            ) : null}
             <button className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50" onClick={onClose} type="button">
               Close
             </button>

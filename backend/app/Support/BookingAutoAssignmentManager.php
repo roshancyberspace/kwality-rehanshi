@@ -5,13 +5,15 @@ namespace App\Support;
 use App\Jobs\AutoAssignBookingJob;
 use App\Models\AdminNotification;
 use App\Models\Booking;
-use App\Models\Category;
 use App\Models\Partner;
-use App\Models\Service;
+use App\Models\ServiceLocation;
 use App\Models\ServicePackage;
 use App\Models\Setting;
 use App\Models\VendorJob;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class BookingAutoAssignmentManager
 {
@@ -25,69 +27,259 @@ class BookingAutoAssignmentManager
             return;
         }
 
-        AutoAssignBookingJob::dispatch($booking->id)
-            ->delay(now()->addSeconds((int) ($this->delayMinutes() * 60)));
-    }
-
-    public function assignIfPossible(Booking $booking): ?Booking
-    {
-        if (! $this->isAssignableBooking($booking)) {
-            return null;
-        }
-
-        if (! $this->autoApprove() && $booking->status !== 'Accepted') {
-            Log::info('Auto assignment skipped: booking is not accepted', [
+        if (! $this->isApprovedStatus($booking->status)) {
+            Log::info('Auto assignment schedule skipped: booking not approved', [
                 'booking_id' => $booking->id,
                 'booking_no' => $booking->booking_no,
                 'status' => $booking->status,
             ]);
 
+            return;
+        }
+
+        AutoAssignBookingJob::dispatch($booking->id)
+            ->delay(now()->addSeconds((int) ($this->delayMinutes() * 60)));
+    }
+
+    public function approveIfPossible(Booking $booking, bool $scheduleAssignment = true): ?Booking
+    {
+        if (! $this->autoApprove()) {
             return null;
         }
 
-        $partner = $this->findAvailablePartner($booking);
-        if (! $partner) {
-            Log::info('Auto assignment skipped: no matching available partner', [
+        try {
+            return DB::transaction(function () use ($booking, $scheduleAssignment) {
+                $locked = Booking::query()->whereKey($booking->id)->lockForUpdate()->first();
+                if (! $locked) {
+                    return null;
+                }
+
+                if (! in_array($locked->status, ['Pending Approval', 'Pending'], true)) {
+                    return null;
+                }
+
+                if ($locked->partner_id) {
+                    return null;
+                }
+
+                $previousStatus = $locked->status;
+                $metadata = $locked->metadata ?? [];
+                $metadata['approval'] = [
+                    ...($metadata['approval'] ?? []),
+                    'status' => 'accepted',
+                    'accepted_at' => now()->toDateTimeString(),
+                    'mode' => 'auto',
+                ];
+                $metadata['status_times'] = [
+                    ...($metadata['status_times'] ?? []),
+                    'accepted' => now()->toISOString(),
+                ];
+
+                $timeline = $locked->timeline ?? [];
+                if (! in_array('Booking accepted by auto assignment', $timeline, true)
+                    && ! in_array('Booking accepted by super admin', $timeline, true)) {
+                    $timeline[] = 'Booking accepted by auto assignment';
+                }
+
+                $locked->update([
+                    'status' => 'Accepted',
+                    'timeline' => $timeline,
+                    'metadata' => $metadata,
+                ]);
+
+                Log::info('Booking automatically approved', [
+                    'booking_id' => $locked->id,
+                    'booking_no' => $locked->booking_no,
+                ]);
+
+                $fresh = $locked->fresh();
+                app(WalletManager::class)->syncBooking($fresh);
+                app(BookingCustomerMailer::class)->sendStatusUpdate($fresh, $previousStatus);
+
+                if ($scheduleAssignment && $this->enabled()) {
+                    $this->scheduleIfEnabled($fresh);
+                }
+
+                return $fresh;
+            });
+        } catch (Throwable $exception) {
+            Log::error('Automatic approval failed', [
                 'booking_id' => $booking->id,
-                'booking_no' => $booking->booking_no,
-                'service_name' => $booking->service_name,
+                'error' => $exception->getMessage(),
             ]);
 
             return null;
         }
+    }
 
-        return $this->assignPartner($booking, $partner, true);
+    public function assignIfPossible(Booking $booking): ?Booking
+    {
+        if (! $this->enabled()) {
+            return null;
+        }
+
+        try {
+            return DB::transaction(function () use ($booking) {
+                $locked = Booking::query()->whereKey($booking->id)->lockForUpdate()->first();
+                if (! $locked) {
+                    return null;
+                }
+
+                if (! $this->isAssignableBooking($locked)) {
+                    Log::info('Assignment skipped because booking already assigned or closed', [
+                        'booking_id' => $locked->id,
+                        'booking_no' => $locked->booking_no,
+                        'status' => $locked->status,
+                        'partner_id' => $locked->partner_id,
+                    ]);
+
+                    return null;
+                }
+
+                if (! $this->isApprovedStatus($locked->status)) {
+                    Log::info('Auto assignment skipped: booking is not accepted', [
+                        'booking_id' => $locked->id,
+                        'booking_no' => $locked->booking_no,
+                        'status' => $locked->status,
+                    ]);
+
+                    return null;
+                }
+
+                if (! $this->delayElapsed($locked)) {
+                    Log::info('Booking waiting for assignment delay', [
+                        'booking_id' => $locked->id,
+                        'booking_no' => $locked->booking_no,
+                        'delay_minutes' => $this->delayMinutes(),
+                    ]);
+
+                    return null;
+                }
+
+                $requirements = $this->bookingRequirements($locked);
+                if ($requirements['skip_reason']) {
+                    Log::info('Assignment skipped: '.$requirements['skip_reason'], [
+                        'booking_id' => $locked->id,
+                        'booking_no' => $locked->booking_no,
+                    ]);
+
+                    return null;
+                }
+
+                Log::info('Searching eligible vendors', [
+                    'booking_id' => $locked->id,
+                    'booking_no' => $locked->booking_no,
+                    'service_ids' => $requirements['service_ids'],
+                    'sub_service_ids' => $requirements['sub_service_ids'],
+                    'pincode' => $requirements['pincode'],
+                ]);
+
+                $partner = $this->findAvailablePartner($locked, $requirements);
+                if (! $partner) {
+                    Log::info('No eligible vendor found', [
+                        'booking_id' => $locked->id,
+                        'booking_no' => $locked->booking_no,
+                    ]);
+
+                    return null;
+                }
+
+                $partner = Partner::query()->whereKey($partner->id)->lockForUpdate()->first();
+                if (! $partner
+                    || $partner->status !== 'Active'
+                    || $partner->kyc_status !== 'Approved'
+                    || $partner->availability !== 'Available') {
+                    Log::info('Vendor selected but no longer eligible', [
+                        'booking_id' => $locked->id,
+                        'partner_id' => $partner?->id,
+                    ]);
+
+                    return null;
+                }
+
+                Log::info('Vendor selected', [
+                    'booking_id' => $locked->id,
+                    'booking_no' => $locked->booking_no,
+                    'partner_id' => $partner->id,
+                ]);
+
+                return $this->assignPartner($locked, $partner, true);
+            });
+        } catch (Throwable $exception) {
+            Log::error('Automatic assignment failed', [
+                'booking_id' => $booking->id,
+                'error' => $exception->getMessage(),
+            ]);
+
+            return null;
+        }
     }
 
     public function processDueBookings(): array
     {
-        if (! $this->enabled()) {
-            return ['checked' => 0, 'assigned' => 0, 'skipped' => 0];
-        }
-
         $checked = 0;
+        $approved = 0;
         $assigned = 0;
         $delayCutoff = now()->subSeconds((int) ($this->delayMinutes() * 60));
-        $statuses = $this->autoApprove() ? ['Pending Approval', 'Pending', 'Accepted'] : ['Accepted'];
 
-        Booking::query()
-            ->whereNull('partner_id')
-            ->whereIn('status', $statuses)
-            ->where('created_at', '<=', $delayCutoff)
-            ->oldest('id')
-            ->chunkById(50, function ($bookings) use (&$checked, &$assigned) {
-                foreach ($bookings as $booking) {
-                    $checked++;
-                    if ($this->assignIfPossible($booking)) {
-                        $assigned++;
+        if ($this->autoApprove()) {
+            Booking::query()
+                ->whereNull('partner_id')
+                ->whereIn('status', ['Pending Approval', 'Pending'])
+                ->where('created_at', '<=', $delayCutoff)
+                ->oldest('id')
+                ->chunkById(50, function ($bookings) use (&$checked, &$approved) {
+                    foreach ($bookings as $booking) {
+                        $checked++;
+                        try {
+                            if ($this->approveIfPossible($booking, false)) {
+                                $approved++;
+                            }
+                        } catch (Throwable $exception) {
+                            Log::error('Automatic approval chunk item failed', [
+                                'booking_id' => $booking->id,
+                                'error' => $exception->getMessage(),
+                            ]);
+                        }
                     }
-                }
-            });
+                });
+        }
+
+        if ($this->enabled()) {
+            Booking::query()
+                ->whereNull('partner_id')
+                ->where('status', 'Accepted')
+                ->oldest('id')
+                ->chunkById(50, function ($bookings) use (&$checked, &$assigned) {
+                    foreach ($bookings as $booking) {
+                        $checked++;
+                        try {
+                            if (! $this->delayElapsed($booking)) {
+                                Log::info('Booking waiting for assignment delay', [
+                                    'booking_id' => $booking->id,
+                                    'booking_no' => $booking->booking_no,
+                                ]);
+                                continue;
+                            }
+
+                            if ($this->assignIfPossible($booking)) {
+                                $assigned++;
+                            }
+                        } catch (Throwable $exception) {
+                            Log::error('Automatic assignment chunk item failed', [
+                                'booking_id' => $booking->id,
+                                'error' => $exception->getMessage(),
+                            ]);
+                        }
+                    }
+                });
+        }
 
         return [
             'checked' => $checked,
+            'approved' => $approved,
             'assigned' => $assigned,
-            'skipped' => max(0, $checked - $assigned),
+            'skipped' => max(0, $checked - $approved - $assigned),
         ];
     }
 
@@ -96,17 +288,8 @@ class BookingAutoAssignmentManager
         $previousStatus = $booking->status;
         $metadata = $booking->metadata ?? [];
 
-        if ($automatic && $this->autoApprove()) {
-            $metadata['approval'] = [
-                ...($metadata['approval'] ?? []),
-                'status' => 'accepted',
-                'accepted_at' => now()->toDateTimeString(),
-                'mode' => 'auto',
-            ];
-        }
         $metadata['status_times'] = [
             ...($metadata['status_times'] ?? []),
-            ...($automatic && $this->autoApprove() ? ['accepted' => now()->toISOString()] : []),
             'professional_assigned' => now()->toISOString(),
         ];
 
@@ -119,9 +302,6 @@ class BookingAutoAssignmentManager
 
         $timelineEntry = ($automatic ? 'Auto assigned' : 'Assigned').' to '.$partner->name;
         $timeline = $booking->timeline ?? [];
-        if ($automatic && $this->autoApprove() && ! in_array('Booking accepted by auto assignment', $timeline, true)) {
-            $timeline[] = 'Booking accepted by auto assignment';
-        }
         $timeline[] = $timelineEntry;
 
         $booking->update([
@@ -154,7 +334,7 @@ class BookingAutoAssignmentManager
                     'customer_phone' => $booking->customer_phone,
                     'customer_location' => $metadata['service_location'] ?? data_get($metadata, 'service_address.location'),
                     'otp' => $metadata['service_otp'] ?? null,
-                    'payment' => trim(($booking->payment_method ?: 'Payment') . ' - ' . ($booking->payment_status ?: 'Pending')),
+                    'payment' => trim(($booking->payment_method ?: 'Payment').' - '.($booking->payment_status ?: 'Pending')),
                     'partner_name' => $partner->name,
                     'service_address' => $metadata['service_address'] ?? null,
                     'notification' => [
@@ -184,31 +364,137 @@ class BookingAutoAssignmentManager
         app(WalletManager::class)->syncBooking($booking);
         app(BookingCustomerMailer::class)->sendStatusUpdate($booking, $previousStatus);
 
+        Log::info('Booking assigned', [
+            'booking_id' => $booking->id,
+            'booking_no' => $booking->booking_no,
+            'partner_id' => $partner->id,
+            'mode' => $automatic ? 'auto' : 'manual',
+        ]);
+
         return $booking;
     }
 
-    private function findAvailablePartner(Booking $booking): ?Partner
+    private function findAvailablePartner(Booking $booking, array $requirements): ?Partner
     {
-        $context = $this->bookingContext($booking);
-        $address = strtolower((string) $booking->address);
-
-        return Partner::query()
+        $candidates = Partner::query()
             ->where('status', 'Active')
             ->where('kyc_status', 'Approved')
             ->where('availability', 'Available')
             ->get()
-            ->filter(fn (Partner $partner) => $this->partnerMatchesBooking($partner, $context, $address))
+            ->map(function (Partner $partner) use ($requirements) {
+                $score = $this->partnerMatchScore($partner, $requirements);
+                if ($score === null) {
+                    return null;
+                }
+
+                return [
+                    'partner' => $partner,
+                    'score' => $score,
+                    'workload' => $this->activeJobCount($partner),
+                    'rating' => (float) ($partner->rating ?? 0),
+                ];
+            })
+            ->filter()
             ->sortBy([
-                fn (Partner $partner) => $this->activeJobCount($partner),
-                fn (Partner $partner) => -1 * (float) ($partner->rating ?? 0),
-                fn (Partner $partner) => $partner->id,
+                ['score', 'asc'],
+                ['workload', 'asc'],
+                ['rating', 'desc'],
+                fn ($row) => $row['partner']->id,
             ])
-            ->first();
+            ->values();
+
+        return $candidates->first()['partner'] ?? null;
     }
 
-    private function partnerMatchesBooking(Partner $partner, array $context, string $address): bool
+    /**
+     * Lower score = higher priority. Null = ineligible.
+     */
+    private function partnerMatchScore(Partner $partner, array $requirements): ?int
     {
-        if ($this->matchArea() && $partner->area && ! str_contains($address, strtolower($partner->area))) {
+        $partnerSubIds = array_values(array_filter(array_map('intval', $partner->sub_service_ids ?? [])));
+        $partnerServiceIds = array_values(array_filter(array_map('intval', $partner->service_ids ?? [])));
+        $requiredSubIds = $requirements['sub_service_ids'];
+        $requiredServiceIds = $requirements['service_ids'];
+
+        if ($requiredSubIds !== []) {
+            if ($partnerSubIds === []) {
+                return null;
+            }
+            if (empty(array_intersect($requiredSubIds, $partnerSubIds))) {
+                return null;
+            }
+        } elseif ($requiredServiceIds !== []) {
+            if ($partnerServiceIds !== [] && empty(array_intersect($requiredServiceIds, $partnerServiceIds))) {
+                return null;
+            }
+            if ($partnerServiceIds === [] && $partnerSubIds === []) {
+                // Legacy partners without ID lists: soft keyword fallback only when no IDs exist.
+                if (! $this->legacyKeywordMatch($partner, $requirements['keywords'])) {
+                    return null;
+                }
+            }
+        } else {
+            return null;
+        }
+
+        $bookingPincode = $requirements['pincode'];
+        $partnerPincode = $this->normalizePincode($partner->pincode);
+        $partnerPins = collect($partner->serviceable_pincodes ?? [])
+            ->map(fn ($value) => $this->normalizePincode($value))
+            ->filter()
+            ->when($partnerPincode, fn ($pins) => $pins->push($partnerPincode))
+            ->unique()
+            ->values()
+            ->all();
+        $bookingCity = strtolower(trim((string) $requirements['city']));
+        $partnerCity = strtolower(trim((string) ($partner->city ?? '')));
+        $bookingArea = strtolower(trim((string) $requirements['area']));
+        $partnerArea = strtolower(trim((string) ($partner->area ?? '')));
+
+        if ($bookingPincode) {
+            if (in_array($bookingPincode, $partnerPins, true)) {
+                return 0; // exact pincode / serviceable list
+            }
+
+            if ($partnerPins !== [] && ! empty(array_intersect($partnerPins, $requirements['nearby_pincodes']))) {
+                return 1; // nearby/serviceable pincode
+            }
+
+            if ($bookingCity && $partnerCity && $bookingCity === $partnerCity) {
+                return 2; // same city fallback
+            }
+
+            if ($this->matchArea()) {
+                if ($bookingArea && $partnerArea && str_contains($bookingArea, $partnerArea)) {
+                    return 3;
+                }
+                if ($partnerArea && str_contains(strtolower((string) $requirements['address']), $partnerArea)) {
+                    return 3;
+                }
+
+                return null;
+            }
+
+            return 4; // skill match without location preference
+        }
+
+        if ($this->matchArea()) {
+            if ($bookingArea && $partnerArea && (str_contains($bookingArea, $partnerArea) || str_contains($partnerArea, $bookingArea))) {
+                return 3;
+            }
+            if ($partnerArea && str_contains(strtolower((string) $requirements['address']), $partnerArea)) {
+                return 3;
+            }
+
+            return null;
+        }
+
+        return 5;
+    }
+
+    private function legacyKeywordMatch(Partner $partner, array $keywords): bool
+    {
+        if ($keywords === []) {
             return false;
         }
 
@@ -219,7 +505,7 @@ class BookingAutoAssignmentManager
             ...($partner->services ?? []),
         ])->filter()->join(' '));
 
-        foreach ($context['keywords'] as $keyword) {
+        foreach ($keywords as $keyword) {
             if ($keyword && str_contains($partnerText, $keyword)) {
                 return true;
             }
@@ -228,33 +514,145 @@ class BookingAutoAssignmentManager
         return false;
     }
 
-    private function bookingContext(Booking $booking): array
+    private function bookingRequirements(Booking $booking): array
     {
-        $service = Service::where('name', $booking->service_name)->with('category')->first();
-        $packages = collect(data_get($booking->metadata, 'items', []))
-            ->pluck('id')
+        $packageIds = collect(data_get($booking->metadata, 'items', []))
+            ->map(fn ($item) => (int) ($item['id'] ?? $item['service_package_id'] ?? 0))
             ->filter()
-            ->map(fn ($id) => ServicePackage::with('service.category')->find($id))
-            ->filter();
-        $category = $service?->category ?: $packages->first()?->service?->category ?: Category::where('name', $booking->service_name)->first();
+            ->values();
 
-        $keywords = collect([
-            $booking->service_name,
-            $service?->name,
-            $category?->name,
-            ...($service?->includes ?? []),
-            ...$packages->pluck('name')->all(),
-            ...$packages->pluck('category_key')->all(),
-        ])
+        if ($booking->service_package_id) {
+            $packageIds->push((int) $booking->service_package_id);
+        }
+
+        $packages = $packageIds->isNotEmpty()
+            ? ServicePackage::query()->whereIn('id', $packageIds->unique()->all())->get()
+            : collect();
+
+        $subServiceIds = $packages->pluck('sub_service_id')->filter()->map(fn ($id) => (int) $id)->unique()->values()->all();
+        $serviceIds = collect([$booking->service_id])
+            ->merge($packages->pluck('service_id'))
             ->filter()
-            ->map(fn ($value) => strtolower((string) $value))
-            ->flatMap(fn ($value) => [$value, ...preg_split('/[^a-z0-9]+/i', $value)])
-            ->filter(fn ($value) => strlen($value) >= 3)
+            ->map(fn ($id) => (int) $id)
             ->unique()
             ->values()
             ->all();
 
-        return ['keywords' => $keywords];
+        $pincode = $this->bookingPincode($booking);
+        $city = (string) (data_get($booking->metadata, 'service_address.city') ?: '');
+        $area = (string) (
+            data_get($booking->metadata, 'service_address.area')
+            ?: data_get($booking->metadata, 'service_address.street')
+            ?: ''
+        );
+        $address = (string) $booking->address;
+
+        $nearbyPincodes = [];
+        if ($pincode) {
+            $nearbyQuery = ServiceLocation::query()
+                ->where('status', 'Active')
+                ->where('pincode', '!=', $pincode)
+                ->whereNotNull('pincode');
+
+            if ($city !== '') {
+                $nearbyQuery->whereRaw('LOWER(city) = ?', [strtolower($city)]);
+            }
+
+            $nearbyPincodes = $nearbyQuery
+                ->pluck('pincode')
+                ->map(fn ($value) => $this->normalizePincode($value))
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
+        }
+
+        $keywords = collect([
+            $booking->service_name,
+            ...$packages->pluck('name')->all(),
+        ])
+            ->filter()
+            ->map(fn ($value) => strtolower((string) $value))
+            ->flatMap(fn ($value) => [$value, ...preg_split('/[^a-z0-9]+/i', $value)])
+            ->filter(fn ($value) => strlen((string) $value) >= 3)
+            ->unique()
+            ->values()
+            ->all();
+
+        $skipReason = null;
+        if ($subServiceIds === [] && $serviceIds === []) {
+            $skipReason = 'Invalid/missing subservice';
+        }
+
+        return [
+            'sub_service_ids' => $subServiceIds,
+            'service_ids' => $serviceIds,
+            'pincode' => $pincode,
+            'nearby_pincodes' => $nearbyPincodes,
+            'city' => $city,
+            'area' => $area,
+            'address' => $address,
+            'keywords' => $keywords,
+            'skip_reason' => $skipReason,
+        ];
+    }
+
+    private function bookingPincode(Booking $booking): ?string
+    {
+        $candidates = [
+            data_get($booking->metadata, 'service_address.pincode'),
+            data_get($booking->metadata, 'pincode'),
+            data_get($booking->metadata, 'service_address.metadata.pincode'),
+        ];
+
+        foreach ($candidates as $candidate) {
+            $normalized = $this->normalizePincode($candidate);
+            if ($normalized) {
+                return $normalized;
+            }
+        }
+
+        if (preg_match('/\b(\d{6})\b/', (string) $booking->address, $matches)) {
+            return $matches[1];
+        }
+
+        return null;
+    }
+
+    private function normalizePincode(mixed $value): ?string
+    {
+        $digits = preg_replace('/\D+/', '', (string) $value);
+        if (! $digits) {
+            return null;
+        }
+
+        return strlen($digits) >= 6 ? substr($digits, 0, 6) : $digits;
+    }
+
+    private function delayElapsed(Booking $booking): bool
+    {
+        $eligibleAt = $this->assignmentEligibleAt($booking);
+        if (! $eligibleAt) {
+            return false;
+        }
+
+        return $eligibleAt->lte(now()->subSeconds((int) ($this->delayMinutes() * 60)));
+    }
+
+    private function assignmentEligibleAt(Booking $booking): ?Carbon
+    {
+        $acceptedAt = data_get($booking->metadata, 'approval.accepted_at')
+            ?: data_get($booking->metadata, 'status_times.accepted');
+
+        if ($acceptedAt) {
+            try {
+                return Carbon::parse($acceptedAt);
+            } catch (Throwable) {
+                // fall through
+            }
+        }
+
+        return $booking->created_at ? Carbon::parse($booking->created_at) : null;
     }
 
     private function activeJobCount(Partner $partner): int
@@ -267,7 +665,12 @@ class BookingAutoAssignmentManager
     private function isAssignableBooking(Booking $booking): bool
     {
         return ! $booking->partner_id
-            && ! in_array($booking->status, ['Rejected', 'Cancelled', 'Completed', 'Refunded'], true);
+            && ! in_array($booking->status, ['Rejected', 'Cancelled', 'Completed', 'Refunded', 'Professional Assigned', 'Vendor Accepted', 'On The Way', 'Reached - OTP Verified', 'Started'], true);
+    }
+
+    private function isApprovedStatus(?string $status): bool
+    {
+        return in_array($status, ['Accepted'], true);
     }
 
     public function enabled(): bool

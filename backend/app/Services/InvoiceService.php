@@ -11,6 +11,11 @@ class InvoiceService
 {
     public function generateForBooking(Booking $booking, bool $force = false)
     {
+        $status = strtolower((string) $booking->status);
+        if (str_contains($status, 'cancel') || str_contains($status, 'reject')) {
+            abort(422, 'Invoice is not available for cancelled or rejected bookings.');
+        }
+
         if (!$force) {
             $existing = Invoice::where('booking_id', $booking->id)->first();
             if ($existing) {

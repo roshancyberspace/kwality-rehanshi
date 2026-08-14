@@ -228,7 +228,7 @@ class WalletManager
         return $transaction;
     }
 
-    private function postVendorTransaction(Partner $partner, Booking $booking, string $direction, string $type, float $amount, string $description): WalletTransaction
+    public function postVendorTransaction(Partner $partner, ?Booking $booking, string $direction, string $type, float $amount, string $description): WalletTransaction
     {
         $currentBalance = (float) WalletTransaction::where('wallet_type', 'Vendor')->where('partner_id', $partner->id)->latest('id')->value('balance_after');
         $balance = round($currentBalance + ($direction === 'Credit' ? $amount : -$amount), 2);
@@ -237,8 +237,8 @@ class WalletManager
             'transaction_no' => $this->transactionNo(),
             'wallet_type' => 'Vendor',
             'partner_id' => $partner->id,
-            'booking_id' => $booking->id,
-            'booking_no' => $booking->booking_no,
+            'booking_id' => $booking?->id,
+            'booking_no' => $booking?->booking_no,
             'direction' => $direction,
             'type' => $type,
             'amount' => $amount,
@@ -336,7 +336,7 @@ class WalletManager
         return Category::where('name', $booking->service_name)->first();
     }
 
-    private function customerForBooking(Booking $booking): ?CustomerProfile
+    public function customerForBooking(Booking $booking): ?CustomerProfile
     {
         return CustomerProfile::where('phone', $booking->customer_phone)->first()
             ?: CustomerProfile::where('name', $booking->customer_name)->first();

@@ -1,7 +1,38 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ActionButton, DataTable, Panel } from '../../../components/admin/AdminUI'
+import { ActionButton, DataTable, Panel, StatusBadge } from '../../../components/admin/AdminUI'
 import { adminApi } from '../../../services/adminApi'
 import { showErrorAlert, showSuccessAlert } from '../utils/confirmations'
+
+const readList = (payload) => {
+  if (Array.isArray(payload)) return payload
+  if (Array.isArray(payload?.data)) return payload.data
+  return []
+}
+
+const fetchAllRows = async (endpoint) => {
+  const dump = await adminApi.list(endpoint, { all: 1, per_page: -1, limit: 10000 })
+  const dumped = readList(dump)
+  const dumpedTotal = Number(dump?.total || 0)
+  if (dumped.length && (!dumpedTotal || dumped.length >= dumpedTotal)) return dumped
+
+  const pageSize = 100
+  const rows = []
+  let page = 1
+  let lastPage = 1
+  let total = dumpedTotal
+
+  do {
+    const payload = await adminApi.list(endpoint, { per_page: pageSize, page })
+    const chunk = readList(payload)
+    rows.push(...chunk)
+    lastPage = Math.max(1, Number(payload?.last_page || payload?.meta?.last_page || page))
+    total = Number(payload?.total || payload?.meta?.total || total || rows.length)
+    if (!chunk.length) break
+    page += 1
+  } while (page <= lastPage && rows.length < total)
+
+  return rows
+}
 
 const sectionTemplates = [
   ['summary', 'Package summary', 'summary'],
@@ -523,6 +554,10 @@ function PackageDetailSectionsView({ onRefresh }) {
   const [editingRecord, setEditingRecord] = useState(null)
   const [form, setForm] = useState(blankForm)
   const [search, setSearch] = useState('')
+  const [serviceFilter, setServiceFilter] = useState('')
+  const [subServiceFilter, setSubServiceFilter] = useState('')
+  const [sectionNameFilter, setSectionNameFilter] = useState('')
+  const [subServices, setSubServices] = useState([])
   const [loading, setLoading] = useState(false)
 
   const packageOptions = packages.map((item) => ({
@@ -550,16 +585,18 @@ function PackageDetailSectionsView({ onRefresh }) {
   const loadData = async () => {
     setLoading(true)
     try {
-      const [sectionPayload, servicePayload, packagePayload, brandPayload] = await Promise.all([
-        adminApi.list('/service-package-sections', { per_page: 500 }),
-        adminApi.list('/services', { per_page: 500 }),
-        adminApi.list('/service-packages', { per_page: 500 }),
-        adminApi.list('/brands', { per_page: 500 }),
+      const [sectionRows, serviceRows, packageRows, brandRows, subServiceRows] = await Promise.all([
+        fetchAllRows('/service-package-sections'),
+        fetchAllRows('/services'),
+        fetchAllRows('/service-packages'),
+        fetchAllRows('/brands'),
+        fetchAllRows('/sub-services'),
       ])
-      setSections(sectionPayload.data || [])
-      setServices(servicePayload.data || [])
-      setPackages(packagePayload.data || [])
-      setBrands(brandPayload.data || [])
+      setSections(sectionRows)
+      setServices(serviceRows)
+      setPackages(packageRows)
+      setBrands(brandRows)
+      setSubServices(subServiceRows)
     } catch (error) {
       showErrorAlert('Unable to load sections', error.message)
     } finally {
@@ -576,27 +613,69 @@ function PackageDetailSectionsView({ onRefresh }) {
   }, [])
 
   const activeTemplate = sectionTemplates.find(([key]) => key === activeKey) || sectionTemplates[0]
+  const resolvePackage = (section) => (
+    section.service_package
+    || section.servicePackage
+    || packageById.get(String(section.service_package_id))
+    || null
+  )
+
+  const resolveService = (section, servicePackage) => (
+    section.service
+    || serviceById.get(String(section.service_id))
+    || servicePackage?.service
+    || null
+  )
+
+  const subServiceOptions = useMemo(() => (
+    subServices
+      .filter((item) => !serviceFilter || String(item.service_id) === String(serviceFilter))
+      .map((item) => ({ label: item.name, value: item.id }))
+  ), [serviceFilter, subServices])
+
+  const sectionNameOptions = useMemo(() => {
+    const titles = new Set()
+    sections.forEach((section) => {
+      const title = String(section.title || '').trim()
+      if (title) titles.add(title)
+    })
+    return [...titles].sort((left, right) => left.localeCompare(right))
+  }, [sections])
+
   const visibleSections = useMemo(() => {
     const needle = search.trim().toLowerCase()
-    return sections
-      .filter((section) => activeKey === 'custom' ? !sectionTemplates.some(([key]) => key === section.section_key && key !== 'custom') : section.section_key === activeKey)
-      .filter((section) => {
-        if (!needle) return true
-        const servicePackage = packageById.get(String(section.service_package_id))
-        const service = serviceById.get(String(section.service_id))
-        return [
-          section.title,
-          section.section_type,
-          servicePackage?.name,
-          servicePackage?.service?.name,
-          service?.name,
-          section.status,
-        ]
-          .join(' ')
-          .toLowerCase()
-          .includes(needle)
-      })
-  }, [activeKey, packageById, search, sections, serviceById])
+    const hasQuery = Boolean(needle || serviceFilter || subServiceFilter || sectionNameFilter)
+
+    return sections.filter((section) => {
+      if (!hasQuery) {
+        const matchesTab = activeKey === 'custom'
+          ? !sectionTemplates.some(([key]) => key === section.section_key && key !== 'custom')
+          : section.section_key === activeKey
+        if (!matchesTab) return false
+      }
+
+      const servicePackage = resolvePackage(section)
+      const service = resolveService(section, servicePackage)
+      const serviceId = section.service_id || servicePackage?.service_id || service?.id
+      const subServiceId = servicePackage?.sub_service_id
+      if (sectionNameFilter && String(section.title || '') !== sectionNameFilter) return false
+      if (serviceFilter && String(serviceId) !== String(serviceFilter)) return false
+      if (subServiceFilter && String(subServiceId) !== String(subServiceFilter)) return false
+      if (!needle) return true
+
+      return [
+        section.title,
+        section.section_key,
+        section.section_type,
+        servicePackage?.name,
+        service?.name,
+        section.status,
+      ]
+        .join(' ')
+        .toLowerCase()
+        .includes(needle)
+    })
+  }, [activeKey, packageById, search, sectionNameFilter, sections, serviceById, serviceFilter, subServiceFilter])
 
   const startAdd = () => {
     setEditorMode('add')
@@ -797,49 +876,53 @@ function PackageDetailSectionsView({ onRefresh }) {
   }
 
   const columns = [
-    { key: 'title', label: 'Section' },
-    { key: 'package_name', label: 'Package' },
-    { key: 'service_name', label: 'Service' },
-    { key: 'section_type', label: 'Type' },
-    { key: 'sort_order', label: 'Order' },
-    { key: 'is_visible', label: 'Visible' },
-    { key: 'status', label: 'Status' },
-    { key: 'actions', label: 'Actions' },
+    { key: 'title', label: 'Section', className: 'w-[15%]' },
+    { key: 'package_name', label: 'Package', className: 'w-[21%]' },
+    { key: 'service_name', label: 'Service', className: 'w-[15%]' },
+    { key: 'section_type', label: 'Type', className: 'w-[8%]' },
+    { key: 'sort_order', label: 'Order', className: 'w-[6%] text-center' },
+    { key: 'is_visible', label: 'Visible', className: 'w-[7%] text-center' },
+    { key: 'status', label: 'Status', className: 'w-[8%]' },
+    { key: 'actions', label: 'Action', className: 'w-[14%]' },
   ]
   const rows = visibleSections.map((section) => {
-    const servicePackage = packageById.get(String(section.service_package_id))
-    const service = serviceById.get(String(section.service_id)) || servicePackage?.service
+    const servicePackage = resolvePackage(section)
+    const service = resolveService(section, servicePackage)
 
     return {
       ...section,
-      package_name: servicePackage?.name || 'Not selected',
-      service_name: service?.name || 'Not selected',
+      package_name: <span className="block truncate">{servicePackage?.name || 'Not selected'}</span>,
+      service_name: <span className="block truncate">{service?.name || 'Not selected'}</span>,
+      title: <span className="block truncate font-bold text-slate-800">{section.title}</span>,
+      status: <StatusBadge>{section.status || 'Active'}</StatusBadge>,
       is_visible: (
-        <VisibilityCheckbox
+        <input
           checked={section.is_visible ?? true}
+          className="h-4 w-4 rounded border-slate-300 text-[#67B529] focus:ring-[#67B529]/20"
           disabled={loading}
-          label={section.is_visible ?? true ? 'Checked' : 'Unchecked'}
-          onChange={(isVisible) => toggleVisibility(section, isVisible)}
+          onChange={(event) => toggleVisibility(section, event.target.checked)}
+          title={section.is_visible ?? true ? 'Visible' : 'Hidden'}
+          type="checkbox"
         />
       ),
       actions: (
-        <div className="flex flex-wrap gap-2">
-          <ActionButton onClick={() => startEdit(section)}>Edit</ActionButton>
-          <ActionButton onClick={() => deleteSection(section)} tone="danger">Delete</ActionButton>
+        <div className="flex flex-nowrap items-center gap-1">
+          <ActionButton onClick={() => startEdit(section)} size="sm">Edit</ActionButton>
+          <ActionButton onClick={() => deleteSection(section)} size="sm" tone="danger">Delete</ActionButton>
         </div>
       ),
     }
   })
 
+  const filterSelectClass = 'h-8 w-full rounded-md border border-slate-300 bg-white px-2.5 text-[11px] font-bold text-slate-700 outline-none focus:border-[#67B529] sm:w-44'
+
   return (
-    <Panel
-      action={<ActionButton onClick={startAdd} tone="primary">Add Section</ActionButton>}
-    >
-      <div className="border-b border-slate-100 bg-white p-3">
-        <div className="flex gap-2 overflow-x-auto pb-2">
+    <Panel>
+      <div className="border-b border-slate-100 bg-white px-3 py-2.5">
+        <div className="flex gap-2 overflow-x-auto pb-2 custom-thin-scrollbar">
           {sectionTemplates.map(([key, label]) => (
             <button
-              className={`shrink-0 rounded-lg px-3 py-2 text-xs font-black transition ${activeKey === key ? 'bg-[#67B529] text-white' : 'bg-slate-100 text-slate-600 hover:bg-[#EEF9E8] hover:text-[#67B529]'}`}
+              className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-black transition ${activeKey === key ? 'bg-[#67B529] text-white' : 'bg-slate-100 text-slate-600 hover:bg-[#EEF9E8] hover:text-[#67B529]'}`}
               key={key}
               onClick={() => setActiveKey(key)}
               type="button"
@@ -848,14 +931,61 @@ function PackageDetailSectionsView({ onRefresh }) {
             </button>
           ))}
         </div>
-        <input
-          className="mt-3 h-10 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 text-sm font-bold outline-none focus:border-[#67B529] lg:max-w-sm"
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder="Search sections..."
-          value={search}
-        />
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <input
+            className="h-8 min-w-0 flex-1 rounded-md border border-slate-300 bg-white px-2.5 text-[11px] font-bold text-slate-700 outline-none focus:border-[#67B529]"
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search sections..."
+            value={search}
+          />
+          <select
+            className={filterSelectClass}
+            onChange={(event) => setSectionNameFilter(event.target.value)}
+            value={sectionNameFilter}
+          >
+            <option value="">All Section names</option>
+            {sectionNameOptions.map((title) => (
+              <option key={title} value={title}>{title}</option>
+            ))}
+          </select>
+          <select
+            className={filterSelectClass}
+            onChange={(event) => {
+              setServiceFilter(event.target.value)
+              setSubServiceFilter('')
+            }}
+            value={serviceFilter}
+          >
+            <option value="">All Services</option>
+            {services.map((item) => (
+              <option key={item.id} value={item.id}>{item.name}</option>
+            ))}
+          </select>
+          <select
+            className={filterSelectClass}
+            onChange={(event) => setSubServiceFilter(event.target.value)}
+            value={subServiceFilter}
+          >
+            <option value="">All Sub-services</option>
+            {subServiceOptions.map((item) => (
+              <option key={item.value} value={item.value}>{item.label}</option>
+            ))}
+          </select>
+          <ActionButton className="shrink-0" onClick={startAdd} size="sm" tone="primary">Add Section</ActionButton>
+        </div>
+        <p className="mt-2 text-[11px] font-bold text-slate-500">
+          Showing {visibleSections.length} of {sections.length} sections
+        </p>
       </div>
-      <DataTable columns={columns} dense paginated rows={rows} />
+      <DataTable
+        columns={columns}
+        compact
+        dense
+        fitToWidth
+        key={`sections-${activeKey}-${search}-${serviceFilter}-${subServiceFilter}-${sectionNameFilter}-${sections.length}`}
+        paginated
+        rows={rows}
+      />
       {loading && <div className="p-3 text-sm font-bold text-slate-500">Loading...</div>}
     </Panel>
   )

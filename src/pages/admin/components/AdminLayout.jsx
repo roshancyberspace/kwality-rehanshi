@@ -321,28 +321,13 @@ function AdminLayout({
                         return (
                           <article className="rounded-lg bg-slate-50 p-3" key={notification.id}>
                             <div className="flex items-start gap-3">
-                              <img alt={meta.actorName} className="h-10 w-10 shrink-0 rounded-full object-cover ring-2 ring-white" src={meta.avatarUrl} />
+                              <img alt="" className="h-10 w-10 shrink-0 rounded-full object-cover ring-2 ring-white" src={meta.avatarUrl} />
                               <div className="min-w-0 flex-1">
                                 <div className="flex items-start justify-between gap-3">
-                                  <div className="min-w-0">
-                                    <p className="truncate text-xs font-black text-slate-900">{meta.actorName}</p>
-                                    <p className="truncate text-[11px] font-bold text-slate-500">{meta.actorRole}</p>
-                                  </div>
-                                  <div className="shrink-0 text-right">
-                                    <p className="text-[11px] font-black text-[#67B529]">{formatRelativeTime(meta.timestamp)}</p>
-                                    <p className="text-[10px] font-bold text-slate-400">{formatNotificationDate(meta.timestamp)}</p>
-                                  </div>
+                                  <p className="min-w-0 text-sm font-bold leading-snug text-slate-900">{notification.title}</p>
+                                  <p className="shrink-0 text-[11px] font-bold text-[#67B529]">{formatRelativeTime(meta.timestamp)}</p>
                                 </div>
-                                <div className="mt-2 flex items-start justify-between gap-3">
-                                  <p className="text-sm font-black text-slate-900">{notification.title}</p>
-                                  {!notification.read_at && <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-rose-500" />}
-                                </div>
-                                <p className="mt-1 line-clamp-2 text-xs font-semibold text-slate-500">{notification.message}</p>
-                                <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                                  <span className="rounded-md bg-white px-2 py-1 text-[10px] font-black uppercase tracking-wide text-slate-600 ring-1 ring-slate-200">{meta.relatedType}</span>
-                                  <span className="rounded-md bg-[#EEF9E8] px-2 py-1 text-[10px] font-black text-[#67B529] ring-1 ring-[#67B529]/20">{meta.relatedLabel}</span>
-                                  <span className="rounded-md bg-white px-2 py-1 text-[10px] font-black text-slate-500 ring-1 ring-slate-200">{notification.channel}</span>
-                                </div>
+                                <p className="mt-1 line-clamp-2 text-xs font-medium leading-5 text-slate-500">{notification.message}</p>
                               </div>
                             </div>
                           </article>
@@ -370,7 +355,7 @@ function AdminLayout({
               </div>
             </div>
           </header>
-          <div className="grid gap-4 px-3 py-4 sm:px-4 lg:p-4">{children}</div>
+          <div className="grid p-2">{children}</div>
         </section>
       </div>
     </main>

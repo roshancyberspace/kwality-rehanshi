@@ -43,7 +43,7 @@ function HeroSection({
     <section className="mx-auto grid max-w-7xl gap-8 overflow-x-hidden px-4 pt-8 pb-10 sm:pt-10 sm:pb-12 md:grid-cols-[1.05fr_0.95fr] md:items-center md:gap-8 lg:gap-10 lg:px-6 lg:pt-12 lg:pb-14">
       <div className="flex flex-col justify-center">
         {/* <p className="mb-4 text-sm font-semibold uppercase text-blue-700">Expert home services</p> */}
-        <h1 className="max-w-xl text-3xl sm:text-4xl lg:text-[40px] font-extrabold leading-tight text-[#67B529] tracking-tight">
+        <h1 className="max-w-xl text-2xl sm:text-4xl lg:text-[40px] font-extrabold leading-tight text-[#67B529] tracking-tight">
           {content?.title || "Quality Home services in Lucknow"}
         </h1>
         {content?.subtitle && (

@@ -45,6 +45,8 @@ class PartnerController extends CrudController
         'area' => ['nullable', 'string', 'max:255'],
         'city' => ['nullable', 'string', 'max:255'],
         'pincode' => ['nullable', 'string', 'max:20'],
+        'serviceable_pincodes' => ['nullable', 'array'],
+        'serviceable_pincodes.*' => ['string', 'max:20'],
         'kyc_status' => ['nullable', 'string', 'max:50'],
         'kyc_submitted_at' => ['nullable', 'date'],
         'kyc_verified_at' => ['nullable', 'date'],

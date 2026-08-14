@@ -16,6 +16,8 @@ const statusTone = (status = '') => {
 
 const canCancelOrder = (status = '') => !closedStatuses.some((closedStatus) => status.toLowerCase().includes(closedStatus.toLowerCase()))
 const canReorderOrder = (status = '') => status.toLowerCase().includes('complete')
+const isCancelledOrRejectedOrder = (status = '') => /cancel|reject/i.test(String(status || ''))
+const canViewInvoiceOrder = (status = '') => !isCancelledOrRejectedOrder(status)
 const publicAssetUrl = (path) => {
   return buildBackendUrl(path)
 }
@@ -383,6 +385,7 @@ export function OrderHistoryDetailView({
   canCancel,
   canReorder,
   canReview,
+  canViewInvoice = true,
   reviewForm,
   setReviewForm,
   submitReview,
@@ -399,21 +402,36 @@ export function OrderHistoryDetailView({
   
   const existingTax = Math.max(0, Number(order.amount || 0) - taxable)
   const total = taxable + existingTax
+  const isCancelledOrRejected = isCancelledOrRejectedOrder(order.status)
+  const cancelledBadgeLabel = /reject/i.test(String(order.status || '')) ? 'Rejected' : 'Cancelled'
+  const showActions = !isCancelledOrRejected && (canCancel || canReorder || canViewInvoice || !hideCloseButton || canReview)
 
   return (
     <div className="w-full bg-white shadow-sm md:shadow-2xl md:rounded-lg flex flex-col max-h-[92vh] md:max-h-[85vh]">
       <div className="border-b border-slate-100 bg-white px-4 py-3 md:rounded-t-lg shrink-0">
         <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <span className={`inline-flex rounded-full border px-2.5 py-0.5 text-[11px] font-bold uppercase ${statusTone(order.status)}`}>{order.status}</span>
-            <h3 className="mt-2 break-words text-lg font-bold leading-snug text-[#003F86]">{order.service}</h3>
+          <div className="min-w-0 w-full">
+            {!isCancelledOrRejected ? (
+              <span className={`inline-flex rounded-full border px-2.5 py-0.5 text-[11px] font-bold uppercase ${statusTone(order.status)}`}>{order.status}</span>
+            ) : null}
+            <div className={`flex items-start justify-between gap-2 ${isCancelledOrRejected ? '' : 'mt-2'}`}>
+              <h3 className="min-w-0 flex-1 break-words text-lg font-bold leading-snug text-[#003F86]">{order.service}</h3>
+              {isCancelledOrRejected ? (
+                <span className="shrink-0 p-1 text-sm border border-rose-600 rounded-lg font-medium text-rose-600">
+                  {cancelledBadgeLabel}
+                </span>
+              ) : null}
+            </div>
             <p className="mt-0.5 text-sm font-medium text-slate-500">{order.id} | {[order.date, order.time].filter(Boolean).join(' | ') || 'Schedule pending'}</p>
+            {isCancelledOrRejected && order.statusReason ? (
+              <p className="mt-2 text-xs font-semibold leading-5 text-rose-700">Reason: {order.statusReason}</p>
+            ) : null}
           </div>
-          {!hideCloseButton && (
+          {!hideCloseButton ? (
             <button className="px-2 py-0.5 text-base font-bold hover:bg-slate-50 text-slate-400" onClick={onClose} type="button">
               x
             </button>
-          )}
+          ) : null}
         </div>
       </div>
       
@@ -505,7 +523,7 @@ export function OrderHistoryDetailView({
           </div>
         )}
 
-        {canReview ? (
+        {!isCancelledOrRejected && canReview ? (
           <div className="rounded-lg border border-[#67B529]/20 bg-[#EEF9E8]/60 p-3.5">
             <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
               <p className="text-sm font-bold text-[#003F86]">Rate this service</p>
@@ -545,36 +563,50 @@ export function OrderHistoryDetailView({
           </div>
         ) : null}
 
-        <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end">
-          {!hideCloseButton && (
-            <button className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-bold hover:bg-slate-50 transition-colors text-slate-700" onClick={onClose} type="button">
-              Close
-            </button>
-          )}
-          {canCancel ? (
-            <button
-              className="rounded-lg border border-rose-200 bg-white px-4 py-2 text-xs font-bold text-rose-700 hover:bg-rose-50 transition-colors"
-              onClick={onCancel}
-              type="button"
-            >
-              Cancel Booking
-            </button>
-          ) : null}
-          {canReorder ? (
-            <button className="rounded-lg bg-[#003F86] px-4 py-2 text-xs font-bold text-white hover:bg-[#0054A6] transition-colors" onClick={onReorder} type="button">
-              Reorder Service
-            </button>
-          ) : null}
-          <button className="rounded-lg bg-[#67B529] px-4 py-2 text-xs font-bold text-white hover:bg-[#5CA827] transition-colors" onClick={onViewInvoice} type="button">
-            View Invoice
-          </button>
-        </div>
+        {showActions ? (
+          <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end">
+            {!hideCloseButton && (
+              <button className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-bold hover:bg-slate-50 transition-colors text-slate-700" onClick={onClose} type="button">
+                Close
+              </button>
+            )}
+            {canCancel ? (
+              <button
+                className="rounded-lg border border-rose-200 bg-white px-4 py-2 text-xs font-bold text-rose-700 hover:bg-rose-50 transition-colors"
+                onClick={onCancel}
+                type="button"
+              >
+                Cancel Booking
+              </button>
+            ) : null}
+            {canReorder ? (
+              <button className="rounded-lg bg-[#003F86] px-4 py-2 text-xs font-bold text-white hover:bg-[#0054A6] transition-colors" onClick={onReorder} type="button">
+                Reorder Service
+              </button>
+            ) : null}
+            {canViewInvoice ? (
+              <button className="rounded-lg bg-[#67B529] px-4 py-2 text-xs font-bold text-white hover:bg-[#5CA827] transition-colors" onClick={onViewInvoice} type="button">
+                View Invoice
+              </button>
+            ) : null}
+          </div>
+        ) : null}
       </div>
     </div>
   )
 }
 
-function OrderHistorySection({ appSettings = {}, onCancelBooking, onReorder, onSubmitReview, orders, reviews = [], onSelectOrder }) {
+function OrderHistorySection({
+  appSettings = {},
+  heading = 'Orders and bookings',
+  helper = 'Recent booking, booking details, and previous orders list.',
+  onCancelBooking,
+  onReorder,
+  onSubmitReview,
+  orders,
+  reviews = [],
+  onSelectOrder,
+}) {
   const [selectedOrder, setSelectedOrder] = useState(null)
   const [selectedReview, setSelectedReview] = useState(null)
   const [reviewForm, setReviewForm] = useState({ rating: 5, text: '' })
@@ -626,8 +658,8 @@ function OrderHistorySection({ appSettings = {}, onCancelBooking, onReorder, onS
     <section className="rounded-lg border border-blue-100 bg-white p-4 shadow-sm">
       <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-xl font-bold text-slate-900">Orders and bookings</h2>
-          <p className="mt-1 text-sm text-blue-700">Recent booking, booking details, and previous orders list.</p>
+          <h2 className="text-xl font-bold text-slate-900">{heading}</h2>
+          <p className="mt-1 text-sm text-blue-700">{helper}</p>
         </div>
         <p className="text-sm font-bold text-blue-700">{orders.length} total</p>
       </div>
@@ -645,15 +677,17 @@ function OrderHistorySection({ appSettings = {}, onCancelBooking, onReorder, onS
                 </div>
                 <div className="grid shrink-0 justify-items-end gap-1.5">
                   <span className={`rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${statusTone(order.status)}`}>{order.status}</span>
-                  <button
-                    aria-label="Download invoice"
-                    className="grid h-8 w-8 place-items-center rounded-md border border-blue-200 text-blue-900 hover:bg-blue-50"
-                    onClick={() => downloadInvoiceFile(order.id)}
-                    title="Download invoice"
-                    type="button"
-                  >
-                    <DownloadIcon className="h-4 w-4" />
-                  </button>
+                  {canViewInvoiceOrder(order.status) ? (
+                    <button
+                      aria-label="Download invoice"
+                      className="grid h-8 w-8 place-items-center rounded-md border border-blue-200 text-blue-900 hover:bg-blue-50"
+                      onClick={() => downloadInvoiceFile(order.id)}
+                      title="Download invoice"
+                      type="button"
+                    >
+                      <DownloadIcon className="h-4 w-4" />
+                    </button>
+                  ) : null}
                   <StarRatingButton onClick={() => setSelectedReview({ order, review: getOrderReview(order, reviews) })} rating={reviewRating(getOrderReview(order, reviews))} />
                 </div>
               </div>
@@ -829,6 +863,7 @@ function OrderHistorySection({ appSettings = {}, onCancelBooking, onReorder, onS
               canCancel={canCancelOrder(selectedDisplayOrder.status)}
               canReorder={canReorderOrder(selectedDisplayOrder.status)}
               canReview={canReviewSelected}
+              canViewInvoice={canViewInvoiceOrder(selectedDisplayOrder.status)}
               reviewForm={reviewForm}
               setReviewForm={setReviewForm}
               submitReview={submitReview}

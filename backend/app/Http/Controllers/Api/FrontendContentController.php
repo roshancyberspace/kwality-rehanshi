@@ -14,6 +14,7 @@ use App\Models\Service;
 use App\Models\ServicePackage;
 use App\Models\Setting;
 use App\Models\Page;
+use App\Models\Testimonial;
 
 class FrontendContentController extends Controller
 {
@@ -126,6 +127,11 @@ class FrontendContentController extends Controller
                 ->orderBy('id')
                 ->get(),
             'mobile_banners' => MobileBanner::query()
+                ->where('status', 'Active')
+                ->orderBy('sort_order')
+                ->orderBy('id')
+                ->get(),
+            'testimonials' => Testimonial::query()
                 ->where('status', 'Active')
                 ->orderBy('sort_order')
                 ->orderBy('id')

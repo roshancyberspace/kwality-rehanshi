@@ -32,6 +32,7 @@ use App\Http\Controllers\Api\ServicePackageController;
 use App\Http\Controllers\Api\ServicePackageSectionController;
 use App\Http\Controllers\Api\SettingController;
 use App\Http\Controllers\Api\SupportTicketController;
+use App\Http\Controllers\Api\TestimonialController;
 use App\Http\Controllers\Api\RateItemController;
 use App\Http\Controllers\Api\VendorJobController;
 use App\Http\Controllers\Api\VendorWalletController;
@@ -67,6 +68,7 @@ Route::prefix('v1')->group(function () {
     Route::apiResource('service-packages', ServicePackageController::class);
     Route::apiResource('brands', BrandController::class);
     Route::apiResource('mobile-banners', MobileBannerController::class);
+    Route::apiResource('testimonials', TestimonialController::class);
     Route::apiResource('kyc-documents', KycDocumentController::class);
     Route::apiResource('service-package-sections', ServicePackageSectionController::class);
     Route::apiResource('rate-items', RateItemController::class);
@@ -148,6 +150,9 @@ Route::prefix('v1')->group(function () {
     Route::apiResource('app-content', AppContentController::class);
     Route::get('notifications-summary', [AdminNotificationController::class, 'summary']);
     Route::post('notifications/mark-all-read', [AdminNotificationController::class, 'markAllRead']);
+    Route::get('notifications/{notification}/report', [AdminNotificationController::class, 'report']);
+    Route::post('notifications/{notification}/resend', [AdminNotificationController::class, 'resend']);
+    Route::apiResource('notifications', AdminNotificationController::class);
     Route::get('admin/dashboard', [AdminDashboardController::class, 'dashboard']);
     Route::get('admin/reports', [AdminDashboardController::class, 'reports']);
     Route::apiResource('notifications', AdminNotificationController::class);

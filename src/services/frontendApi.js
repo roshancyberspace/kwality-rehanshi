@@ -88,6 +88,26 @@ const normalizeBrand = (brand) => ({
   name: brand.name || '',
 })
 
+const normalizeTestimonial = (item) => {
+  const videoUrl = item.video_url || item.videoUrl || ''
+  const isVideo = item.is_video === true || item.is_video === 1 || item.is_video === '1' || item.is_video === 'Yes' || Boolean(videoUrl)
+  const serviceType = item.service_type || item.serviceType || ''
+  const location = item.location || ''
+  const serviceLine = [serviceType, location].filter(Boolean).join(' · ')
+
+  return {
+    ...item,
+    customerName: item.customer_name || item.customerName || '',
+    isVideo,
+    location,
+    rating: Number(item.rating || 5),
+    reviewText: item.review_text || item.reviewText || '',
+    serviceType,
+    serviceLine,
+    videoUrl,
+  }
+}
+
 const normalizeMobileBanner = (banner) => ({
   ...banner,
   bgColor: banner.bg_color || banner.bgColor || '#6D28D9',
@@ -145,6 +165,7 @@ export const frontendApi = {
       servicePackages: (body.service_packages || []).map(normalizePackage),
       brands: (body.brands || []).map(normalizeBrand),
       mobileBanners: (body.mobile_banners || []).map(normalizeMobileBanner),
+      testimonials: (body.testimonials || []).map(normalizeTestimonial),
       coupons: body.coupons || [],
       reviews: (body.reviews || []).map(normalizeReview),
       appContent: body.app_content || [],

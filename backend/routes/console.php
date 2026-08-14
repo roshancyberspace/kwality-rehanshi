@@ -26,8 +26,9 @@ Artisan::command('bookings:auto-assign', function (BookingAutoAssignmentManager 
     $result = $autoAssignment->processDueBookings();
 
     $this->info("Checked {$result['checked']} due bookings.");
+    $this->info("Approved {$result['approved']} bookings.");
     $this->info("Assigned {$result['assigned']} bookings.");
     $this->info("Skipped {$result['skipped']} bookings.");
-})->purpose('Assign due bookings to available matching professionals');
+})->purpose('Auto-approve and assign due bookings to eligible professionals');
 
 Schedule::command('bookings:auto-assign')->everyMinute()->withoutOverlapping();

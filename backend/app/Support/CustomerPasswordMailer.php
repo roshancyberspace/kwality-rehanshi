@@ -81,6 +81,35 @@ class CustomerPasswordMailer
         );
     }
 
+    public function sendCampaign(string $toEmail, string $recipientName, string $subject, string $message, ?string $imageUrl = null): void
+    {
+        $safeName = e($recipientName ?: 'Customer');
+        $safeMessage = nl2br(e($message));
+        $imageHtml = '';
+        if ($imageUrl) {
+            $safeImage = e($imageUrl);
+            $imageHtml = "<p style=\"margin:16px 0 0;\"><img src=\"{$safeImage}\" alt=\"\" style=\"max-width:100%;border-radius:8px;\" /></p>";
+        }
+
+        $html = <<<HTML
+            <div style="font-family: Arial, sans-serif; color: #111; line-height: 1.6;">
+                <p>Hi {$safeName},</p>
+                <p>{$safeMessage}</p>
+                {$imageHtml}
+                <p>— KwalityCare</p>
+            </div>
+        HTML;
+
+        $this->sendHtml(
+            $toEmail,
+            $recipientName,
+            $subject,
+            $html,
+            $message,
+            'campaign'
+        );
+    }
+
     private function send(
         string $toEmail,
         string $customerName,

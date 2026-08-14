@@ -49,7 +49,9 @@ function InvoicePage({ invoiceId }) {
       <main className="grid min-h-screen place-items-center bg-[#F6FBFF] p-4 text-[#003F86]">
         <div className="w-full max-w-md rounded-lg border border-blue-100 bg-white p-5 text-center shadow-sm">
           <h1 className="text-2xl font-black">Invoice not available</h1>
-          <p className="mt-2 text-sm font-semibold leading-6 text-blue-700">Please open invoice again from your order details.</p>
+          <p className="mt-2 text-sm font-semibold leading-6 text-blue-700">
+            Invoice cannot be generated for cancelled or rejected bookings, or this invoice could not be opened.
+          </p>
         </div>
       </main>
     )

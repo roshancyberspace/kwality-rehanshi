@@ -13,7 +13,7 @@ class BrandController extends CrudController
         'name' => ['required', 'string', 'max:255'],
         'logo' => ['nullable', 'string'],
         'sort_order' => ['nullable', 'integer'],
-        'status' => ['nullable', 'string', 'max:50'],
+        'status' => ['nullable', 'string', 'in:Active,Inactive'],
         'metadata' => ['nullable', 'array'],
     ];
 

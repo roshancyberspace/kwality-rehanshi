@@ -26,7 +26,7 @@ class CouponController extends CrudController
         'service_ids.*' => ['integer', 'exists:services,id'],
         'service_package_ids' => ['nullable', 'array'],
         'service_package_ids.*' => ['integer', 'exists:service_packages,id'],
-        'status' => ['nullable', 'string', 'max:50'],
+        'status' => ['nullable', 'string', 'in:Active,Inactive'],
         'metadata' => ['nullable', 'array'],
     ];
 

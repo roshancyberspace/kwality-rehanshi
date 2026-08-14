@@ -28,6 +28,7 @@ const CheckoutPage = lazy(() => import('./pages/checkout/CheckoutPage'))
 const AdminDashboardPage = lazy(() => import('./pages/admin/AdminDashboardPage'))
 const CustomerDetailsPage = lazy(() => import('./pages/admin/CustomerDetailsPage'))
 const PartnerDetailsPage = lazy(() => import('./pages/admin/PartnerDetailsPage'))
+const PartnerEditPage = lazy(() => import('./pages/admin/PartnerEditPage'))
 const VendorDashboardPage = lazy(() => import('./pages/vendor/VendorDashboardPage'))
 import { toAppRoutePath, toBrowserPath } from './config/urls'
 import { askAppConfirmation } from './utils/feedback'
@@ -736,6 +737,7 @@ function App() {
     pages: frontendData?.pages || [],
     coupons: frontendData?.coupons || [],
     mobileBanners: frontendData?.mobileBanners || [],
+    testimonials: frontendData?.testimonials || [],
     reviews: frontendData?.reviews || [],
     cartCount: cart.reduce((total, item) => total + item.quantity, 0),
     isLoggedIn: Boolean(currentUser),
@@ -1114,6 +1116,7 @@ function App() {
         onOpenCustomerDetails={(customerId) => navigate(`/admin/customers/${customerId}`)}
         onOpenVendor={() => navigate(routes.vendor)}
         onOpenPartnerDetails={(partnerId) => navigate(`/admin/partners/${partnerId}`)}
+        onOpenPartnerEdit={(partnerId) => navigate(`/admin/partners/${partnerId}/edit`)}
       />
       </Suspense>
     )
@@ -1165,7 +1168,29 @@ function App() {
       )
     }
 
-    const partnerId = path.split('/').filter(Boolean).at(-1)
+    const pathParts = path.split('/').filter(Boolean)
+    const isEditRoute = pathParts.at(-1) === 'edit'
+    const partnerId = isEditRoute ? pathParts.at(-2) : pathParts.at(-1)
+
+    if (isEditRoute) {
+      return (
+        <Suspense fallback={<div className="flex h-screen items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-[#003F86] border-t-transparent" /></div>}>
+          <PartnerEditPage
+            adminProfile={currentAdmin}
+            onBackAdmin={() => {
+              window.sessionStorage.setItem('adminActiveTab', 'Partners')
+              navigate(routes.admin)
+            }}
+            onBackHome={() => navigate(routes.home)}
+            onLogout={logoutAdmin}
+            onOpenPartnerDetails={(id) => navigate(`/admin/partners/${id || partnerId}`)}
+            onTabChange={openAdminTab}
+            partnerId={partnerId}
+          />
+          <Toast message={toast} />
+        </Suspense>
+      )
+    }
 
     return (
       <Suspense fallback={<div className="flex h-screen items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-[#003F86] border-t-transparent" /></div>}>
@@ -1173,6 +1198,7 @@ function App() {
           adminProfile={currentAdmin}
           onBackAdmin={() => navigate(routes.admin)}
           onBackHome={() => navigate(routes.home)}
+          onOpenPartnerEdit={(id) => navigate(`/admin/partners/${id || partnerId}/edit`)}
           onTabChange={openAdminTab}
           partnerId={partnerId}
         />

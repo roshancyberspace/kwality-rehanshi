@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import Footer from '../../components/layout/Footer'
 import Navbar from '../../components/layout/Navbar'
 import PackageDetailsModal from '../../components/services/PackageDetailsModal'
-import { getCartTotal, getDisplayCart, getCartItemQuantity } from '../../components/services/ServiceCartUtils'
+import { getCartTotal, getDisplayCart, getCartItemQuantity, getCartItemKey, getPackageAmount } from '../../components/services/ServiceCartUtils'
 import { ServiceDetailSkeleton } from '../../components/common/Shimmer'
 import { formatDisplayName } from '../../utils/displayText'
 
@@ -778,14 +778,7 @@ function ServiceDetailPage({
                         <span className="text-neutral-600">{item.duration}</span>
                       </div>
 
-                      {item.offer && (
-                        <div className="mt-1.5 flex items-center gap-1.5 text-[11px] sm:text-xs font-bold text-[#167634]">
-                          <span className="grid h-3 w-3 sm:h-3.5 sm:w-3.5 place-items-center rounded-xs bg-[#167634] text-[8px] sm:text-[9px] text-white font-black">
-                            +
-                          </span>
-                          <span>{item.offer}</span>
-                        </div>
-                      )}
+                      
 
                       {item.description ? (
                         <p className="mt-1.5 sm:mt-2 text-[11px] sm:text-xs leading-relaxed text-neutral-500 line-clamp-2">
@@ -833,38 +826,46 @@ function ServiceDetailPage({
 
         <aside className="hidden lg:block h-fit lg:sticky lg:top-28">
           
-          <div className="hidden lg:block rounded-lg border border-blue-100 bg-white p-5 shadow-sm">
-            <h2 className="text-xl font-bold">Cart</h2>
+          <div className="hidden lg:block rounded-lg border border-blue-100 bg-white p-4 shadow-sm">
+            <h2 className="text-lg font-bold text-[#003F86]">Cart</h2>
             {displayCart.length === 0 ? (
-              <div className="mt-5 rounded-lg bg-[#F6FBFF] p-8 text-center">
+              <div className="mt-4 rounded-lg bg-[#F6FBFF] p-6 text-center">
                 <div className="mx-auto grid place-items-center rounded-full bg-white">
-                 <svg aria-hidden="true" className="h-15 w-15" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24"><circle cx="9" cy="20" r="1.5"></circle><circle cx="18" cy="20" r="1.5"></circle><path d="M3 4h2l2.2 10.4a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 1.9-1.4L21 7H6"></path></svg>
+                 <svg aria-hidden="true" className="h-12 w-12" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24"><circle cx="9" cy="20" r="1.5"></circle><circle cx="18" cy="20" r="1.5"></circle><path d="M3 4h2l2.2 10.4a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 1.9-1.4L21 7H6"></path></svg>
                 </div>
-                <p className="mt-4 text-sm leading-6 text-blue-700">No items in your cart</p>
+                <p className="mt-3 text-xs leading-5 text-blue-700">No items in your cart</p>
               </div>
             ) : (
-              <div className="mt-5 grid gap-4">
-                {displayCart.map((item) => (
-                  <div className="flex items-start justify-between gap-3 text-sm" key={item.name}>
-                    <div>
-                      <p className="font-semibold">{item.name}</p>
-                      <p className="mt-1 text-blue-700">Qty {item.quantity}</p>
+              <div className="mt-3 grid gap-3">
+                {displayCart.map((item) => {
+                  const qty = Number(item.quantity || 0)
+                  const lineTotal = getPackageAmount(item.price) * qty
+
+                  return (
+                    <div className="flex items-start justify-between gap-3 text-sm text-[#003F86]" key={getCartItemKey(item)}>
+                      <p className="min-w-0 font-semibold leading-snug">
+                        {qty} x {item.name}
+                      </p>
+                      <p className="shrink-0 font-semibold tabular-nums">
+                        Rs. {lineTotal.toLocaleString('en-IN')}
+                      </p>
                     </div>
-                    <p className="font-bold">Rs. {item.lineTotal}</p>
-                  </div>
-                ))}
-                <div className="border-t border-blue-100 pt-4">
-                  <div className="flex justify-between font-bold">
+                  )
+                })}
+                <div className="border-t border-blue-100 pt-3">
+                  <div className="flex justify-between text-sm font-bold text-[#003F86]">
                     <span>Total</span>
-                    <span>Rs. {cartTotal}</span>
+                    <span>Rs. {Number(cartTotal).toLocaleString('en-IN')}</span>
                   </div>
-                  <button
-                    className="mt-4 w-full rounded-md bg-[#003F86] px-4 py-3 text-sm font-bold text-white hover:bg-[#0054A6]"
-                    onClick={onOpenCart}
-                    type="button"
-                  >
-                    Continue
-                  </button>
+                  <div className="mt-2 flex justify-end">
+                    <button
+                      className="rounded-md bg-[#003F86] px-3 py-1.5 text-xs font-bold text-white hover:bg-[#0054A6]"
+                      onClick={onOpenCart}
+                      type="button"
+                    >
+                      Continue
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
@@ -945,7 +946,7 @@ function ServiceDetailPage({
               <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[#167634] text-[11px] text-white font-black shadow-xs">%</span>
               <span>{cartTotal >= 1300 ? '🎉 Visitation fee waived off!' : `Add Rs.${1300 - cartTotal} more to save on visitation fee`}</span>
             </span>
-            <span className="font-extrabold text-xs">⌄</span>
+            
           </div>
           <div className="p-3.5 px-4 flex items-center justify-between gap-4 bg-white">
             <div>
@@ -978,7 +979,7 @@ function ServiceDetailPage({
           aria-modal="true"
         >
           <div
-            className="w-full max-w-[350px] sm:max-w-[380px] rounded-3xl bg-white p-6 shadow-2xl animate-[scaleUp_0.2s_ease-out]"
+            className="w-full max-w-[410px] sm:max-w-[380px] rounded-2xl bg-white p-5 shadow-2xl animate-[scaleUp_0.2s_ease-out]"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="grid grid-cols-3 gap-x-2 gap-y-6 max-h-[65vh] overflow-y-auto custom-thin-scrollbar p-1">
@@ -989,7 +990,7 @@ function ServiceDetailPage({
                   type="button"
                   className="group flex flex-col items-center text-center cursor-pointer focus:outline-none transition-transform duration-200 active:scale-95"
                 >
-                  <div className="h-[76px] w-[76px] sm:h-[82px] sm:w-[82px] rounded-[20px] bg-[#F4F4F5] border border-black/5 shadow-xs p-2 flex items-center justify-center overflow-hidden transition-transform duration-200 group-hover:scale-105">
+                  <div className="h-[76px] w-[76px] sm:h-[82px] sm:w-[82px] rounded-[15px] border border-black/5 shadow-xs p-2 flex items-center justify-center overflow-hidden transition-transform duration-200 group-hover:scale-105">
                     {item.image && (typeof item.image === 'string') && (item.image.startsWith('http') || item.image.startsWith('/') || item.image.endsWith('.png') || item.image.endsWith('.svg') || item.image.endsWith('.webp') || item.image.endsWith('.jpg') || item.image.endsWith('.jpeg')) ? (
                       <img
                         src={item.image}

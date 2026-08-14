@@ -27,17 +27,21 @@ export function StatusBadge({ children }) {
   )
 }
 
-export function ActionButton({ children, tone = 'secondary', isLoading, ...props }) {
+export function ActionButton({ children, tone = 'secondary', isLoading, size = 'md', className = '', ...props }) {
   const tones = {
-    primary: 'border-[#67B529] bg-[#67B529] text-white hover:border-[#5CA827] hover:bg-[#5CA827] hover:text-white hover:shadow-[#67B529]/25',
+    primary: 'border-[#2E7D32] bg-[#2E7D32] text-white hover:border-[#256628] hover:bg-[#256628] hover:text-white hover:shadow-[#2E7D32]/25',
     danger: 'border-rose-300 bg-rose-50 text-rose-700 hover:border-rose-600 hover:bg-rose-600 hover:text-white hover:shadow-rose-200',
     success: 'border-[#67B529] bg-[#EEF9E8] text-[#67B529] hover:border-[#67B529] hover:bg-[#67B529] hover:text-white hover:shadow-emerald-200',
     secondary: 'border-slate-300 bg-white text-slate-700 hover:border-slate-800 hover:bg-slate-900 hover:text-white hover:shadow-slate-200',
   }
+  const sizes = {
+    sm: 'gap-1.5 rounded-md px-2.5 py-1.5 text-[11px]',
+    md: 'gap-2 rounded-lg px-3 py-2 text-xs',
+  }
 
   return (
     <button 
-      className={`relative inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg border px-3 py-2 text-xs font-bold shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-y-0 disabled:hover:shadow-sm ${tones[tone]}`} 
+      className={`relative inline-flex items-center justify-center whitespace-nowrap border font-bold shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:translate-y-0 disabled:hover:shadow-sm ${sizes[size] || sizes.md} ${tones[tone]} ${className}`} 
       disabled={isLoading || props.disabled}
       type="button" 
       {...props}
@@ -194,8 +198,10 @@ export function StatsCard({ accent = 'from-[#003F86] to-[#67B529]', label, value
 
 export function DataTable({
   columns,
+  compact = false,
   dense = false,
-  emptyText = 'No data available',
+  emptyText = 'Try adjusting your filters or search term.',
+  emptyTitle = 'No records found',
   fitToWidth = false,
   onPageChange,
   pageSize = 10,
@@ -209,20 +215,47 @@ export function DataTable({
     if (!columns || columns.some((col) => ['s_no', 'sno', 'serial_no', 'serial_number'].includes(String(col.key).toLowerCase()))) {
       return columns || []
     }
-    return [{ className: 'w-16 whitespace-nowrap text-center', key: 's_no', label: 'S.No.' }, ...columns]
-  }, [columns])
+    const sNoClass = compact
+      ? 'w-[5%] min-w-0 text-center'
+      : fitToWidth
+      ? `${(columns?.length || 0) >= 8 ? 'w-[5%] min-w-0' : 'w-[7%] min-w-0'} text-center`
+      : 'w-14 whitespace-nowrap text-center'
+    return [{
+      className: sNoClass,
+      key: 's_no',
+      label: compact ? 'No.' : 'Serial No',
+    }, ...columns]
+  }, [columns, compact, fitToWidth])
   const getColumnClass = (column) => {
     if (column.className) return column.className
-    if (column.key === 's_no') return 'w-12 min-w-12 whitespace-nowrap text-center'
+    if (column.key === 's_no') {
+      if (compact) return 'w-[5%] min-w-0 text-center'
+      return fitToWidth ? 'w-[5%] min-w-0 text-center' : 'w-12 whitespace-nowrap text-center'
+    }
     const columnMinimums = fitToWidth
       ? {
-          actions: 'w-[120px] whitespace-nowrap',
-          booking_no: 'w-[140px] whitespace-nowrap',
-          customer_name: 'w-[150px]',
-          payment_amount: 'w-[130px]',
-          professional_name: 'w-[130px]',
-          service_name: 'min-w-0',
-          status: 'w-[120px] whitespace-nowrap',
+          actions: 'w-[8%]',
+          amount: 'w-[8%]',
+          booking_no: 'w-[11%]',
+          cash_collected: 'w-[10%]',
+          commission: 'w-[9%]',
+          company_commission: 'w-[11%]',
+          company_due: 'w-[9%]',
+          customer_name: 'w-[15%]',
+          gross: 'w-[8%]',
+          ledger_no: 'w-[13%]',
+          method: 'w-[8%]',
+          online_earning: 'w-[10%]',
+          paid_at: 'w-[16%]',
+          partner_name: 'w-[11%]',
+          payment_amount: 'w-[12%]',
+          payment_no: 'w-[18%]',
+          professional_name: 'w-[14%]',
+          service_name: 'w-[16%]',
+          settlement: 'w-[11%]',
+          status: 'w-[8%]',
+          vendor_amount: 'w-[11%]',
+          vendor_payable: 'w-[10%]',
         }
       : {
           actions: 'min-w-[160px] whitespace-nowrap',
@@ -260,13 +293,14 @@ export function DataTable({
         }
     return columnMinimums[column.key] || (fitToWidth ? 'min-w-0' : 'min-w-[140px]')
   }
-  const denseCellPadding = 'px-2.5 py-1.5'
+  const denseCellPadding = compact ? 'px-2 py-2' : 'px-2.5 py-2'
+  const denseHeadPadding = compact ? 'px-2 py-3' : 'px-2.5 py-3.5'
   const headCellClass = dense
-    ? `border-b border-[#67B529]/20 bg-[#EEF9E8] ${denseCellPadding} text-[11px] font-black uppercase tracking-wide text-[#2F6412]`
-    : 'border-b border-[#67B529]/20 bg-[#EEF9E8] px-4 py-3 text-xs font-black uppercase tracking-wide text-[#2F6412]'
+    ? `overflow-hidden border-b border-[#67B529]/20 bg-[#EEF9E8] ${denseHeadPadding} text-[11px] font-black uppercase leading-tight ${compact ? 'tracking-normal' : 'tracking-wide'} text-[#2F6412]`
+    : 'overflow-hidden border-b border-[#67B529]/20 bg-[#EEF9E8] px-4 py-3.5 text-xs font-black uppercase leading-tight tracking-wide text-[#2F6412]'
   const bodyCellClass = dense
-    ? `break-words border-b border-slate-200 ${denseCellPadding} align-middle text-sm font-semibold text-slate-700`
-    : 'break-words border-b border-slate-300 px-4 py-3 align-top font-semibold text-slate-700'
+    ? `min-w-0 overflow-hidden break-words border-b border-slate-200 ${denseCellPadding} align-middle text-sm font-semibold text-slate-700`
+    : 'min-w-0 break-words border-b border-slate-300 px-4 py-3 align-top font-semibold text-slate-700'
   const isServerPaginated = Boolean(pagination)
   const totalPages = isServerPaginated
     ? Math.max(1, Number(pagination.last_page || 1))
@@ -293,12 +327,37 @@ export function DataTable({
 
   if (!rows.length) {
     return (
-      <div>
+      <div className="overflow-hidden">
         {toolbar}
-        <div className="grid min-h-48 place-items-center rounded-lg border border-dashed border-slate-300 bg-slate-50 p-8 text-center">
-          <div>
-            <p className="text-sm font-black text-slate-700">Empty state</p>
-            <p className="mt-1 text-sm font-semibold text-slate-500">{emptyText}</p>
+        <div className={fitToWidth ? 'overflow-x-hidden' : 'overflow-x-auto custom-thin-scrollbar'}>
+          <table className={`w-full border-separate border-spacing-0 text-left text-sm ${fitToWidth ? 'table-fixed' : 'table-auto min-w-[920px]'}`}>
+            <thead>
+              <tr>
+                {tableColumns.map((column) => (
+                  <th className={`${headCellClass} ${getColumnClass(column)}`} key={column.key}>
+                    {column.label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+          </table>
+        </div>
+        <div className="grid min-h-[280px] place-items-center bg-[#FBFCFD] px-4 py-12 text-center">
+          <div className="mx-auto max-w-sm">
+            <div className="relative mx-auto mb-5 grid h-28 w-28 place-items-center">
+              <span className="absolute inset-0 rounded-full bg-[#EEF9E8]" />
+              <span className="absolute left-3 top-5 text-sm font-bold text-[#B7E08F]">+</span>
+              <span className="absolute right-4 top-8 h-1.5 w-1.5 rounded-full bg-[#B7E08F]" />
+              <span className="absolute bottom-6 left-5 h-1.5 w-1.5 rounded-full bg-[#B7E08F]" />
+              <span className="absolute bottom-8 right-6 text-sm font-bold text-[#B7E08F]">+</span>
+              <svg aria-hidden="true" className="relative h-14 w-14 text-[#8FD45A]" fill="none" viewBox="0 0 64 64">
+                <rect height="36" rx="10" stroke="currentColor" strokeWidth="3.5" width="46" x="9" y="16" />
+                <path d="M9 26h46" stroke="currentColor" strokeWidth="3.5" />
+                <circle cx="42" cy="38" fill="currentColor" r="3.5" />
+              </svg>
+            </div>
+            <p className="text-lg font-bold text-slate-800">{emptyTitle}</p>
+            <p className="mt-1.5 text-sm font-medium text-slate-500">{emptyText}</p>
           </div>
         </div>
       </div>
@@ -308,7 +367,7 @@ export function DataTable({
   return (
     <div className="overflow-hidden">
       {toolbar}
-      <div className="overflow-x-auto custom-thin-scrollbar">
+      <div className={fitToWidth ? 'overflow-x-hidden' : 'overflow-x-auto custom-thin-scrollbar'}>
       <table className={`w-full border-separate border-spacing-0 text-left text-sm ${fitToWidth ? 'table-fixed' : 'table-auto min-w-[920px]'}`}>
         <thead>
           <tr>

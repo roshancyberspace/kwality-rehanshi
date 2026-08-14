@@ -17,7 +17,7 @@ class CategoryController extends CrudController
         'description' => ['nullable', 'string'],
         'sort_order' => ['nullable', 'integer'],
         'commission_percentage' => ['nullable', 'numeric', 'min:0', 'max:100'],
-        'status' => ['nullable', 'string', 'max:50'],
+        'status' => ['nullable', 'string', 'in:Active,Inactive'],
         'metadata' => ['nullable', 'array'],
     ];
 }

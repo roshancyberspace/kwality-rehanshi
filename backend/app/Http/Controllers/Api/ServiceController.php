@@ -21,7 +21,7 @@ class ServiceController extends CrudController
         'description' => ['nullable', 'string'],
         'includes' => ['nullable', 'array'],
         'sort_order' => ['nullable', 'integer'],
-        'status' => ['nullable', 'string', 'max:50'],
+        'status' => ['nullable', 'string', 'in:Active,Inactive'],
         'metadata' => ['nullable', 'array'],
     ];
 

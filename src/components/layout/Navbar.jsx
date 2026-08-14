@@ -1,9 +1,17 @@
 import { useCallback, useEffect, useState } from 'react'
 import AuthModal from '../auth/AuthModal'
+import MobileTabletGuestAuthBottomSheet from '../auth/MobileTabletGuestAuthBottomSheet'
 import LocationModal from './LocationModal'
 import MobilePromoCarousel from '../home/MobilePromoCarousel'
 import { buildBackendUrl } from '../../config/urls'
 import { getBrandingDisplay } from '../../utils/branding'
+
+const LG_BREAKPOINT_PX = 1024
+
+function isMobileOrTabletViewport() {
+  if (typeof window === 'undefined') return false
+  return window.matchMedia(`(max-width: ${LG_BREAKPOINT_PX - 1}px)`).matches
+}
 
 const SEARCH_PLACEHOLDER_SERVICES = [
   'AC service',
@@ -101,7 +109,18 @@ function Navbar({
   user,
 }) {
   const [authMode, setAuthMode] = useState(null)
+  const [isGuestAuthOpen, setIsGuestAuthOpen] = useState(false)
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false)
+
+  const openLogin = useCallback(() => {
+    if (isMobileOrTabletViewport()) {
+      setAuthMode(null)
+      setIsGuestAuthOpen(true)
+      return
+    }
+    setIsGuestAuthOpen(false)
+    setAuthMode('login')
+  }, [])
   const [searchQuery, setSearchQuery] = useState('')
   const [isSearchFocused, setIsSearchFocused] = useState(false)
   const typingPlaceholder = useTypingPlaceholder(SEARCH_PLACEHOLDER_SERVICES, {
@@ -229,7 +248,7 @@ function Navbar({
           ) : (
             <button
               className="rounded-md bg-white px-2.5 py-1 text-xs font-bold text-[#15171C] shadow-md"
-              onClick={() => setAuthMode('login')}
+              onClick={openLogin}
               type="button"
             >
               Login
@@ -331,7 +350,7 @@ function Navbar({
                   ) : (
                     <button
                       className="rounded-md bg-white px-3 py-1.5 text-xs font-bold text-[#15171C]"
-                      onClick={() => setAuthMode('login')}
+                      onClick={openLogin}
                       type="button"
                     >
                       Login
@@ -463,7 +482,7 @@ function Navbar({
             {!isLoggedIn && (
               <button
                 className="rounded-md bg-blue-900 px-3 py-2 text-white hover:bg-[#67B529] lg:px-4"
-                onClick={() => setAuthMode('login')}
+                onClick={openLogin}
                 type="button"
               >
                 Login
@@ -479,6 +498,18 @@ function Navbar({
         <div className="bg-[#15171C] px-4 pb-3 lg:hidden">
           {mobileBanner}
         </div>
+      ) : null}
+
+      {isGuestAuthOpen ? (
+        <MobileTabletGuestAuthBottomSheet
+          onAuthenticated={async (session) => {
+            await onLogin?.(session)
+            setIsGuestAuthOpen(false)
+          }}
+          onClose={() => setIsGuestAuthOpen(false)}
+          subtitle="Enter your email or mobile number to login or create an account."
+          title="Login or Sign up"
+        />
       ) : null}
 
       {authMode && (

@@ -277,10 +277,10 @@ class DatabaseSeeder extends Seeder
             ['payment_methods', 'razorpay', '0', 'boolean', ['label' => 'Razorpay', 'description' => 'Razorpay payment gateway.', 'provider' => 'razorpay', 'mode' => 'test', 'public_key' => '', 'secret_key' => '']],
             ['payment_methods', 'phonepe', '0', 'boolean', ['label' => 'PhonePe', 'description' => 'PhonePe payment gateway.', 'provider' => 'phonepe', 'mode' => 'test', 'merchant_id' => '', 'salt_key' => '', 'salt_index' => '']],
             ['payment_methods', 'paypal', '0', 'boolean', ['label' => 'PayPal', 'description' => 'PayPal payment gateway.', 'provider' => 'paypal', 'mode' => 'sandbox', 'client_id' => '', 'client_secret' => '']],
-            ['auto_assignment', 'enabled', '0', 'boolean', ['label' => 'Enable automatic assignment']],
-            ['auto_assignment', 'auto_approve', '1', 'boolean', ['label' => 'Auto approve booking before assignment']],
-            ['auto_assignment', 'delay_minutes', '2', 'number', ['label' => 'Assignment delay in minutes']],
-            ['auto_assignment', 'match_area', '0', 'boolean', ['label' => 'Match professional area with booking address']],
+            ['auto_assignment', 'auto_approve', '1', 'boolean', ['label' => 'Automatic Admin Approval']],
+            ['auto_assignment', 'enabled', '0', 'boolean', ['label' => 'Automatic Vendor Assignment']],
+            ['auto_assignment', 'delay_minutes', '2', 'number', ['label' => 'Assignment Delay (minutes)']],
+            ['auto_assignment', 'match_area', '0', 'boolean', ['label' => 'Require area / pincode match']],
         ];
 
         foreach ($settings as [$group, $key, $value, $type, $metadata]) {

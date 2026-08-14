@@ -34,6 +34,7 @@ class Partner extends Model
         'area',
         'city',
         'pincode',
+        'serviceable_pincodes',
         'kyc_status',
         'kyc_submitted_at',
         'kyc_verified_at',
@@ -60,6 +61,7 @@ class Partner extends Model
         'services' => 'array',
         'service_ids' => 'array',
         'sub_service_ids' => 'array',
+        'serviceable_pincodes' => 'array',
     ];
 
     public function setPasswordAttribute($value): void

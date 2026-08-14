@@ -1,3 +1,5 @@
+const CUSTOM_SELECT_VALUE = '__custom__'
+
 const normalizeValue = (field, rawValue) => {
   if (field.type === 'tags') {
     return String(rawValue)
@@ -33,33 +35,59 @@ const normalizeValue = (field, rawValue) => {
   return rawValue
 }
 
+const shouldOmitField = (field, rawValue) => rawValue === CUSTOM_SELECT_VALUE
+
+const attachCustomBookingMetadata = (payload, form) => {
+  if (String(form.booking_id) !== CUSTOM_SELECT_VALUE || !form.booking_no) return payload
+
+  if (payload instanceof FormData) {
+    let metadata = {}
+    const existing = payload.get('metadata')
+    if (existing) {
+      try { metadata = JSON.parse(existing) } catch { metadata = {} }
+    }
+    payload.set('metadata', JSON.stringify({ ...metadata, booking_no: form.booking_no }))
+    return payload
+  }
+
+  payload.metadata = {
+    ...(typeof payload.metadata === 'object' && payload.metadata ? payload.metadata : {}),
+    booking_no: form.booking_no,
+  }
+  return payload
+}
+
 export const preparePayload = (fields, form) => {
   const hasFile = fields.some((field) => form[field.name] instanceof File)
 
   if (hasFile) {
-    return fields.reduce((payload, field) => {
+    const payload = fields.reduce((next, field) => {
       const rawValue = form[field.name]
-      if (rawValue === undefined || rawValue === '') return payload
-      if (field.type === 'file' && !(rawValue instanceof File)) return payload
+      if (rawValue === undefined || rawValue === '') return next
+      if (shouldOmitField(field, rawValue)) return next
+      if (field.type === 'file' && !(rawValue instanceof File)) return next
 
       const value = normalizeValue(field, rawValue)
       if (Array.isArray(value)) {
-        value.forEach((item) => payload.append(`${field.name}[]`, item))
+        value.forEach((item) => next.append(`${field.name}[]`, item))
       } else if (typeof value === 'object' && !(value instanceof File)) {
-        payload.append(field.name, JSON.stringify(value))
+        next.append(field.name, JSON.stringify(value))
       } else {
-        payload.append(field.name, value)
+        next.append(field.name, value)
       }
-      return payload
+      return next
     }, new FormData())
+    return attachCustomBookingMetadata(payload, form)
   }
 
-  return fields.reduce((payload, field) => {
+  const payload = fields.reduce((next, field) => {
     const rawValue = form[field.name]
-    if (rawValue === undefined || field.type === 'file') return payload
-    if (rawValue === '' && field.type !== 'multiselect') return payload
+    if (rawValue === undefined || field.type === 'file') return next
+    if (rawValue === '' && field.type !== 'multiselect') return next
+    if (shouldOmitField(field, rawValue)) return next
 
-    payload[field.name] = normalizeValue(field, rawValue)
-    return payload
+    next[field.name] = normalizeValue(field, rawValue)
+    return next
   }, {})
+  return attachCustomBookingMetadata(payload, form)
 }

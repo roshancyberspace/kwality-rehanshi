@@ -1992,7 +1992,7 @@ function VendorDashboardPage({ appSettings = {}, authenticatedVendor, embedded =
         </nav>
       )}
 
-      {activeVendorPage === 'dashboard' && <section id="vendor-dashboard" className="mx-auto max-w-7xl px-4 py-6 lg:px-8">
+      {activeVendorPage === 'dashboard' && <section id="vendor-dashboard" className="mx-auto max-w-7xl px-4 py-6 lg:px-2">
         <div className="grid gap-5 lg:grid-cols-[1fr_360px]">
           <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
             <div className="grid gap-5 p-5 md:grid-cols-[1fr_220px] md:items-end">

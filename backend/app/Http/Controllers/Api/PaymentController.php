@@ -18,7 +18,8 @@ class PaymentController extends CrudController
     protected array $rules = [
         'payment_no' => ['nullable', 'string', 'max:100'],
         'booking_id' => ['nullable', 'exists:bookings,id'],
-        'customer_name' => ['required', 'string', 'max:255'],
+        'booking_no' => ['nullable', 'string', 'max:100'],
+        'customer_name' => ['nullable', 'string', 'max:255'],
         'amount' => ['required', 'numeric'],
         'method' => ['nullable', 'string', 'max:100'],
         'status' => ['nullable', 'string', 'max:100'],
@@ -29,8 +30,10 @@ class PaymentController extends CrudController
 
     public function store(Request $request)
     {
+        $this->sanitizeBookingId($request);
+
         $record = DB::transaction(function () use ($request) {
-            $payment = Payment::create($this->validatedData($request));
+            $payment = Payment::create($this->preparePaymentData($this->validatedData($request), true));
             $this->syncBookingPayment($payment->fresh());
 
             return $payment->fresh();
@@ -43,10 +46,12 @@ class PaymentController extends CrudController
 
     public function update(Request $request, int|string $id)
     {
+        $this->sanitizeBookingId($request);
+
         $record = DB::transaction(function () use ($request, $id, &$previousStatus) {
             $payment = Payment::findOrFail($id);
             $previousStatus = $payment->status;
-            $payment->update($this->validatedData($request));
+            $payment->update($this->preparePaymentData($this->validatedData($request), false));
             $payment = $payment->fresh();
             $this->syncBookingPayment($payment);
 
@@ -58,6 +63,56 @@ class PaymentController extends CrudController
         }
 
         return response()->json($record);
+    }
+
+    private function sanitizeBookingId(Request $request): void
+    {
+        $bookingId = $request->input('booking_id');
+        if ($bookingId === null || $bookingId === '') {
+            return;
+        }
+
+        if (! is_numeric($bookingId)) {
+            $request->merge(['booking_id' => null]);
+        }
+    }
+
+    private function preparePaymentData(array $data, bool $isCreate): array
+    {
+        if (isset($data['booking_id']) && ! is_numeric($data['booking_id'])) {
+            $data['booking_id'] = null;
+        }
+
+        $bookingNo = $data['booking_no'] ?? data_get($data, 'metadata.booking_no');
+        unset($data['booking_no']);
+        if ($bookingNo) {
+            $data['metadata'] = array_merge(
+                is_array($data['metadata'] ?? null) ? $data['metadata'] : [],
+                ['booking_no' => $bookingNo]
+            );
+        }
+
+        $booking = ! empty($data['booking_id']) ? Booking::find($data['booking_id']) : null;
+
+        if ($booking) {
+            $data['customer_name'] = $data['customer_name'] ?: $booking->customer_name;
+            $data['amount'] = $data['amount'] ?? $booking->amount;
+            $data['method'] = $data['method'] ?: $booking->payment_method;
+        }
+
+        if ($isCreate && empty($data['payment_no'])) {
+            $suffix = $booking?->booking_no ?: ($bookingNo ?: now()->format('ymdHis'));
+            $preferred = 'PAY-'.$suffix;
+            $data['payment_no'] = Payment::where('payment_no', $preferred)->exists()
+                ? 'PAY-'.$suffix.'-'.random_int(100, 999)
+                : $preferred;
+        }
+
+        if (empty($data['customer_name'])) {
+            $data['customer_name'] = 'Customer';
+        }
+
+        return $data;
     }
 
     private function syncBookingPayment(Payment $payment): void

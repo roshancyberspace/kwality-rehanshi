@@ -70,35 +70,23 @@ const stars = (rating) => {
   return '★'.repeat(full) + '☆'.repeat(5 - full)
 }
 
-const fromAppContent = (items = []) =>
+const fromApi = (items = []) =>
   items.map((item) => {
-    const videoUrl = item.buttonUrl || item.button_url || item.metadata?.video_url || ''
+    const videoUrl = item.videoUrl || item.video_url || ''
+    const isVideo = item.isVideo || item.is_video || Boolean(videoUrl)
+    const service = item.serviceLine || [item.serviceType || item.service_type, item.location].filter(Boolean).join(' · ')
+
     return {
-      id: `content-${item.id || item.title}`,
-      kind: videoUrl ? 'video' : 'text',
-      name: item.title || 'Customer',
-      service: item.subtitle || '',
-      text: item.body || item.subtitle || '',
-      rating: Number(item.metadata?.rating || 5),
+      id: `testimonial-${item.id || item.customerName || item.customer_name}`,
+      kind: isVideo ? 'video' : 'text',
+      name: item.customerName || item.customer_name || 'Customer',
+      service,
+      text: item.reviewText || item.review_text || '',
+      rating: Number(item.rating || 5),
       image: resolveMediaUrl(item.image),
       videoUrl: toEmbedUrl(videoUrl),
     }
   })
-
-const fromReviews = (reviews = []) =>
-  reviews
-    .filter((review) => review.text || review.customerName)
-    .slice(0, 8)
-    .map((review) => ({
-      id: `review-${review.id || review.customerName}`,
-      kind: review.metadata?.video_url ? 'video' : 'text',
-      name: review.customerName || 'Customer',
-      service: review.serviceName || '',
-      text: review.text || '',
-      rating: Number(review.rating || 5),
-      image: resolveMediaUrl(review.metadata?.avatar_url || review.image || ''),
-      videoUrl: toEmbedUrl(review.metadata?.video_url || ''),
-    }))
 
 function VideoModal({ item, onClose }) {
   if (!item?.videoUrl) return null
@@ -181,19 +169,14 @@ function TestimonialCard({ item, onPlay }) {
   )
 }
 
-function TestimonialsSection({ contentItems = [], reviews = [] }) {
+function TestimonialsSection({ items: apiItems = [] }) {
   const [activeVideo, setActiveVideo] = useState(null)
   const scrollRef = useRef(null)
 
   const items = useMemo(() => {
-    const curated = fromAppContent(contentItems)
-    if (curated.length) return curated
-
-    const live = fromReviews(reviews)
-    if (live.length) return live
-
-    return FALLBACK_ITEMS
-  }, [contentItems, reviews])
+    const live = fromApi(apiItems)
+    return live.length ? live : FALLBACK_ITEMS
+  }, [apiItems])
 
   useEffect(() => {
     const row = scrollRef.current

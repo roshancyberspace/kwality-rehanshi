@@ -23,6 +23,8 @@ export default defineConfig(({ mode }) => {
         '/app-contents-images': backendBaseUrl,
         '/brands-images': backendBaseUrl,
         '/mobile-banners-images': backendBaseUrl,
+        '/admin-notifications-images': backendBaseUrl,
+        '/testimonials-images': backendBaseUrl,
         '/categories-images': backendBaseUrl,
         '/documents': backendBaseUrl,
         '/service-images': backendBaseUrl,

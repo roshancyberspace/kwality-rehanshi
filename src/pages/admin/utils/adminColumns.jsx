@@ -3,7 +3,7 @@ import { ActionIconButton, RowActionsMenu, StatusBadge } from '../../../componen
 import { downloadInvoiceFile } from '../../../components/profile/OrderHistorySection'
 import { buildBackendUrl } from '../../../config/urls'
 import { resolvePartnerProfilePicturePath } from '../../../utils/partnerProfile'
-import { formatDate, formatValue } from './formatters'
+import { formatDate, formatDateTime, formatValue } from './formatters'
 
 const activeBookingStatuses = [
   'Pending',
@@ -23,6 +23,15 @@ const formatDocuments = (documents) => {
   if (!Array.isArray(documents)) return ''
   const submitted = documents.filter((document) => document.path).length
   return `${submitted}/${documents.length} uploaded`
+}
+
+const formatPartnerServices = (row) => {
+  const names = Array.isArray(row.service_names) && row.service_names.length
+    ? row.service_names
+    : Array.isArray(row.services)
+      ? row.services
+      : []
+  return names.map((item) => String(item || '').trim()).filter(Boolean).join(', ')
 }
 
 const getBookingLocation = (row) => row.metadata?.service_location || row.metadata?.customer_location || row.metadata?.service_address?.location
@@ -52,6 +61,7 @@ const formatBookingSchedule = (value) => {
   }).format(date)
 }
 const canCancelBooking = (row) => activeBookingStatuses.includes(row.status)
+const canDownloadInvoice = (row) => !/cancel|reject/i.test(String(row?.status || ''))
 
 const getPartnerMenuItems = (row, { canChangeUserPasswords, onApproveKyc, onChangeUserPassword, onPartnerAvailabilityChange, onPartnerStatusChange, onRejectKyc, onView }, config) => [
   { label: 'View details', onClick: () => onView(row) },
@@ -91,7 +101,7 @@ function TableThumbnail({ isPerson, name, src }) {
         ? (parts[0][0] + parts[1][0]).toUpperCase()
         : (parts[0]?.[0] || 'U').toUpperCase()
       return (
-        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-gradient-to-tr from-[#003F86] to-[#67B529] text-xs font-black text-white shadow-xs ring-2 ring-white">
+        <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-gradient-to-tr from-[#003F86] to-[#67B529] text-[10px] font-black text-white shadow-xs ring-2 ring-white">
           {initials}
         </div>
       )
@@ -109,20 +119,22 @@ function TableThumbnail({ isPerson, name, src }) {
   return (
     <img
       alt={name || 'Thumbnail'}
-      className={`h-10 w-10 shrink-0 object-cover shadow-xs ring-1 ring-slate-200/80 transition duration-200 hover:scale-105 ${isPerson ? 'rounded-full' : 'rounded-lg bg-slate-50'}`}
+      className={`shrink-0 object-cover shadow-xs ring-1 ring-slate-200/80 transition duration-200 hover:scale-105 ${isPerson ? 'h-8 w-8 rounded-full' : 'h-10 w-10 rounded-lg bg-slate-50'}`}
       onError={() => setHasError(true)}
       src={url}
     />
   )
 }
 
-export const makeColumns = (config, { actionLoadingId, appSettings = {}, canChangeUserPasswords, onApproveKyc, onBookingCancel, onBookingDetails, onChangeUserPassword, onCustomerDetails, onDelete, onEdit, onPartnerAvailabilityChange, onPartnerStatusChange, onRejectKyc, onView, onViewMetadata, onViewPermissions }) => [
+export const makeColumns = (config, { actionLoadingId, appSettings = {}, canChangeUserPasswords, onApproveKyc, onBookingCancel, onBookingDetails, onChangeUserPassword, onCustomerDetails, onDelete, onEdit, onPartnerAvailabilityChange, onPartnerStatusChange, onRejectKyc, onView, onViewMetadata, onViewNotificationReport, onViewPermissions }) => [
   ...config.columns.map(([key, label, className]) => ({
     key,
     label,
     className,
     render: (row) => key.includes('status') || key === 'availability' || key === 'kyc_status' || key === 'settlement'
       ? <StatusBadge>{formatValue(row[key])}</StatusBadge>
+      : config.endpoint === '/payments' && key === 'paid_at'
+        ? <span className="whitespace-nowrap">{formatDateTime(row.paid_at || row.created_at)}</span>
       : (config.endpoint === '/bookings' && key === 'booking_no') || (config.endpoint === '/vendor-jobs' && key === 'job_no')
         ? (
           <button className="grid gap-0 text-left font-black leading-tight text-slate-800 underline-offset-2 hover:text-[#67B529] hover:underline" onClick={() => onBookingDetails(row)} type="button">
@@ -187,12 +199,26 @@ export const makeColumns = (config, { actionLoadingId, appSettings = {}, canChan
         )
       : config.endpoint === '/partners' && key === 'name'
         ? (
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 items-center gap-2">
             <TableThumbnail isPerson name={formatValue(row[key]) || row.business_name} src={resolvePartnerProfilePicturePath(row)} />
-            <button className="text-left font-black text-[#67B529] underline-offset-2 hover:underline" onClick={() => onView(row)} type="button">
+            <button className="min-w-0 truncate text-left text-sm font-black text-[#67B529] underline-offset-2 hover:underline" onClick={() => onView(row)} type="button">
               {formatValue(row[key]) || `Partner #${row.id}`}
             </button>
           </div>
+        )
+      : config.endpoint === '/partners' && key === 'phone'
+        ? <span className="block truncate text-sm font-semibold text-slate-700">{formatValue(row.phone) || '—'}</span>
+      : config.endpoint === '/partners' && key === 'services'
+        ? (
+          <span className="line-clamp-2 text-xs font-semibold leading-snug text-slate-600" title={formatPartnerServices(row)}>
+            {formatPartnerServices(row) || '—'}
+          </span>
+        )
+      : config.endpoint === '/partners' && key === 'area'
+        ? (
+          <span className="line-clamp-2 text-xs font-semibold leading-snug text-slate-600">
+            {[row.area, row.city, row.pincode].filter(Boolean).join(', ') || '—'}
+          </span>
         )
       : key === 'customer_name' && row.metadata?.customer_id
         ? (
@@ -231,13 +257,13 @@ export const makeColumns = (config, { actionLoadingId, appSettings = {}, canChan
         )
       : config.endpoint === '/coupons' && key === 'scope_summary'
         ? <span className="text-sm font-semibold text-slate-600">{formatValue(row.scope_summary || 'All services')}</span>
-      : key === 'is_required'
+      : key === 'is_required' || key === 'is_video'
         ? <StatusBadge>{row[key] === true || row[key] === 1 || row[key] === '1' || row[key] === 'Yes' ? 'Yes' : 'No'}</StatusBadge>
       : formatValue(row[key]),
   })),
   {
     key: 'actions',
-    label: 'Actions',
+    label: config.endpoint === '/payments' ? 'Action' : 'Actions',
     className: config.actionsWidth || (config.endpoint === '/service-packages' ? 'min-w-[160px] whitespace-nowrap' : 'min-w-[160px] whitespace-nowrap'),
     render: (row) => {
       const menuItems = config.endpoint === '/partners'
@@ -245,9 +271,17 @@ export const makeColumns = (config, { actionLoadingId, appSettings = {}, canChan
         : []
 
       return (
-        <div className={`flex flex-nowrap items-center ${config.endpoint === '/bookings' ? 'gap-1' : 'min-w-28 gap-2'}`}>
+        <div className={`flex flex-nowrap items-center justify-end ${['/bookings', '/vendor-wallets', '/customer-wallets', '/payments', '/payouts', '/wallet-transactions', '/booking-ledgers', '/partners'].includes(config.endpoint) ? 'gap-0.5' : 'min-w-28 gap-2'}`}>
           {config.endpoint === '/admin-users' && (
             <ActionIconButton isLoading={actionLoadingId === 'action'} label="View permissions" onClick={() => onViewPermissions(row)}>
+              <svg aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" viewBox="0 0 24 24">
+                <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" />
+                <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
+              </svg>
+            </ActionIconButton>
+          )}
+          {config.endpoint === '/notifications' && (
+            <ActionIconButton isLoading={actionLoadingId === 'action'} label="View send report" onClick={() => onViewNotificationReport?.(row)}>
               <svg aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" viewBox="0 0 24 24">
                 <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" />
                 <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
@@ -270,7 +304,7 @@ export const makeColumns = (config, { actionLoadingId, appSettings = {}, canChan
               </svg>
             </ActionIconButton>
           )}
-          {['/bookings', '/vendor-jobs'].includes(config.endpoint) && isPaidRecord(row) && (
+          {['/bookings', '/vendor-jobs'].includes(config.endpoint) && isPaidRecord(row) && canDownloadInvoice(row) && (
             <ActionIconButton isLoading={actionLoadingId === 'action'} label="Download invoice" onClick={() => downloadInvoiceFile(row.id)}>
               <svg aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" viewBox="0 0 24 24">
                 <path d="M12 3v12" />

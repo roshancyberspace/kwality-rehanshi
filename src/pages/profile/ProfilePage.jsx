@@ -78,8 +78,11 @@ const toProfileOrder = (booking) => ({
 
 const activeBookingStatuses = ['Pending', 'Pending Approval', 'Accepted', 'Professional Assigned', 'Vendor Accepted', 'On The Way', 'On the way', 'Reached - OTP Verified', 'OTP verified', 'Started', 'In progress']
 
+const isCancelledOrRejectedBooking = (order) => /cancel|reject/i.test(String(order?.status || ''))
+
 const statusTone = (status = '') => {
   const normalized = status.toLowerCase()
+  if (normalized.includes('cancel') || normalized.includes('reject')) return 'border-rose-200 bg-rose-50 text-rose-700'
   if (normalized.includes('pending')) return 'border-amber-200 bg-amber-50 text-amber-700'
   if (normalized.includes('progress') || normalized.includes('started') || normalized.includes('way')) return 'border-blue-200 bg-blue-50 text-blue-700'
   return 'border-[#67B529]/35 bg-[#EEF9E8] text-[#67B529]'
@@ -183,6 +186,7 @@ function ProfilePage({
   const [isProfileDataLoading, setIsProfileDataLoading] = useState(true)
   const [activeMobileTab, setActiveMobileTab] = useState('menu')
   const [selectedHistoryOrder, setSelectedHistoryOrder] = useState(null)
+  const [selectedCancelledOrder, setSelectedCancelledOrder] = useState(null)
   const [historyReviewForm, setHistoryReviewForm] = useState({ rating: 5, text: '' })
   const [selectedPendingReviewId, setSelectedPendingReviewId] = useState('')
   
@@ -192,9 +196,11 @@ function ProfilePage({
     active_bookings: 'Active bookings',
     pending_reviews: 'Rate services',
     booking_history: 'Booking history',
+    cancelled_bookings: 'Cancelled bookings',
     active_booking_detail: 'Booking details',
     pending_review_detail: 'Rate service',
     history_booking_detail: 'Booking details',
+    cancelled_booking_detail: 'Booking details',
     help: 'Help center',
     passes: 'Passes & membership',
     ratings: 'My rating',
@@ -215,7 +221,10 @@ function ProfilePage({
   const pendingReviewBookings = displayOrders.filter((order) =>
     String(order.status || '').toLowerCase().includes('complete') && !hasCustomerReview(order),
   )
-  const historyOrders = displayOrders.filter((order) => !activeBookingStatuses.includes(order.status))
+  const cancelledBookings = displayOrders.filter((order) => isCancelledOrRejectedBooking(order))
+  const historyOrders = displayOrders.filter((order) =>
+    !activeBookingStatuses.includes(order.status) && !isCancelledOrRejectedBooking(order),
+  )
   const activeCurrentBooking = activeBookings.find((order) => String(order.id) === String(selectedActiveBookingId)) || activeBookings[0]
   const pendingReviewBooking = pendingReviewBookings.find((order) => String(order.id) === String(selectedPendingReviewId)) || pendingReviewBookings[0] || null
   const topBookingCard = activeCurrentBooking
@@ -340,7 +349,9 @@ function ProfilePage({
       }
       if (selectedHistoryOrder && String(selectedHistoryOrder.id) === String(order.id)) {
         setSelectedHistoryOrder(null)
-        setActiveMobileTab('booking_history')
+      }
+      if (typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches) {
+        setActiveMobileTab('cancelled_bookings')
       }
     } catch (error) {
       showAppError('Cancel failed', error.message || 'Could not cancel this booking.')
@@ -665,7 +676,14 @@ function ProfilePage({
             setActiveMobileTab('pending_reviews')
           } else if (activeMobileTab === 'history_booking_detail') {
             setActiveMobileTab('booking_history')
-          } else if (activeMobileTab === 'active_bookings' || activeMobileTab === 'booking_history' || activeMobileTab === 'pending_reviews') {
+          } else if (activeMobileTab === 'cancelled_booking_detail') {
+            setActiveMobileTab('cancelled_bookings')
+          } else if (
+            activeMobileTab === 'active_bookings'
+            || activeMobileTab === 'booking_history'
+            || activeMobileTab === 'pending_reviews'
+            || activeMobileTab === 'cancelled_bookings'
+          ) {
             setActiveMobileTab('bookings')
           } else {
             setActiveMobileTab('menu')
@@ -779,29 +797,36 @@ function ProfilePage({
                 <div className="block lg:hidden">
                   {/* MOBILE DRILL-DOWN VIEWS */}
                   {activeMobileTab === 'bookings' && (
-                    <div className="flex flex-col gap-3">
-                      <button className="flex items-center justify-between rounded-xl bg-white p-5 shadow-sm border border-slate-100" onClick={() => setActiveMobileTab('active_bookings')}>
+                    <div className="flex flex-col gap-2">
+                      <button className="flex items-center justify-between rounded-lg bg-white px-3.5 py-3 shadow-sm border border-slate-100" onClick={() => setActiveMobileTab('active_bookings')}>
                         <div className="text-left">
-                          <p className="font-bold text-[#003F86] text-lg">Active bookings</p>
-                          <p className="text-sm font-medium text-slate-500 mt-1">{activeBookings.length} ongoing service{activeBookings.length !== 1 && 's'}</p>
+                          <p className="font-bold text-[#003F86] text-base">Active bookings</p>
+                          <p className="text-xs font-medium text-slate-500 mt-0.5">{activeBookings.length} ongoing service{activeBookings.length !== 1 && 's'}</p>
                         </div>
-                        <span className="text-blue-600 text-xl">›</span>
+                        <span className="text-blue-600 text-lg">›</span>
                       </button>
                       {pendingReviewBookings.length > 0 ? (
-                        <button className="flex items-center justify-between rounded-xl bg-white p-5 shadow-sm border border-amber-100" onClick={() => setActiveMobileTab('pending_reviews')}>
+                        <button className="flex items-center justify-between rounded-lg bg-white px-3.5 py-3 shadow-sm border border-amber-100" onClick={() => setActiveMobileTab('pending_reviews')}>
                           <div className="text-left">
-                            <p className="font-bold text-[#003F86] text-lg">Rate your services</p>
-                            <p className="text-sm font-medium text-amber-700 mt-1">{pendingReviewBookings.length} completed booking{pendingReviewBookings.length !== 1 && 's'} waiting for review</p>
+                            <p className="font-bold text-[#003F86] text-base">Rate your services</p>
+                            <p className="text-xs font-medium text-amber-700 mt-0.5">{pendingReviewBookings.length} completed booking{pendingReviewBookings.length !== 1 && 's'} waiting for review</p>
                           </div>
-                          <span className="text-amber-600 text-xl">›</span>
+                          <span className="text-amber-600 text-lg">›</span>
                         </button>
                       ) : null}
-                      <button className="flex items-center justify-between rounded-xl bg-white p-5 shadow-sm border border-slate-100" onClick={() => setActiveMobileTab('booking_history')}>
+                      <button className="flex items-center justify-between rounded-lg bg-white px-3.5 py-3 shadow-sm border border-slate-100" onClick={() => setActiveMobileTab('booking_history')}>
                         <div className="text-left">
-                          <p className="font-bold text-[#003F86] text-lg">Booking history</p>
-                          <p className="text-sm font-medium text-slate-500 mt-1">{historyOrders.length} previous order{historyOrders.length !== 1 && 's'}</p>
+                          <p className="font-bold text-[#003F86] text-base">Booking history</p>
+                          <p className="text-xs font-medium text-slate-500 mt-0.5">{historyOrders.length} previous order{historyOrders.length !== 1 && 's'}</p>
                         </div>
-                        <span className="text-blue-600 text-xl">›</span>
+                        <span className="text-blue-600 text-lg">›</span>
+                      </button>
+                      <button className="flex items-center justify-between rounded-lg bg-white px-3.5 py-3 shadow-sm border border-rose-100" onClick={() => setActiveMobileTab('cancelled_bookings')}>
+                        <div className="text-left">
+                          <p className="font-bold text-[#003F86] text-base">Cancelled bookings</p>
+                          <p className="text-xs font-medium text-rose-700 mt-0.5">{cancelledBookings.length} cancelled or rejected booking{cancelledBookings.length !== 1 && 's'}</p>
+                        </div>
+                        <span className="text-rose-600 text-lg">›</span>
                       </button>
                     </div>
                   )}
@@ -857,6 +882,21 @@ function ProfilePage({
                       onSelectOrder={(order) => { setSelectedHistoryOrder(order); setHistoryReviewForm({ rating: 5, text: '' }); setActiveMobileTab('history_booking_detail'); }} 
                     />
                   )}
+                  {activeMobileTab === 'cancelled_bookings' && (
+                    <ActiveServicesPanel
+                      activeBookings={cancelledBookings}
+                      eyebrow="Cancelled"
+                      heading={`${cancelledBookings.length} cancelled booking${cancelledBookings.length !== 1 ? 's' : ''}`}
+                      helper="Cancelled and rejected bookings appear here. Invoice is not available for these."
+                      onSelect={(id) => {
+                        const order = cancelledBookings.find((entry) => String(entry.id) === String(id))
+                        setSelectedCancelledOrder(order || null)
+                        setActiveMobileTab('cancelled_booking_detail')
+                      }}
+                      selectedBookingId={selectedCancelledOrder?.id}
+                      isMobileList={true}
+                    />
+                  )}
                   {activeMobileTab === 'history_booking_detail' && selectedHistoryOrder && (
                     <OrderHistoryDetailView 
                       order={selectedHistoryOrder}
@@ -868,12 +908,25 @@ function ProfilePage({
                       canCancel={!['Cancelled', 'Rejected', 'Completed', 'Refunded'].some(s => selectedHistoryOrder.status?.toLowerCase().includes(s.toLowerCase()))}
                       canReorder={selectedHistoryOrder.status?.toLowerCase().includes('complete')}
                       canReview={canReviewHistoryOrder}
+                      canViewInvoice={!isCancelledOrRejectedBooking(selectedHistoryOrder)}
                       reviewForm={historyReviewForm}
                       setReviewForm={setHistoryReviewForm}
                       submitReview={submitHistoryReview}
                       canSubmitReview={canSubmitHistoryReview}
                     />
                   )}
+                  {activeMobileTab === 'cancelled_booking_detail' && selectedCancelledOrder ? (
+                    <OrderHistoryDetailView
+                      order={selectedCancelledOrder}
+                      onClose={() => setActiveMobileTab('cancelled_bookings')}
+                      hideCloseButton={true}
+                      canCancel={false}
+                      canReorder={false}
+                      canReview={false}
+                      canViewInvoice={false}
+                      canSubmitReview={false}
+                    />
+                  ) : null}
                 </div>
 
                 <div className="hidden lg:flex lg:flex-col lg:gap-6">
@@ -915,6 +968,18 @@ function ProfilePage({
                   ) : null}
                   <WalletSection transactions={walletTransactions} wallet={wallet} />
                   <OrderHistorySection appSettings={appSettings} onCancelBooking={handleCancelBooking} onReorder={onReorderOrder} onSubmitReview={addReview} orders={historyOrders} reviews={reviews} />
+                  {cancelledBookings.length > 0 ? (
+                    <OrderHistorySection
+                      appSettings={appSettings}
+                      heading="Cancelled bookings"
+                      helper="Cancelled and rejected bookings. Invoice is not available for these orders."
+                      onCancelBooking={handleCancelBooking}
+                      onReorder={onReorderOrder}
+                      onSubmitReview={addReview}
+                      orders={cancelledBookings}
+                      reviews={reviews}
+                    />
+                  ) : null}
                 </div>
               </>
             )

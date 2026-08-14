@@ -4,13 +4,22 @@ import { adminApi } from '../../../services/adminApi'
 import { logoFallbackClass, logoImageClass } from '../../../utils/branding'
 import { notify } from '../../../utils/feedback'
 import { readRows } from '../utils/formatters'
+import {
+  ADMIN_NAV_ORDER_EVENT,
+  adminNavSections,
+  applySidebarNavOrder,
+  parseSidebarNavOrder,
+  serializeSidebarNavOrder,
+} from '../config/adminNav'
+import SidebarNavOrderEditor from '../components/SidebarNavOrderEditor'
 
 const settingTabs = [
   { group: 'branding', title: 'Branding', subtitle: 'Logo, app name and footer intro.' },
   { group: 'contact', title: 'Contact Details', subtitle: 'Phone, email, address and service area text.' },
   { group: 'social_links', title: 'Social Links', subtitle: 'Social platform icons and footer links.' },
   { group: 'payment_methods', title: 'Payment Methods', subtitle: 'Cash, wallet and online gateway controls.' },
-  { group: 'auto_assignment', title: 'Auto Assignment', subtitle: 'Automatically approve and assign bookings to available professionals.' },
+  { group: 'auto_assignment', title: 'Auto Assignment', subtitle: 'Automatic admin approval and vendor assignment for new bookings.' },
+  { group: 'sidebar_nav', title: 'Sidebar Menu', subtitle: 'Rearrange admin sidebar groups and links.' },
   { group: 'legal', title: 'Legal Texts', subtitle: 'Copyright, powered by and footer bottom text.' },
 ]
 
@@ -36,10 +45,10 @@ const settingFields = {
     ['footer_bottom_text', 'Footer bottom text', 'text'],
   ],
   auto_assignment: [
-    ['enabled', 'Enable automatic assignment', 'checkbox', 'half'],
-    ['auto_approve', 'Auto approve booking before assignment', 'checkbox', 'half'],
-    ['delay_minutes', 'Assignment delay in minutes', 'number', 'third'],
-    ['match_area', 'Match professional area with booking address', 'checkbox', 'half'],
+    ['auto_approve', 'Automatic Admin Approval', 'checkbox', 'half', 'Automatically approve new customer bookings.'],
+    ['enabled', 'Automatic Vendor Assignment', 'checkbox', 'half', 'Automatically assign approved bookings to an available vendor who provides the same subservice and serves the booking area.'],
+    ['delay_minutes', 'Assignment Delay (minutes)', 'number', 'half', 'Wait this long before automatically assigning an approved booking. Applies only when Automatic Vendor Assignment is On.'],
+    ['match_area', 'Require area / pincode match', 'checkbox', 'half', 'When On, vendors must match the booking pincode or area. Exact pincode is always preferred first.'],
   ],
 }
 
@@ -114,6 +123,7 @@ function SettingsView() {
   })))
   const [isLoading, setIsLoading] = useState(false)
   const [message, setMessage] = useState('')
+  const [navOrder, setNavOrder] = useState(adminNavSections)
 
   const loadSettings = async () => {
     setIsLoading(true)
@@ -173,6 +183,9 @@ function SettingsView() {
         label: setting?.metadata?.label || fallbackLabel,
         url: setting?.value || '',
       })))
+
+      const savedNav = parseSidebarNavOrder(getSetting(rows, 'admin', 'sidebar_nav_order')?.value)
+      setNavOrder(applySidebarNavOrder(adminNavSections, savedNav))
     } catch (error) {
       setMessage(error.message)
     } finally {
@@ -293,6 +306,16 @@ function SettingsView() {
           type: 'url',
           value: link.url || '',
         })))
+      } else if (activeGroup === 'sidebar_nav') {
+        const payload = serializeSidebarNavOrder(navOrder)
+        await saveSetting({
+          group: 'admin',
+          key: 'sidebar_nav_order',
+          metadata: { label: 'Sidebar menu order' },
+          type: 'json',
+          value: JSON.stringify(payload),
+        })
+        window.dispatchEvent(new CustomEvent(ADMIN_NAV_ORDER_EVENT, { detail: payload }))
       } else {
         await Promise.all((settingFields[activeGroup] || []).map(([key, label, type]) => saveSetting({
           group: activeGroup,
@@ -471,18 +494,24 @@ function SettingsView() {
               ))}
             </div>
           </div>
+        ) : activeGroup === 'sidebar_nav' ? (
+          <SidebarNavOrderEditor onChange={setNavOrder} value={navOrder} />
         ) : activeGroup === 'auto_assignment' ? (
           <div className="grid gap-5">
             <section className="rounded-lg border border-[#67B529]/20 bg-[#EEF9E8] p-4">
-              <p className="text-sm font-semibold text-[#2F6412]">Automatic professional assignment</p>
+              <p className="text-sm font-semibold text-[#2F6412]">Automatic booking approval &amp; vendor assignment</p>
               <p className="mt-1 text-xs font-medium leading-5 text-[#67B529]">
-                When enabled, every new booking will be checked after the delay. If an approved and available professional matches the service skill/category, the system assigns it automatically.
+                Turn on Automatic Admin Approval and/or Automatic Vendor Assignment independently.
+                Assignment only runs on approved bookings after the configured delay, and picks an available vendor for the exact subservice and service area.
               </p>
             </section>
             <div className="grid gap-4 lg:grid-cols-2">
-              {(settingFields.auto_assignment || []).map(([key, label, type]) => (
+              {(settingFields.auto_assignment || []).map(([key, label, type, , description]) => (
                 <label className="rounded-lg border border-slate-200 bg-white p-4" key={key}>
                   <span className="text-sm font-semibold text-slate-800">{label}</span>
+                  {description ? (
+                    <p className="mt-1 text-xs font-medium leading-5 text-slate-500">{description}</p>
+                  ) : null}
                   {type === 'checkbox' ? (
                     <span className="mt-3 flex items-center gap-3 text-sm font-semibold text-slate-600">
                       <input
@@ -495,10 +524,13 @@ function SettingsView() {
                     </span>
                   ) : (
                     <input
-                      className="mt-3 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium outline-none focus:border-[#67B529]"
+                      className={`mt-3 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium outline-none focus:border-[#67B529] ${
+                        String(form.auto_assignment?.enabled || '0') !== '1' ? 'bg-slate-50 text-slate-500' : ''
+                      }`}
                       min="0"
                       max="30"
                       onChange={(event) => updateForm('auto_assignment', key, event.target.value)}
+                      step="0.5"
                       type="number"
                       value={form.auto_assignment?.[key] || '2'}
                     />

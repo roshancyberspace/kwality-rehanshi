@@ -12,18 +12,34 @@ const trackingSteps = [
 
 const closedStatuses = {
   Cancelled: {
+    badge: 'Cancelled',
+    message: 'This booking has been cancelled. No professional visit is scheduled for this request.',
+    tone: 'border-rose-200 bg-rose-50 text-rose-800',
+  },
+  Canceled: {
+    badge: 'Cancelled',
     message: 'This booking has been cancelled. No professional visit is scheduled for this request.',
     tone: 'border-rose-200 bg-rose-50 text-rose-800',
   },
   Rejected: {
+    badge: 'Rejected',
     message: 'This booking was not approved. Please place a new booking if you still need the service.',
     tone: 'border-rose-200 bg-rose-50 text-rose-800',
   },
   Refunded: {
+    badge: 'Refunded',
     message: 'This booking was closed and the refund status has been updated.',
     tone: 'border-blue-200 bg-blue-50 text-blue-800',
   },
 }
+
+const getClosedState = (status = '') => {
+  const normalized = String(status || '').toLowerCase()
+  const key = Object.keys(closedStatuses).find((entry) => normalized.includes(entry.toLowerCase()))
+  return key ? closedStatuses[key] : null
+}
+
+const isCancelledOrRejectedStatus = (status = '') => /cancel|reject/i.test(String(status || ''))
 
 const getStepIndex = (status) => {
   const normalizedStatus = status || 'Pending'
@@ -161,7 +177,8 @@ function CurrentBookingCard({ alreadyReviewed = false, booking, onApproveExtraIt
   const [isCancelling, setIsCancelling] = useState(false)
   const [isSubmittingReview, setIsSubmittingReview] = useState(false)
   const status = booking?.status || 'Pending'
-  const closedState = closedStatuses[status]
+  const closedState = getClosedState(status)
+  const isCancelledOrRejected = isCancelledOrRejectedStatus(status)
   const currentStep = getStepIndex(status)
   const progressWidth = `${Math.min(100, Math.max(0, (currentStep / (trackingSteps.length - 1)) * 100))}%`
   const statusReason = booking?.statusReason || closedState?.message
@@ -237,34 +254,50 @@ function CurrentBookingCard({ alreadyReviewed = false, booking, onApproveExtraIt
       <div className="flex flex-col gap-3 border-b border-slate-100 px-4 py-3 sm:flex-row sm:items-start sm:justify-between lg:px-4 lg:py-3 shrink-0">
         <div className="flex min-w-0 w-full gap-4">
           <div className="min-w-0 w-full">
-            <div className="flex items-center justify-between gap-4">
-              <span className={`inline-flex rounded-full border px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider ${closedState ? closedState.tone : 'border-[#67B529]/35 bg-[#EEF9E8] text-[#67B529]'}`}>
-                {status}
-              </span>
-              <div className="flex items-center gap-2 shrink-0">
-                {!closedState && status !== 'Completed' ? (
-                  <button aria-label="Contact technician" className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-50 text-[#003F86] hover:bg-blue-100 transition-colors" type="button">
-                    <span className="scale-[0.75]"><Icon name="phone" /></span>
+            {!isCancelledOrRejected ? (
+              <div className="flex items-center justify-between gap-4">
+                <span className={`inline-flex rounded-full border px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider ${closedState ? closedState.tone : 'border-[#67B529]/35 bg-[#EEF9E8] text-[#67B529]'}`}>
+                  {status}
+                </span>
+                <div className="flex items-center gap-2 shrink-0">
+                  {status !== 'Completed' ? (
+                    <button aria-label="Contact technician" className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-50 text-[#003F86] hover:bg-blue-100 transition-colors" type="button">
+                      <span className="scale-[0.75]"><Icon name="phone" /></span>
+                    </button>
+                  ) : null}
+                  <button className="flex h-7 items-center gap-1 rounded-full bg-rose-50 px-2.5 text-[11px] font-bold uppercase text-rose-600 hover:bg-rose-100 transition-colors" type="button">
+                    <span className="scale-[0.8]"><Icon name="sos" /></span> SOS
                   </button>
-                ) : null}
-                <button className="flex h-7 items-center gap-1 rounded-full bg-rose-50 px-2.5 text-[11px] font-bold uppercase text-rose-600 hover:bg-rose-100 transition-colors" type="button">
-                  <span className="scale-[0.8]"><Icon name="sos" /></span> SOS
-                </button>
+                </div>
               </div>
+            ) : null}
+            <div className={`flex items-start justify-between gap-2 ${isCancelledOrRejected ? '' : 'mt-2'}`}>
+              <h2 className="min-w-0 flex-1 break-words text-xl font-bold text-[#003F86] leading-snug">{booking?.service}</h2>
+              {isCancelledOrRejected ? (
+                <span className="shrink-0 pt-1 text-[11px] font-medium text-rose-600">
+                  {closedState?.badge || 'Cancelled'}
+                </span>
+              ) : null}
             </div>
-            <h2 className="mt-2 break-words text-xl font-bold text-[#003F86] leading-snug">{booking?.service}</h2>
             <p className="mt-1 text-sm font-medium text-slate-500">
               {booking?.id} | {[booking?.date, booking?.time].filter(Boolean).join(' | ') || 'Schedule pending'}
             </p>
+            {isCancelledOrRejected && statusReason ? (
+              <p className="mt-2 text-xs font-semibold leading-5 text-rose-700">
+                Reason: {statusReason}
+              </p>
+            ) : null}
           </div>
         </div>
-        <div className="grid justify-items-start gap-2 sm:max-w-xs sm:justify-items-end sm:text-right">
-          {closedState && statusReason ? (
-            <p className="text-xs font-semibold leading-5 text-rose-700">
-              Reason: {statusReason}
-            </p>
-          ) : null}
-        </div>
+        {!isCancelledOrRejected ? (
+          <div className="grid justify-items-start gap-2 sm:max-w-xs sm:justify-items-end sm:text-right">
+            {closedState && statusReason ? (
+              <p className="text-xs font-semibold leading-5 text-rose-700">
+                Reason: {statusReason}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
       </div>
 
       <div className="flex flex-col gap-4 p-4 lg:p-4">
@@ -389,7 +422,7 @@ function CurrentBookingCard({ alreadyReviewed = false, booking, onApproveExtraIt
           </div>
         </div>
 
-        {hasPendingExtras ? (
+        {!isCancelledOrRejected && hasPendingExtras ? (
           <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>

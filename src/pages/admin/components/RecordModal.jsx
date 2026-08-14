@@ -11,6 +11,15 @@ function isEmptyValue(value) {
   return false
 }
 
+function matchesShowWhen(showWhen, form) {
+  if (!showWhen) return true
+  const current = String(form[showWhen.field] ?? '')
+  if (Array.isArray(showWhen.values)) {
+    return showWhen.values.map(String).includes(current)
+  }
+  return current === String(showWhen.value)
+}
+
 function RecordModal({ actionLoadingId, activeTab, config, form, modalState, onChange, onClose, onSubmit }) {
   const formSteps = config?.formSteps || []
   const isMultiStep = formSteps.length > 0
@@ -51,7 +60,9 @@ function RecordModal({ actionLoadingId, activeTab, config, form, modalState, onC
     if (!config) return []
     return config.fields.filter((field) => {
       if (field.hidden) return false
-      if (field.showWhen && String(form[field.showWhen.field] ?? '') !== String(field.showWhen.value)) {
+      if (field.hideOnCreate && modalState?.mode !== 'edit') return false
+      if (field.hideOnEdit && modalState?.mode === 'edit') return false
+      if (field.showWhen && !matchesShowWhen(field.showWhen, form)) {
         return false
       }
       if (isMultiStep && field.formStep && field.formStep !== currentStep?.id) {
@@ -59,20 +70,40 @@ function RecordModal({ actionLoadingId, activeTab, config, form, modalState, onC
       }
       return true
     }).map((field) => {
+      if (modalState?.mode === 'edit' && field.readOnlyOnEdit) {
+        field = { ...field, readOnly: true }
+      }
+      if (field.readOnlyUnless) {
+        field = {
+          ...field,
+          readOnly: String(form[field.readOnlyUnless.field] ?? '') !== String(field.readOnlyUnless.value),
+        }
+      }
       if (!field.filterBy) return field
       const parentValue = form[field.filterBy.field]
       if (!parentValue) {
-        return { ...field, options: [], hint: field.hint || 'Select the parent field first' }
+        return { ...field, options: [], hint: field.emptyParentHint || field.hint || 'Select the parent field first' }
       }
-      return {
-        ...field,
-        options: (field.options || []).filter((option) => {
-          const optionParent = option[field.filterBy.recordKey]
-          return String(optionParent ?? '') === String(parentValue)
-        }),
+
+      const currentValue = form[field.name]
+      const excludeMap = field.filterBy.whereNotIn || {}
+      const filtered = (field.options || []).filter((option) => {
+        const optionParent = option[field.filterBy.recordKey]
+        if (String(optionParent ?? '') !== String(parentValue)) return false
+        return Object.entries(excludeMap).every(([key, values]) => {
+          const raw = String(option[key] ?? '').toLowerCase()
+          return !values.some((value) => String(value).toLowerCase() === raw)
+        })
+      })
+
+      if (currentValue && !filtered.some((option) => String(option.value) === String(currentValue))) {
+        const selected = (field.options || []).find((option) => String(option.value) === String(currentValue))
+        if (selected) filtered.unshift(selected)
       }
+
+      return { ...field, options: filtered }
     })
-  }, [config, currentStep?.id, form, isMultiStep])
+  }, [config, currentStep?.id, form, isMultiStep, modalState?.mode])
 
   if (!modalState || !config) return null
 
@@ -87,7 +118,7 @@ function RecordModal({ actionLoadingId, activeTab, config, form, modalState, onC
     const missing = fields.find((field) => {
       if (!field.required) return false
       const value = form[field.name]
-      if (value === CUSTOM_SELECT_VALUE) return true
+      if (value === CUSTOM_SELECT_VALUE && !field.customSentinel) return true
       return isEmptyValue(value)
     })
     if (missing) {
@@ -128,7 +159,9 @@ function RecordModal({ actionLoadingId, activeTab, config, form, modalState, onC
 
     const allVisibleConfigFields = (config.fields || []).filter((field) => {
       if (field.hidden) return false
-      if (field.showWhen && String(form[field.showWhen.field] ?? '') !== String(field.showWhen.value)) {
+      if (field.hideOnCreate && modalState?.mode !== 'edit') return false
+      if (field.hideOnEdit && modalState?.mode === 'edit') return false
+      if (field.showWhen && !matchesShowWhen(field.showWhen, form)) {
         return false
       }
       return true

@@ -210,8 +210,11 @@ class MobileNotificationController extends Controller
     {
         return AdminNotification::query()
             ->where(function ($query) use ($audience, $metadataKey, $id) {
-                $query->where('audience', $audience)
-                    ->orWhere('audience', 'All')
+                $aliases = $audience === 'Partners'
+                    ? ['Partners', 'All']
+                    : ['Customers', 'All Customers', 'All'];
+
+                $query->whereIn('audience', $aliases)
                     ->orWhere("metadata->{$metadataKey}", $id);
             })
             ->latest('id');

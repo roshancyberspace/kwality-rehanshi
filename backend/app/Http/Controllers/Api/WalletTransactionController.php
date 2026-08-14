@@ -2,13 +2,14 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Models\Booking;
 use App\Models\CustomerProfile;
-use App\Models\CustomerWallet;
 use App\Models\Partner;
 use App\Models\WalletTransaction;
 use App\Support\WalletManager;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class WalletTransactionController extends CrudController
 {
@@ -17,8 +18,9 @@ class WalletTransactionController extends CrudController
     protected string $searchColumn = 'transaction_no';
 
     protected array $rules = [
+        'entry_for' => ['nullable', 'string', 'in:vendor,customer,booking_customer,booking_vendor,booking_both'],
         'transaction_no' => ['nullable', 'string', 'max:100'],
-        'wallet_type' => ['required', 'string', 'in:Vendor,Customer'],
+        'wallet_type' => ['nullable', 'string', 'in:Vendor,Customer'],
         'partner_id' => ['nullable', 'exists:partners,id'],
         'customer_profile_id' => ['nullable', 'exists:customer_profiles,id'],
         'booking_id' => ['nullable', 'exists:bookings,id'],
@@ -48,6 +50,18 @@ class WalletTransactionController extends CrudController
             $query->where('customer_profile_id', $request->integer('customer_profile_id'));
         }
 
+        if ($request->filled('status')) {
+            $query->where('status', $request->string('status'));
+        }
+
+        if ($request->filled('direction')) {
+            $query->where('direction', $request->string('direction'));
+        }
+
+        if ($request->filled('type')) {
+            $query->where('type', $request->string('type'));
+        }
+
         if ($request->filled('q')) {
             $query->where(function ($inner) use ($request) {
                 $term = '%'.$request->string('q').'%';
@@ -56,6 +70,8 @@ class WalletTransactionController extends CrudController
                     ->orWhere('type', 'like', $term);
             });
         }
+
+        $this->applyDateRangeFilter($query, $request);
 
         $perPageParam = $request->input('per_page');
         if ($perPageParam === 'all' || (int) $perPageParam === -1 || $request->boolean('all')) {
@@ -76,20 +92,20 @@ class WalletTransactionController extends CrudController
     {
         $record = DB::transaction(function () use ($request) {
             $data = $this->validatedData($request);
-            $data['transaction_no'] = $data['transaction_no'] ?? $this->transactionNo();
-            $data['status'] = $data['status'] ?? 'Posted';
+            $data = $this->hydrateFromBooking($data);
+            $entryFor = (string) ($data['entry_for'] ?? '');
+            unset($data['entry_for'], $data['balance_after'], $data['transaction_no']);
 
-            if ($data['wallet_type'] === 'Customer') {
-                $customer = CustomerProfile::findOrFail($data['customer_profile_id']);
-                $record = WalletTransaction::create($data);
-                $this->rebuildCustomerWallet($customer->id);
-            } else {
-                $partner = Partner::findOrFail($data['partner_id']);
-                $record = WalletTransaction::create($this->withVendorBalance($data, $partner));
-                app(WalletManager::class)->rebuildVendorWallet($partner);
+            $walletTypes = $this->walletTypesFor($entryFor, $data['wallet_type'] ?? null);
+            $this->assertTargets($data, $walletTypes, $entryFor);
+
+            $first = null;
+            foreach ($walletTypes as $walletType) {
+                $created = $this->postTransaction($data, $walletType);
+                $first ??= $created;
             }
 
-            return $record->fresh();
+            return $first?->fresh();
         });
 
         return response()->json($record, 201);
@@ -101,7 +117,8 @@ class WalletTransactionController extends CrudController
             $transaction = WalletTransaction::findOrFail($id);
             $oldPartnerId = $transaction->partner_id;
             $oldCustomerId = $transaction->customer_profile_id;
-            $data = $this->validatedData($request);
+            $data = $this->hydrateFromBooking($this->validatedData($request));
+            unset($data['entry_for']);
             $transaction->update($data);
 
             $this->rebuildAffectedWallets($oldPartnerId, $oldCustomerId, $transaction->fresh());
@@ -125,67 +142,104 @@ class WalletTransactionController extends CrudController
         return response()->json(['message' => 'Deleted successfully']);
     }
 
-    private function withVendorBalance(array $data, Partner $partner): array
+    private function postTransaction(array $data, string $walletType): WalletTransaction
     {
-        $currentBalance = (float) WalletTransaction::where('wallet_type', 'Vendor')->where('partner_id', $partner->id)->latest('id')->value('balance_after');
-        $signedAmount = $data['direction'] === 'Credit' ? (float) $data['amount'] : -((float) $data['amount']);
-        $data['balance_after'] = round($currentBalance + $signedAmount, 2);
+        $manager = app(WalletManager::class);
+        $booking = ! empty($data['booking_id']) ? Booking::find($data['booking_id']) : null;
+        $amount = round((float) $data['amount'], 2);
+        $direction = $data['direction'];
+        $type = $data['type'];
+        $description = $data['description'] ?? ($booking ? "Manual {$direction} against {$booking->booking_no}" : "Manual {$direction}");
+        $status = $data['status'] ?? 'Posted';
+
+        if ($walletType === 'Customer') {
+            $customer = CustomerProfile::findOrFail($data['customer_profile_id']);
+            $transaction = $manager->postCustomerTransaction($customer, $booking, $direction, $type, $amount, $description);
+        } else {
+            $partner = Partner::findOrFail($data['partner_id']);
+            $transaction = $manager->postVendorTransaction($partner, $booking, $direction, $type, $amount, $description);
+            $manager->rebuildVendorWallet($partner);
+        }
+
+        if ($status && $status !== $transaction->status) {
+            $transaction->update(['status' => $status]);
+        }
+
+        return $transaction->fresh();
+    }
+
+    private function hydrateFromBooking(array $data): array
+    {
+        $booking = ! empty($data['booking_id']) ? Booking::find($data['booking_id']) : null;
+        if (! $booking) {
+            return $data;
+        }
+
+        $data['booking_no'] = $booking->booking_no ?: ($data['booking_no'] ?? null);
+
+        if (empty($data['partner_id'])) {
+            $data['partner_id'] = $booking->partner_id
+                ?: Partner::where('name', $booking->professional_name)->value('id');
+        }
+
+        if (empty($data['customer_profile_id'])) {
+            $data['customer_profile_id'] = app(WalletManager::class)->customerForBooking($booking)?->id;
+        }
 
         return $data;
     }
 
+    private function walletTypesFor(string $entryFor, ?string $walletType): array
+    {
+        return match ($entryFor) {
+            'vendor', 'booking_vendor' => ['Vendor'],
+            'customer', 'booking_customer' => ['Customer'],
+            'booking_both' => ['Customer', 'Vendor'],
+            default => [in_array($walletType, ['Vendor', 'Customer'], true) ? $walletType : 'Customer'],
+        };
+    }
+
+    private function assertTargets(array $data, array $walletTypes, string $entryFor): void
+    {
+        if (str_starts_with($entryFor, 'booking') && empty($data['booking_id'])) {
+            throw ValidationException::withMessages([
+                'booking_id' => 'Select a booking for this transaction.',
+            ]);
+        }
+
+        if (in_array('Vendor', $walletTypes, true) && empty($data['partner_id'])) {
+            throw ValidationException::withMessages([
+                'partner_id' => str_starts_with($entryFor, 'booking')
+                    ? 'This booking has no vendor assigned.'
+                    : 'Select a vendor for this transaction.',
+            ]);
+        }
+
+        if (in_array('Customer', $walletTypes, true) && empty($data['customer_profile_id'])) {
+            throw ValidationException::withMessages([
+                'customer_profile_id' => str_starts_with($entryFor, 'booking')
+                    ? 'No customer wallet found for this booking.'
+                    : 'Select a customer for this transaction.',
+            ]);
+        }
+    }
+
     private function rebuildAffectedWallets(?int $partnerId, ?int $customerId, ?WalletTransaction $transaction = null): void
     {
+        $manager = app(WalletManager::class);
+
         foreach (array_filter([$partnerId, $transaction?->partner_id]) as $id) {
             $partner = Partner::find($id);
             if ($partner) {
-                app(WalletManager::class)->rebuildVendorWallet($partner);
+                $manager->rebuildVendorWallet($partner);
             }
         }
 
         foreach (array_filter([$customerId, $transaction?->customer_profile_id]) as $id) {
-            $this->rebuildCustomerWallet((int) $id);
-        }
-    }
-
-    private function rebuildCustomerWallet(int $customerId): void
-    {
-        $customer = CustomerProfile::find($customerId);
-        if (! $customer) {
-            return;
-        }
-
-        $transactions = WalletTransaction::where('wallet_type', 'Customer')->where('customer_profile_id', $customerId)->orderBy('id')->get();
-        $balance = 0;
-        $credit = 0;
-        $debit = 0;
-
-        foreach ($transactions as $transaction) {
-            $amount = (float) $transaction->amount;
-            if ($transaction->direction === 'Credit') {
-                $credit += $amount;
-                $balance += $amount;
-            } else {
-                $debit += $amount;
-                $balance -= $amount;
+            $customer = CustomerProfile::find($id);
+            if ($customer) {
+                $manager->rebuildCustomerWallet($customer);
             }
-            $transaction->update(['balance_after' => round($balance, 2)]);
         }
-
-        CustomerWallet::updateOrCreate(
-            ['customer_profile_id' => $customer->id],
-            [
-                'customer_name' => $customer->name,
-                'balance' => round($balance, 2),
-                'total_credit' => round($credit, 2),
-                'total_debit' => round($debit, 2),
-                'status' => 'Active',
-            ]
-        );
-    }
-
-    private function transactionNo(): string
-    {
-        return 'WTX-'.now()->format('ymdHis').'-'.random_int(1000, 9999);
     }
 }

@@ -13,13 +13,13 @@ function isPhoneValue(value) {
   return digits.length >= 10
 }
 
-function IdentifierStep({ disabled, error, login, onChange, onSubmit }) {
+function IdentifierStep({ disabled, error, login, onChange, onSubmit, subtitle, title }) {
   return (
     <form className="flex flex-col gap-5 pb-2" onSubmit={onSubmit}>
       <div>
-        <h2 className="text-xl font-bold text-[#003F86]">Login to Continue</h2>
+        <h2 className="text-xl font-bold text-[#003F86]">{title || 'Login to Continue'}</h2>
         <p className="mt-1.5 text-sm font-medium text-[#003F86]/75">
-          Enter your email or mobile number to continue booking.
+          {subtitle || 'Enter your email or mobile number to continue booking.'}
         </p>
       </div>
 
@@ -220,10 +220,15 @@ function OnboardingStep({
 }
 
 /**
- * Mobile + Tablet only guest cart OTP onboarding bottom sheet.
+ * Mobile + Tablet only OTP login/signup bottom sheet.
  * Desktop must use the existing AuthModal — do not render this at lg+.
  */
-export default function MobileTabletGuestAuthBottomSheet({ onAuthenticated, onClose }) {
+export default function MobileTabletGuestAuthBottomSheet({
+  onAuthenticated,
+  onClose,
+  subtitle,
+  title,
+}) {
   const [step, setStep] = useState('identifier')
   const [login, setLogin] = useState('')
   const [otp, setOtp] = useState('')
@@ -485,6 +490,8 @@ export default function MobileTabletGuestAuthBottomSheet({ onAuthenticated, onCl
                 setLogin(value)
               }}
               onSubmit={handleContinue}
+              subtitle={subtitle}
+              title={title}
             />
           ) : null}
 

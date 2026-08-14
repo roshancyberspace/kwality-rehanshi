@@ -22,6 +22,16 @@ class InvoiceController extends Controller
             ->orWhere('booking_no', $identifier)
             ->firstOrFail();
 
+        $status = strtolower((string) $booking->status);
+        if (
+            str_contains($status, 'cancel')
+            || str_contains($status, 'reject')
+        ) {
+            return response()->json([
+                'message' => 'Invoice is not available for cancelled or rejected bookings.',
+            ], 422);
+        }
+
         $invoice = $this->invoiceService->generateForBooking($booking);
 
         return response()->json($invoice);

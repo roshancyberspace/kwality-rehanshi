@@ -143,18 +143,25 @@ function SelectField({ commonClass, field, onChange, value }) {
     if (stringValue && optionValues.includes(stringValue)) setCustomMode(false)
   }, [optionValues, stringValue, valueIsCustom])
 
-  const showCustomInput = Boolean(field.allowCustom && (customMode || valueIsCustom))
-  const selectValue = showCustomInput ? CUSTOM_SELECT_VALUE : stringValue
+  const showCustomInput = Boolean(field.allowCustom && !field.customSentinel && (customMode || valueIsCustom))
+  const selectValue = (showCustomInput || (field.customSentinel && stringValue === CUSTOM_SELECT_VALUE))
+    ? CUSTOM_SELECT_VALUE
+    : stringValue
 
   return (
     <label className="block">
       <span className="text-sm font-bold text-slate-700">{field.label}</span>
       <select
         className={commonClass}
+        disabled={field.readOnly}
         onChange={(event) => {
           const next = event.target.value
           if (next === CUSTOM_SELECT_VALUE) {
             setCustomMode(true)
+            if (field.customSentinel) {
+              onChange(field.name, CUSTOM_SELECT_VALUE)
+              return
+            }
             if (!valueIsCustom) onChange(field.name, '')
             return
           }
@@ -416,7 +423,7 @@ function FieldControl({ field, value, onChange }) {
       <input
         className={commonClass}
         onChange={(event) => onChange(field.name, event.target.value)}
-        placeholder={field.type === 'tags' ? 'Comma separated values' : field.label}
+        placeholder={field.placeholder || (field.type === 'tags' ? 'Comma separated values' : field.label)}
         readOnly={field.readOnly}
         required={field.required}
         step={field.inputStep ?? field.step}

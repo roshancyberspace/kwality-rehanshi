@@ -19,11 +19,18 @@ abstract class CrudController extends Controller
 
     protected string $searchColumn = 'name';
 
+    /** Optional override, e.g. paid_at. Defaults to created_at when timestamps are enabled. */
+    protected ?string $dateFilterColumn = null;
+
     public function index(Request $request)
     {
         $cacheKey = $this->model . '_index_' . md5(json_encode($request->all()));
         
         $callback = function () use ($request) {
+            if ($request->boolean('distinct') && $request->filled('column')) {
+                return $this->distinctColumnResponse($request);
+            }
+
             $query = $this->model::query()->latest('id');
             $lite = $request->boolean('lite') || $request->boolean('options');
 
@@ -46,9 +53,29 @@ abstract class CrudController extends Controller
                 $query->where('service_id', $request->integer('service_id'));
             }
 
+            if ($request->filled('sub_service_id') && $this->hasColumn('sub_service_id')) {
+                $query->where('sub_service_id', $request->integer('sub_service_id'));
+            }
+
+            if ($request->filled('category_key') && $this->hasColumn('category_key')) {
+                $query->where('category_key', $request->string('category_key'));
+            }
+
             if ($request->filled('partner_id') && $this->hasColumn('partner_id')) {
                 $query->where('partner_id', $request->integer('partner_id'));
             }
+
+            foreach (['wallet_type', 'direction', 'type', 'method', 'settlement', 'refund_status', 'customer_name'] as $column) {
+                if ($request->filled($column) && $this->hasColumn($column)) {
+                    $query->where($column, $request->string($column));
+                }
+            }
+
+            if ($request->filled('rating') && $this->hasColumn('rating')) {
+                $query->whereRaw('ROUND(rating) = ?', [(int) $request->input('rating')]);
+            }
+
+            $this->applyDateRangeFilter($query, $request);
 
             if ($request->filled('q') || $request->filled('search')) {
                 $term = '%'.($request->string('q') ?: $request->string('search')).'%';
@@ -66,10 +93,9 @@ abstract class CrudController extends Controller
                 }
             }
 
-            $perPageParam = $request->input('per_page');
-            if ($perPageParam === 'all' || (int) $perPageParam === -1 || $request->boolean('all')) {
-                // Cap unbounded dumps so dropdown/options loads stay fast.
-                $limit = max(1, min(2000, (int) $request->integer('limit', $lite ? 1000 : 500)));
+            $perPageParam = strtolower(trim((string) $request->input('per_page', '')));
+            if (in_array($perPageParam, ['all', '-1'], true) || $request->boolean('all')) {
+                $limit = max(1, min(10000, (int) $request->input('limit', $lite ? 500 : 2000)));
                 $items = $query->limit($limit)->get();
                 if ($lite) {
                     $items = $items->map(fn ($item) => $this->presentLite($item));
@@ -104,6 +130,40 @@ abstract class CrudController extends Controller
         }
 
         return $callback();
+    }
+
+    protected function applyDateRangeFilter($query, Request $request): void
+    {
+        if (! $request->filled('from_date') && ! $request->filled('to_date')) {
+            return;
+        }
+
+        $column = $this->resolveDateFilterColumn();
+        if (! $column) {
+            return;
+        }
+
+        if ($request->filled('from_date')) {
+            $query->whereDate($column, '>=', $request->date('from_date')->toDateString());
+        }
+
+        if ($request->filled('to_date')) {
+            $query->whereDate($column, '<=', $request->date('to_date')->toDateString());
+        }
+    }
+
+    protected function resolveDateFilterColumn(): ?string
+    {
+        if ($this->dateFilterColumn) {
+            return $this->dateFilterColumn;
+        }
+
+        $model = new $this->model;
+        if ($model->usesTimestamps()) {
+            return $model->getCreatedAtColumn();
+        }
+
+        return null;
     }
 
     protected function getSearchableColumns(): array
@@ -188,6 +248,11 @@ abstract class CrudController extends Controller
             'category_id',
             'category_key',
             'partner_id',
+            'professional_name',
+            'customer_phone',
+            'payment_status',
+            'payment_method',
+            'amount',
             'role_id',
             'availability',
             'phone',
@@ -206,6 +271,37 @@ abstract class CrudController extends Controller
         return $available ?: ['id'];
     }
 
+    protected function distinctColumnResponse(Request $request)
+    {
+        $column = (string) $request->input('column');
+        if ($column === '' || ! $this->hasColumn($column)) {
+            return response()->json(['data' => [], 'total' => 0]);
+        }
+
+        $limit = max(1, min(1000, (int) $request->input('limit', 500)));
+        $values = $this->model::query()
+            ->whereNotNull($column)
+            ->where($column, '!=', '')
+            ->distinct()
+            ->orderBy($column)
+            ->limit($limit)
+            ->pluck($column);
+
+        $data = $values->map(fn ($value) => [
+            'id' => $value,
+            $column => $value,
+            'name' => $value,
+        ])->values();
+
+        return response()->json([
+            'data' => $data,
+            'total' => $data->count(),
+            'per_page' => $data->count(),
+            'current_page' => 1,
+            'last_page' => 1,
+        ]);
+    }
+
     protected function presentLite(mixed $item): array
     {
         if (is_array($item)) {
@@ -213,7 +309,10 @@ abstract class CrudController extends Controller
         }
 
         if ($item instanceof Model) {
-            return $item->toArray();
+            // Avoid $appends (service_name etc.) which lazy-load relations per row.
+            $item->setAppends([]);
+
+            return $item->attributesToArray();
         }
 
         return (array) $item;

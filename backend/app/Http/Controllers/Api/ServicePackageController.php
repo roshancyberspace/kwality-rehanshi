@@ -31,7 +31,7 @@ class ServicePackageController extends CrudController
         'process' => ['nullable', 'array'],
         'warranty' => ['nullable', 'string'],
         'sort_order' => ['nullable', 'integer'],
-        'status' => ['nullable', 'string', 'max:50'],
+        'status' => ['nullable', 'string', 'in:Active,Inactive'],
         'metadata' => ['nullable', 'array'],
     ];
 }
