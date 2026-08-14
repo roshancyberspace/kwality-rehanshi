@@ -14,5 +14,21 @@ class CustomerProfile extends Model
 
     protected $casts = ['last_booking_at' => 'datetime', 'metadata' => 'array'];
 
-    protected $hidden = ['password', 'metadata'];
+    protected $hidden = ['password'];
+
+    public function toArray()
+    {
+        $array = parent::toArray();
+        if (isset($array['metadata']) && is_array($array['metadata'])) {
+            unset(
+                $array['metadata']['password'],
+                $array['metadata']['password_hash'],
+                $array['metadata']['session_token'],
+                $array['metadata']['password_reset'],
+                $array['metadata']['login_otp'],
+            );
+        }
+
+        return $array;
+    }
 }

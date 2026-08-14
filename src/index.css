@@ -224,6 +224,22 @@ textarea {
   color: #334155 !important;
 }
 
+.admin-swal-popup select,
+.admin-swal-popup input:not([type='checkbox']):not([type='radio']),
+.admin-swal-popup textarea {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  margin: 0 !important;
+  border: 1px solid #cbd5e1 !important;
+  box-shadow: none !important;
+  outline: none !important;
+  appearance: none;
+}
+
+.admin-swal-popup-form {
+  width: min(92vw, 460px) !important;
+}
+
 .admin-swal-textarea {
   min-height: 88px !important;
   max-height: 112px !important;

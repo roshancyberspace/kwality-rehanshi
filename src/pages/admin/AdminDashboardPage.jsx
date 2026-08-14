@@ -629,7 +629,14 @@ function AdminDashboardPage({ appSettings = {}, authenticatedAdmin, onAdminProfi
 
     setForm(
       activeConfig.fields.reduce((values, field) => {
-        let initialValue = normalizeForInput(record?.[field.name], field.type)
+        let initialValue = field.fromMetadata
+          ? normalizeForInput(
+            record?.metadata?.[field.name]
+              ?? record?.metadata?.[field.name.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase())]
+              ?? record?.[field.name],
+            field.type,
+          )
+          : normalizeForInput(record?.[field.name], field.type)
         if (!record && field.autoGeneratePrefix) {
           initialValue = `${field.autoGeneratePrefix}${Math.floor(10000 + Math.random() * 90000)}`
         }

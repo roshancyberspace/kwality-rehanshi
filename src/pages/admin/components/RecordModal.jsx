@@ -55,6 +55,7 @@ function RecordModal({ actionLoadingId, activeTab, config, form, modalState, onC
   }, [formSteps.length, isMultiStep, stepIndex])
 
   const currentStep = formSteps[stepIndex] || null
+  const formSections = config?.formSections || []
 
   const visibleFields = useMemo(() => {
     if (!config) return []
@@ -221,7 +222,35 @@ function RecordModal({ actionLoadingId, activeTab, config, form, modalState, onC
         ) : null}
 
         <div className="grid max-h-[72vh] gap-4 overflow-y-auto p-5 md:grid-cols-2 custom-thin-scrollbar flex-1">
-          {visibleFields.map((field) => {
+          {formSections.length ? formSections.map((section) => {
+            const sectionFields = visibleFields.filter((field) => field.formSection === section.id)
+            if (!sectionFields.length) return null
+            return (
+              <section className="col-span-full rounded-xl border border-slate-200 bg-slate-50/70 p-4" key={section.id}>
+                <h3 className="mb-3 text-sm font-bold text-slate-800">{section.title}</h3>
+                <div className="grid gap-4 md:grid-cols-2">
+                  {sectionFields.map((field) => {
+                    const isEdit = modalState.mode === 'edit'
+                    const isPassword = field.type === 'password'
+                    const currentField = isEdit && isPassword ? {
+                      ...field,
+                      required: false,
+                      label: `${field.label} (optional)`,
+                    } : field
+
+                    return (
+                      <FieldControl
+                        field={currentField}
+                        key={field.name}
+                        onChange={onChange}
+                        value={form[field.name] ?? ''}
+                      />
+                    )
+                  })}
+                </div>
+              </section>
+            )
+          }) : visibleFields.map((field) => {
             const isEdit = modalState.mode === 'edit'
             const isPassword = field.type === 'password'
             const currentField = isEdit && isPassword ? {

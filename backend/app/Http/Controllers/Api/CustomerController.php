@@ -26,7 +26,42 @@ class CustomerController extends CrudController
         'last_booking_at' => ['nullable', 'date'],
         'status' => ['nullable', 'string', 'max:50'],
         'metadata' => ['nullable', 'array'],
+        'gender' => ['nullable', 'string', 'max:50'],
+        'date_of_birth' => ['nullable', 'date'],
+        'alternate_phone' => ['nullable', 'string', 'max:50'],
+        'emergency_contact_name' => ['nullable', 'string', 'max:255'],
+        'emergency_contact_phone' => ['nullable', 'string', 'max:50'],
+        'city' => ['nullable', 'string', 'max:120'],
+        'state' => ['nullable', 'string', 'max:120'],
+        'pincode' => ['nullable', 'string', 'max:20'],
+        'notes' => ['nullable', 'string'],
     ];
+
+    private array $metadataKeys = [
+        'gender',
+        'date_of_birth',
+        'alternate_phone',
+        'emergency_contact_name',
+        'emergency_contact_phone',
+        'city',
+        'state',
+        'pincode',
+        'notes',
+    ];
+
+    private function mergeCustomerMetadata(Request $request, array $data, array $existing = []): array
+    {
+        $metadata = $existing;
+        foreach ($this->metadataKeys as $key) {
+            if ($request->exists($key)) {
+                $metadata[$key] = $request->input($key);
+            }
+            unset($data[$key]);
+        }
+        $data['metadata'] = $metadata;
+
+        return $data;
+    }
 
     private function publicCustomer(CustomerProfile $customer): array
     {
@@ -39,10 +74,18 @@ class CustomerController extends CrudController
         ];
     }
 
+    public function store(Request $request)
+    {
+        $data = $this->mergeCustomerMetadata($request, $this->validatedData($request));
+        $customer = CustomerProfile::create($data);
+
+        return response()->json($this->publicCustomer($customer->fresh()), 201);
+    }
+
     public function update(Request $request, int|string $id)
     {
-        $data = $this->validatedData($request);
         $customer = CustomerProfile::findOrFail($id);
+        $data = $this->mergeCustomerMetadata($request, $this->validatedData($request), $customer->metadata ?? []);
         $customer->update($data);
 
         return response()->json($this->publicCustomer($customer->fresh()));
