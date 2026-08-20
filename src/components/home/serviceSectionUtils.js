@@ -37,18 +37,15 @@ export const serviceToCard = (service) => {
   const origVal = service.originalPrice || service.original_price || '';
   const cleanOrig = origVal ? String(origVal).replace(/\.00$/, '').replace(/[^\d.]/g, '') : '';
 
-  const reviewPool = ['2.9M', '851K', '112K', '204K', '6.5M', '1.2M', '430K', '95K'];
-  const reviewIndex = (Number(service.id || 0) + (service.name?.length || 0)) % reviewPool.length;
-  const defaultReviews = reviewPool[reviewIndex];
-  const rawReviews = service.metadata?.reviews || service.parentService?.metadata?.reviews || defaultReviews;
-  const reviews = String(rawReviews).replace(' bookings', '').replace(/[()]/g, '');
+  const rawReviews = service.metadata?.reviews || service.parentService?.metadata?.reviews || service.jobs || ''
+  const reviews = rawReviews ? String(rawReviews).replace(' bookings', '').replace(/[()]/g, '') : ''
 
   return {
     image: service.image || service.parentService?.image,
     meta: service.duration || service.parentService?.name || '',
     price: cleanPrice ? `Rs.${cleanPrice}` : '',
     originalPrice: cleanOrig && Number(cleanOrig) > Number(cleanPrice) ? `Rs.${cleanOrig}` : '',
-    rating: service.rating || service.parentService?.rating || '4.75',
+    rating: service.rating || service.parentService?.rating || '',
     reviews,
     packageItem: service.isPackage ? service : null,
     service: service.isPackage ? service.parentService : service,

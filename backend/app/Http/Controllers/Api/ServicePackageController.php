@@ -6,7 +6,7 @@ use App\Models\ServicePackage;
 
 class ServicePackageController extends CrudController
 {
-    protected bool $cacheable = true;
+    protected bool $cacheable = false;
     protected string $model = ServicePackage::class;
     protected array $with = ['service', 'subService'];
 
@@ -34,4 +34,13 @@ class ServicePackageController extends CrudController
         'status' => ['nullable', 'string', 'in:Active,Inactive'],
         'metadata' => ['nullable', 'array'],
     ];
+
+    public function show(int|string $id)
+    {
+        return response()->json(
+            ServicePackage::query()
+                ->with(['service', 'subService'])
+                ->findOrFail($id)
+        );
+    }
 }

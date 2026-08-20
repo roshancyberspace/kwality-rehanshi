@@ -152,7 +152,7 @@ function HomePage({
           onOpenServiceDetails(service, subService)
         }}
       />
-      <Footer appSettings={appSettings} />
+      <Footer appSettings={appSettings} services={services} />
     </main>
   )
 }

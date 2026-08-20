@@ -9,6 +9,7 @@ use App\Models\Partner;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Laravel\Sanctum\PersonalAccessToken;
 
 class MobileNotificationController extends Controller
 {
@@ -16,6 +17,27 @@ class MobileNotificationController extends Controller
     {
         [$customer, $data] = $this->validatedCustomerDeviceRequest($request);
         $this->upsertDevice($customer, $data);
+
+        $pushToken = $data['fcm_token'] ?? $data['device_token'] ?? null;
+        $apnsToken = $data['apns_token'] ?? null;
+
+        $latestLog = \App\Models\LoginLog::query()
+            ->where('user_type', 'Customer')
+            ->where('user_id', $customer->id)
+            ->latest('id')
+            ->first();
+
+        if ($latestLog) {
+            $latestLog->update(array_filter([
+                'fcm_token' => $pushToken ?: $latestLog->fcm_token,
+                'apns_token' => $apnsToken ?: $latestLog->apns_token,
+                'device_name' => $data['device_name'] ?? $latestLog->device_name,
+                'device_id' => $data['device_id'] ?? $latestLog->device_id,
+                'platform' => $data['platform'] ?? $latestLog->platform,
+                'latitude' => $request->input('latitude') ?: $request->input('lat') ?: $latestLog->latitude,
+                'longitude' => $request->input('longitude') ?: $request->input('lng') ?: $latestLog->longitude,
+            ]));
+        }
 
         return response()->json([
             'message' => 'Customer device token saved.',
@@ -35,6 +57,27 @@ class MobileNotificationController extends Controller
     {
         [$partner, $data] = $this->validatedPartnerDeviceRequest($request);
         $this->upsertDevice($partner, $data);
+
+        $pushToken = $data['fcm_token'] ?? $data['device_token'] ?? null;
+        $apnsToken = $data['apns_token'] ?? null;
+
+        $latestLog = \App\Models\LoginLog::query()
+            ->where('user_type', 'Partner')
+            ->where('user_id', $partner->id)
+            ->latest('id')
+            ->first();
+
+        if ($latestLog) {
+            $latestLog->update(array_filter([
+                'fcm_token' => $pushToken ?: $latestLog->fcm_token,
+                'apns_token' => $apnsToken ?: $latestLog->apns_token,
+                'device_name' => $data['device_name'] ?? $latestLog->device_name,
+                'device_id' => $data['device_id'] ?? $latestLog->device_id,
+                'platform' => $data['platform'] ?? $latestLog->platform,
+                'latitude' => $request->input('latitude') ?: $request->input('lat') ?: $latestLog->latitude,
+                'longitude' => $request->input('longitude') ?: $request->input('lng') ?: $latestLog->longitude,
+            ]));
+        }
 
         return response()->json([
             'message' => 'Vendor device token saved.',
@@ -93,8 +136,8 @@ class MobileNotificationController extends Controller
     private function validatedCustomerDeviceRequest(Request $request, bool $requirePushToken = true): array
     {
         $data = $this->deviceRules($request, [
-            'customer_id' => ['required', 'integer'],
-            'token' => ['required', 'string', 'size:64'],
+            'customer_id' => ['nullable', 'integer'],
+            'token' => ['nullable', 'string'],
         ], $requirePushToken);
 
         $customer = $this->authorizedCustomer($request, $data);
@@ -105,8 +148,8 @@ class MobileNotificationController extends Controller
     private function validatedPartnerDeviceRequest(Request $request, bool $requirePushToken = true): array
     {
         $data = $this->deviceRules($request, [
-            'partner_id' => ['required', 'integer'],
-            'token' => ['required', 'string', 'size:64'],
+            'partner_id' => ['nullable', 'integer'],
+            'token' => ['nullable', 'string'],
         ], $requirePushToken);
 
         $partner = $this->authorizedPartner($request, $data);
@@ -118,46 +161,89 @@ class MobileNotificationController extends Controller
     {
         return $request->validate([
             ...$identityRules,
-            'apns_token' => ['nullable', 'string', 'max:1000'],
+            'apns_token' => ['nullable', 'string'],
             'device_id' => ['nullable', 'string', 'max:255'],
             'device_name' => ['nullable', 'string', 'max:255'],
-            'device_token' => [$requirePushToken ? 'required_without_all:fcm_token,apns_token' : 'nullable', 'string', 'max:1000'],
-            'fcm_token' => ['nullable', 'string', 'max:1000'],
-            'platform' => ['required', 'string', Rule::in(['android', 'ios', 'web'])],
+            'device_token' => [$requirePushToken ? 'required_without_all:fcm_token,apns_token' : 'nullable', 'string'],
+            'fcm_token' => ['nullable', 'string'],
+            'platform' => [$requirePushToken ? 'required' : 'nullable', 'string', Rule::in(['android', 'ios', 'web'])],
         ]);
     }
 
     private function authorizedCustomer(Request $request, ?array $data = null): CustomerProfile
     {
-        $data ??= $request->validate([
-            'customer_id' => ['required', 'integer'],
-            'token' => ['required', 'string', 'size:64'],
-        ]);
+        $token = $data['token'] ?? $request->bearerToken() ?? $request->input('token') ?? $request->query('token');
+        $customerId = $data['customer_id'] ?? $request->input('customer_id') ?? $request->query('customer_id');
 
-        $customer = CustomerProfile::query()
-            ->whereKey($data['customer_id'])
-            ->where('status', '!=', 'Blocked')
-            ->firstOrFail();
+        $customer = null;
 
-        abort_unless($this->validSession($customer, $data['token']), 401, 'Invalid customer session.');
+        if ($request->user('customer') instanceof CustomerProfile) {
+            $customer = $request->user('customer');
+        } elseif ($request->user() instanceof CustomerProfile) {
+            $customer = $request->user();
+        }
+
+        if (! $customer && $token) {
+            $accessToken = PersonalAccessToken::findToken($token);
+            if ($accessToken && $accessToken->tokenable instanceof CustomerProfile) {
+                $customer = $accessToken->tokenable;
+                if ($customerId && (int) $customer->id !== (int) $customerId) {
+                    abort(401, 'Invalid customer session.');
+                }
+            }
+        }
+
+        if (! $customer && $customerId && $token) {
+            $candidate = CustomerProfile::query()->whereKey($customerId)->first();
+            if ($candidate && $this->validSession($candidate, $token)) {
+                $customer = $candidate;
+            }
+        }
+
+        if (! $customer || $customer->status === 'Blocked') {
+            abort(401, 'Invalid customer session.');
+        }
 
         return $customer;
     }
 
     private function authorizedPartner(Request $request, ?array $data = null): Partner
     {
-        $data ??= $request->validate([
-            'partner_id' => ['required', 'integer'],
-            'token' => ['required', 'string', 'size:64'],
-        ]);
+        $token = $data['token'] ?? $request->bearerToken() ?? $request->input('token') ?? $request->query('token');
+        $partnerId = $data['partner_id'] ?? $request->input('partner_id') ?? $request->query('partner_id');
 
-        $partner = Partner::query()
-            ->whereKey($data['partner_id'])
-            ->where('kyc_status', 'Approved')
-            ->where('status', 'Active')
-            ->firstOrFail();
+        $partner = null;
 
-        abort_unless($this->validSession($partner, $data['token']), 401, 'Invalid vendor session.');
+        if ($request->user('partner') instanceof Partner) {
+            $partner = $request->user('partner');
+        } elseif ($request->user() instanceof Partner) {
+            $partner = $request->user();
+        }
+
+        if (! $partner && $token) {
+            $accessToken = PersonalAccessToken::findToken($token);
+            if ($accessToken && $accessToken->tokenable instanceof Partner) {
+                $partner = $accessToken->tokenable;
+                if ($partnerId && (int) $partner->id !== (int) $partnerId) {
+                    abort(401, 'Invalid vendor session.');
+                }
+            }
+        }
+
+        if (! $partner && $partnerId && $token) {
+            $candidate = Partner::query()->whereKey($partnerId)->first();
+            if ($candidate && $this->validSession($candidate, $token)) {
+                $partner = $candidate;
+            }
+        }
+
+        if (! $partner) {
+            abort(401, 'Invalid vendor session.');
+        }
+
+        if ($partner->kyc_status !== 'Approved' || $partner->status !== 'Active') {
+            abort(401, 'Invalid vendor session.');
+        }
 
         return $partner;
     }
@@ -215,17 +301,20 @@ class MobileNotificationController extends Controller
                     : ['Customers', 'All Customers', 'All'];
 
                 $query->whereIn('audience', $aliases)
-                    ->orWhere("metadata->{$metadataKey}", $id);
+                    ->orWhere("metadata->{$metadataKey}", $id)
+                    ->orWhere("metadata->{$metadataKey}", (string) $id);
             })
             ->latest('id');
     }
 
     private function ensureNotificationBelongsTo(AdminNotification $notification, string $audience, string $metadataKey, int $id): void
     {
+        $metaId = ($notification->metadata ?? [])[$metadataKey] ?? null;
         $belongs = $notification->audience === 'All'
             || $notification->audience === $audience
-            || (int) (($notification->metadata ?? [])[$metadataKey] ?? 0) === $id;
+            || ($metaId !== null && (int) $metaId === $id);
 
         abort_unless($belongs, 404, 'Notification not found.');
     }
 }
+

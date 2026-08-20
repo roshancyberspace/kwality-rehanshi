@@ -1,66 +1,5 @@
 import React from 'react'
 
-const categoryBlocks = [
-  {
-    title: 'Home Care',
-    description: 'Cleaning, AC, repair & more for a comfortable home',
-    themeClass: 'bg-[#F2F8FF] border-blue-100',
-    iconBg: 'bg-white',
-    icon: (
-      <svg className="w-5 h-5 text-[#003F86]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-        <polyline points="9 22 9 12 15 12 15 22" />
-      </svg>
-    ),
-    subServices: ['AC Service', 'Cleaning', 'Plumbing', 'Electricians'],
-  },
-  {
-    title: 'Beauty & Wellness',
-    description: 'Relax and pamper yourself with our experts',
-    themeClass: 'bg-[#F0FDF4] border-emerald-100',
-    iconBg: 'bg-white',
-    icon: (
-      <svg className="w-5 h-5 text-emerald-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <path d="M12 2a10 10 0 0 1 10 10c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2z" />
-        <path d="M12 8v8M8 12h8" />
-      </svg>
-    ),
-    subServices: ["Women's Salon", "Men's Salon", 'Spa for Women'],
-  },
-  {
-    title: 'Repairs & Installation',
-    description: 'Expert repairs and installation at your doorstep',
-    themeClass: 'bg-[#FFFBEB] border-amber-100',
-    iconBg: 'bg-white',
-    icon: (
-      <svg className="w-5 h-5 text-amber-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
-      </svg>
-    ),
-    subServices: ['Appliance Repair', 'IT Hardware', 'Interior Designing'],
-  },
-  {
-    title: 'Professional Services',
-    description: 'Trusted professionals for every need',
-    themeClass: 'bg-[#FAF5FF] border-purple-100',
-    iconBg: 'bg-white',
-    icon: (
-      <svg className="w-5 h-5 text-purple-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-        <circle cx="12" cy="7" r="4" />
-      </svg>
-    ),
-    subServices: ['Pest Control', 'Manpower Services'],
-  },
-]
-
-const recentBookings = [
-  { service: 'AC Service', location: 'Vibhuti Khand', time: '2 min ago', color: 'bg-blue-50 text-blue-600', char: 'AC' },
-  { service: 'Deep Cleaning', location: 'Gomti Nagar', time: '5 min ago', color: 'bg-emerald-50 text-emerald-600', char: '✨' },
-  { service: "Women's Salon", location: 'Indira Nagar', time: '8 min ago', color: 'bg-rose-50 text-rose-600', char: '💆‍♀️' },
-  { service: 'Pest Control', location: 'Aliganj', time: '12 min ago', color: 'bg-purple-50 text-purple-600', char: '🛡️' },
-]
-
 const whyChooseFeatures = [
   {
     title: 'Verified Professionals',
@@ -161,7 +100,7 @@ const howItWorksSteps = [
   },
 ]
 
-function CategoryAndFeedLayout({ onSelectCategory, onSelectSubService, onViewAll }) {
+function CategoryAndFeedLayout({ onSelectCategory, onSelectSubService, onViewAll, categories = [], recentBookings = [] }) {
   return (
     <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 mb-12">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -189,18 +128,20 @@ function CategoryAndFeedLayout({ onSelectCategory, onSelectSubService, onViewAll
 
             {/* 2x2 Category Cards Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {categoryBlocks.map((block) => (
+              {categories.length ? categories.map((block) => (
                 <div
-                  key={block.title}
-                  className={`rounded-2xl ${block.themeClass} border p-4 grid grid-cols-[1fr_auto] gap-3 items-stretch`}
+                  key={block.title || block.name}
+                  className={`rounded-2xl ${block.themeClass || 'bg-[#F2F8FF] border-blue-100'} border p-4 grid grid-cols-[1fr_auto] gap-3 items-stretch`}
                 >
                   <div className="flex flex-col justify-between pr-1">
                     <div>
-                      <div className={`w-9 h-9 rounded-xl ${block.iconBg} border border-slate-100 flex items-center justify-center mb-2.5`}>
+                      {block.icon ? (
+                      <div className={`w-9 h-9 rounded-xl ${block.iconBg || 'bg-white'} border border-slate-100 flex items-center justify-center mb-2.5`}>
                         {block.icon}
                       </div>
+                      ) : null}
                       <h3 className="text-sm font-bold text-slate-800 tracking-tight">
-                        {block.title}
+                        {block.title || block.name}
                       </h3>
                       <p className="text-[10px] text-slate-500 my-1 leading-normal">
                         {block.description}
@@ -209,7 +150,7 @@ function CategoryAndFeedLayout({ onSelectCategory, onSelectSubService, onViewAll
 
                     <button
                       type="button"
-                      onClick={() => onSelectCategory?.(block.title)}
+                      onClick={() => onSelectCategory?.(block.title || block.name)}
                       className="text-[11px] font-bold text-[#003F86] hover:underline inline-flex items-center gap-1 mt-3 transition-colors text-left"
                     >
                       <span>View Services</span>
@@ -220,20 +161,22 @@ function CategoryAndFeedLayout({ onSelectCategory, onSelectSubService, onViewAll
                   </div>
 
                   <div className="w-[120px] shrink-0 rounded-xl bg-white border border-slate-100 p-2.5 flex flex-col justify-center gap-2 my-auto">
-                    {block.subServices.map((sub) => (
+                    {(block.subServices || block.sub_services || []).map((sub) => (
                       <button
-                        key={sub}
+                        key={sub.name || sub}
                         type="button"
-                        onClick={() => onSelectSubService?.(sub, block.title)}
+                        onClick={() => onSelectSubService?.(sub.name || sub, block.title || block.name)}
                         className="flex items-center gap-1.5 text-[10px] font-semibold text-slate-600 hover:text-[#003F86] transition-colors text-left truncate w-full"
                       >
                         <span className="w-1 h-1 rounded-full bg-[#003F86] shrink-0" />
-                        <span className="truncate">{sub}</span>
+                        <span className="truncate">{sub.name || sub}</span>
                       </button>
                     ))}
                   </div>
                 </div>
-              ))}
+              )) : (
+                <p className="text-sm text-slate-500">No categories available.</p>
+              )}
             </div>
           </div>
 
@@ -300,11 +243,11 @@ function CategoryAndFeedLayout({ onSelectCategory, onSelectSubService, onViewAll
               <span>Recently Booked</span>
             </h3>
             <div className="flex flex-col divide-y divide-slate-100">
-              {recentBookings.map((bk, i) => (
-                <div key={i} className="flex items-center justify-between py-2.5 first:pt-0 last:pb-0">
+              {recentBookings.length ? recentBookings.map((bk, i) => (
+                <div key={bk.id || i} className="flex items-center justify-between py-2.5 first:pt-0 last:pb-0">
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <div className={`w-8 h-8 rounded-lg ${bk.color} text-[10px] flex items-center justify-center shrink-0`}>
-                      {bk.char}
+                    <div className={`w-8 h-8 rounded-lg ${bk.color || 'bg-blue-50 text-blue-600'} text-[10px] flex items-center justify-center shrink-0`}>
+                      {bk.char || String(bk.service || '?').slice(0, 2)}
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="text-[11px] font-bold text-slate-800 truncate">
@@ -319,7 +262,9 @@ function CategoryAndFeedLayout({ onSelectCategory, onSelectSubService, onViewAll
                     {bk.time}
                   </span>
                 </div>
-              ))}
+              )) : (
+                <p className="py-2 text-sm text-slate-500">No bookings yet.</p>
+              )}
             </div>
           </div>
 
@@ -327,26 +272,7 @@ function CategoryAndFeedLayout({ onSelectCategory, onSelectSubService, onViewAll
             <h3 className="text-sm font-bold text-[#1D1D1D] mb-3">
               What Our Customers Say
             </h3>
-            
-            <div className="w-7 h-7 rounded-full bg-[#003F86] text-white flex items-center justify-center text-sm font-serif mb-2">
-              “
-            </div>
-
-            <p className="text-[11px] text-slate-600 leading-relaxed italic mb-4">
-              &ldquo;Very professional service. The technician was on time and did a great job!&rdquo;
-            </p>
-
-            <div className="flex items-center gap-2.5 pt-3 border-t border-slate-100">
-              <div className="w-8 h-8 rounded-full bg-slate-200 text-slate-600 font-bold text-xs flex items-center justify-center shrink-0">
-                RS
-              </div>
-              <div>
-                <p className="text-[10px] font-bold text-slate-800">Ritika Sharma</p>
-                <div className="flex items-center gap-0.5 text-amber-400 text-[10px]">
-                  <span>★</span><span>★</span><span>★</span><span>★</span><span>★</span>
-                </div>
-              </div>
-            </div>
+            <p className="text-[11px] text-slate-500">Customer reviews appear when they are available in the database.</p>
           </div>
 
         </div>

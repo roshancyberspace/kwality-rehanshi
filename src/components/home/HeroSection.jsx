@@ -9,7 +9,7 @@ const getStats = (services) => {
     ? (
         ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length
       ).toFixed(1)
-    : "4.8";
+    : "0";
 
   return [
     { value: averageRating, label: "Service rating" },

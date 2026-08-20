@@ -67,4 +67,6 @@ export const adminApi = {
   dashboard: (params) => request('/admin/dashboard', { params }),
   reports: () => request('/admin/reports'),
   uploadMedia: (body) => request('/media/upload', { method: 'POST', body }),
+  blockLoginUser: (id) => request(`/login-logs/${id}/block`, { method: 'POST' }),
+  unblockLoginUser: (id) => request(`/login-logs/${id}/unblock`, { method: 'POST' }),
 }

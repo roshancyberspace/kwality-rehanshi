@@ -26,25 +26,10 @@ const initialForm = {
   sub_service_ids: [],
 }
 
-const fallbackRequirements = {
-  services: [
-    { id: 1, name: 'AC Repair', category_name: 'Home Repair', sub_services: [] },
-    { id: 2, name: 'Cleaning', category_name: 'Home Care', sub_services: [] },
-    { id: 3, name: 'Salon', category_name: 'Beauty', sub_services: [] },
-    { id: 4, name: 'Electrician', category_name: 'Home Repair', sub_services: [] },
-    { id: 5, name: 'Plumber', category_name: 'Home Repair', sub_services: [] },
-    { id: 6, name: 'Carpenter', category_name: 'Home Repair', sub_services: [] },
-    { id: 7, name: 'Painting', category_name: 'Home Repair', sub_services: [] },
-  ],
+const emptyRequirements = {
+  services: [],
   documents: {},
-  common_documents: [
-    { id: 1, label: 'Profile photo', required: true },
-    { id: 2, label: 'Aadhaar', required: true },
-    { id: 3, label: 'PAN', required: true },
-    { id: 4, label: 'Address proof', required: true },
-    { id: 5, label: 'Police Verification Certificate', required: true },
-    { id: 6, label: 'Work experience proof', required: false },
-  ],
+  common_documents: [],
 }
 
 const normalizeDocumentEntry = (document) => {
@@ -359,7 +344,7 @@ function SearchableMultiSelect({
 
 function BecomeServiceProviderPage({ appSettings = {}, onBackHome, onOpenVendorLogin }) {
   const { logoUrl } = getBrandingDisplay(appSettings)
-  const [requirements, setRequirements] = useState(fallbackRequirements)
+  const [requirements, setRequirements] = useState(emptyRequirements)
   const [form, setForm] = useState(() => restoreFormFromDraft(readOnboardingDraft()?.form))
   const [files, setFiles] = useState({})
   const [fieldErrors, setFieldErrors] = useState({})
@@ -379,7 +364,7 @@ function BecomeServiceProviderPage({ appSettings = {}, onBackHome, onOpenVendorL
   useEffect(() => {
     vendorApi.requirements()
       .then(setRequirements)
-      .catch(() => setStatus({ message: 'Service list loaded locally. Start backend before final KYC submit.', tone: 'error' }))
+      .catch(() => setStatus({ message: 'Could not load services from the server. Try again after the API is available.', tone: 'error' }))
   }, [])
 
   useEffect(() => {

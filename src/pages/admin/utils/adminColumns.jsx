@@ -259,19 +259,23 @@ export const makeColumns = (config, { actionLoadingId, appSettings = {}, canChan
         ? <span className="text-sm font-semibold text-slate-600">{formatValue(row.scope_summary || 'All services')}</span>
       : key === 'is_required' || key === 'is_video'
         ? <StatusBadge>{row[key] === true || row[key] === 1 || row[key] === '1' || row[key] === 'Yes' ? 'Yes' : 'No'}</StatusBadge>
+      : key === 'sub_service_name'
+        ? formatValue(row.sub_service_name || row.sub_service?.name || row.subService?.name)
+      : key === 'service_name' && config.endpoint === '/service-packages'
+        ? formatValue(row.service_name || row.service?.name)
       : formatValue(row[key]),
   })),
   {
     key: 'actions',
     label: config.endpoint === '/payments' ? 'Action' : 'Actions',
-    className: config.actionsWidth || (config.endpoint === '/service-packages' ? 'min-w-[160px] whitespace-nowrap' : 'min-w-[160px] whitespace-nowrap'),
+    className: `${config.actionsWidth || 'min-w-[160px] whitespace-nowrap'} text-center`,
     render: (row) => {
       const menuItems = config.endpoint === '/partners'
         ? getPartnerMenuItems(row, { canChangeUserPasswords, onApproveKyc, onChangeUserPassword, onPartnerAvailabilityChange, onPartnerStatusChange, onRejectKyc, onView }, config)
         : []
 
       return (
-        <div className={`flex flex-nowrap items-center justify-end ${['/bookings', '/vendor-wallets', '/customer-wallets', '/payments', '/payouts', '/wallet-transactions', '/booking-ledgers', '/partners'].includes(config.endpoint) ? 'gap-0.5' : 'min-w-28 gap-2'}`}>
+        <div className={`flex flex-nowrap items-center justify-center ${['/bookings', '/vendor-wallets', '/customer-wallets', '/payments', '/payouts', '/wallet-transactions', '/booking-ledgers', '/partners'].includes(config.endpoint) ? 'gap-0.5' : 'min-w-28 gap-2'}`}>
           {config.endpoint === '/admin-users' && (
             <ActionIconButton isLoading={actionLoadingId === 'action'} label="View permissions" onClick={() => onViewPermissions(row)}>
               <svg aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" viewBox="0 0 24 24">

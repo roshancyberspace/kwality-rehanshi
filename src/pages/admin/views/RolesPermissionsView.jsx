@@ -191,7 +191,7 @@ function RolesPermissionsView({
             key: 'actions',
             label: 'Actions',
             render: (role) => (
-              <div className="flex min-w-28 items-center gap-2">
+              <div className="flex min-w-28 items-center justify-center gap-2">
                 <ActionIconButton label="Edit" onClick={() => startEdit(role)}>
                   <svg aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" viewBox="0 0 24 24">
                     <path d="M12 20h9" />

@@ -1,10 +1,10 @@
 import { DataTable, Panel, StatsCard, StatusBadge } from '../../../components/admin/AdminUI'
-import { bookingStatusSummary } from '../config/adminNav'
 import { moduleConfigs } from '../config/adminModules'
 import { recordMatchesSearch } from '../utils/formatters'
 
 function DashboardView({ dashboardPayload, dashboardStats, datasets, globalSearch, makeColumns }) {
   const statusCounts = dashboardPayload?.status_counts || {}
+  const statusEntries = Object.entries(statusCounts)
   const recentBookings = dashboardPayload?.recent_bookings || datasets.Bookings || []
 
   return (
@@ -28,17 +28,16 @@ function DashboardView({ dashboardPayload, dashboardStats, datasets, globalSearc
       </Panel>
       <Panel title="Booking Status Summary">
         <div className="grid grid-cols-2 gap-2.5 p-3.5 sm:gap-3 sm:p-5 xl:grid-cols-3">
-          {bookingStatusSummary.map(([status]) => {
-            const count = Number(statusCounts[status] || 0)
-            return (
-              <div className="rounded-xl border border-[#67B529]/20 bg-[#F6FBFF] p-4" key={status}>
-                <div className="flex items-center justify-between gap-3">
-                  <StatusBadge>{status}</StatusBadge>
-                  <span className="text-2xl font-black text-slate-800">{count}</span>
-                </div>
+          {statusEntries.length ? statusEntries.map(([status, count]) => (
+            <div className="rounded-xl border border-[#67B529]/20 bg-[#F6FBFF] p-4" key={status}>
+              <div className="flex items-center justify-between gap-3">
+                <StatusBadge>{status || 'Unknown'}</StatusBadge>
+                <span className="text-2xl font-black text-slate-800">{Number(count || 0)}</span>
               </div>
-            )
-          })}
+            </div>
+          )) : (
+            <p className="col-span-full text-sm font-semibold text-slate-500">No bookings yet.</p>
+          )}
         </div>
       </Panel>
     </>

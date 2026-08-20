@@ -18,8 +18,6 @@ const permissionSummary = [
   ['Full system access', ['*']],
 ]
 
-const defaultAvatar = 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=240&q=80'
-
 const formatValue = (value, fallback = 'Not added') => {
   if (Array.isArray(value)) return value.length ? value.join(', ') : fallback
   if (value === 0) return '0'
@@ -206,7 +204,7 @@ function ProfilesView({
     )
   }
 
-  const visibleAvatar = avatarPreview || defaultAvatar
+  const visibleAvatar = avatarPreview || ''
   const initials = (form.name || 'A').split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase()
   const bioLength = form.bio.length
   const selectedRole = roleOptions.find((role) => String(role.id) === String(form.roleId))
@@ -256,7 +254,7 @@ function ProfilesView({
     } catch (err) {
       console.error('Avatar upload error:', err)
       alert(`Image upload failed: ${err.message || 'Error communicating with server'}`)
-      setAvatarPreview(form.avatarUrl || defaultAvatar)
+      setAvatarPreview(form.avatarUrl || '')
     } finally {
       setIsUploadingAvatar(false)
     }

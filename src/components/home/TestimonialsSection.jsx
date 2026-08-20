@@ -1,47 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { buildBackendUrl } from '../../config/urls'
 
-const FALLBACK_ITEMS = [
-  {
-    id: 'fallback-video-1',
-    kind: 'video',
-    name: 'Priya Sharma',
-    service: 'Home Cleaning',
-    text: 'Professional team, on time, and my house looked spotless.',
-    rating: 5,
-    image: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=600&q=80',
-    videoUrl: 'https://www.youtube.com/embed/ScMzIvxBSi4',
-  },
-  {
-    id: 'fallback-text-1',
-    kind: 'text',
-    name: 'Rahul Verma',
-    service: 'AC Service',
-    text: 'Quick diagnosis and fair pricing. Cooling is perfect again.',
-    rating: 5,
-    image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=600&q=80',
-  },
-  {
-    id: 'fallback-video-2',
-    kind: 'video',
-    name: 'Ananya Singh',
-    service: "Women's Salon",
-    text: 'Salon-quality service at home. Booking was super easy.',
-    rating: 4.8,
-    image: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80',
-    videoUrl: 'https://www.youtube.com/embed/aqz-KE-bpKQ',
-  },
-  {
-    id: 'fallback-text-2',
-    kind: 'text',
-    name: 'Vikram Joshi',
-    service: 'Electrician',
-    text: 'Fixed wiring the same day. Polite and skilled professional.',
-    rating: 4.9,
-    image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=600&q=80',
-  },
-]
-
 const resolveMediaUrl = (value) => {
   if (!value) return ''
   if (/^https?:\/\//i.test(value) || value.startsWith('blob:') || value.startsWith('data:')) return value
@@ -173,10 +132,7 @@ function TestimonialsSection({ items: apiItems = [] }) {
   const [activeVideo, setActiveVideo] = useState(null)
   const scrollRef = useRef(null)
 
-  const items = useMemo(() => {
-    const live = fromApi(apiItems)
-    return live.length ? live : FALLBACK_ITEMS
-  }, [apiItems])
+  const items = useMemo(() => fromApi(apiItems), [apiItems])
 
   useEffect(() => {
     const row = scrollRef.current

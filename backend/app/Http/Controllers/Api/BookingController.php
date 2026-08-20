@@ -52,6 +52,8 @@ class BookingController extends CrudController
 
     public function index(Request $request)
     {
+        app(BookingAutoAssignmentManager::class)->tick();
+
         $response = parent::index($request);
 
         // List views stay fast: skip per-row package/rate enrichment (still applied on show).
@@ -64,6 +66,8 @@ class BookingController extends CrudController
 
     public function show(int|string $id)
     {
+        app(BookingAutoAssignmentManager::class)->tick();
+
         $booking = Booking::with($this->with)->findOrFail($id);
 
         return response()->json($this->presentBooking($booking));
@@ -179,6 +183,10 @@ class BookingController extends CrudController
 
             $booking->update($data);
 
+            if (($data['status'] ?? $booking->status) === 'Completed' && $booking->partner_id) {
+                app(BookingAutoAssignmentManager::class)->releasePartnerIfIdle((int) $booking->partner_id);
+            }
+
             $assignmentSynced = false;
             $partnerId = $data['partner_id'] ?? null;
             $jobAlreadySynced = $partnerId
@@ -205,6 +213,9 @@ class BookingController extends CrudController
         });
 
         $booking = $record['booking'];
+        if ($booking->status === 'Completed') {
+            app(BookingAutoAssignmentManager::class)->processDueBookings();
+        }
         $mailer = app(BookingCustomerMailer::class);
         if (! $record['assignment_synced']) {
             $mailer->sendStatusUpdate($booking, $record['previous_status']);
@@ -274,9 +285,7 @@ class BookingController extends CrudController
             ]);
 
             if ($assignedPartnerId) {
-                Partner::whereKey($assignedPartnerId)
-                    ->where('availability', 'Busy')
-                    ->update(['availability' => 'Available']);
+                app(BookingAutoAssignmentManager::class)->releasePartnerIfIdle((int) $assignedPartnerId);
             }
 
             VendorJob::query()
@@ -347,9 +356,7 @@ class BookingController extends CrudController
             ]);
 
             if ($assignedPartnerId) {
-                Partner::whereKey($assignedPartnerId)
-                    ->where('availability', 'Busy')
-                    ->update(['availability' => 'Available']);
+                app(BookingAutoAssignmentManager::class)->releasePartnerIfIdle((int) $assignedPartnerId);
             }
 
             VendorJob::query()
@@ -386,6 +393,7 @@ class BookingController extends CrudController
         });
 
         app(BookingCustomerMailer::class)->sendStatusUpdate($record, $previousStatus);
+        app(BookingAutoAssignmentManager::class)->processDueBookings();
 
         return response()->json($record);
     }

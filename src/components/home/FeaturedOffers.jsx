@@ -1,7 +1,7 @@
 const couponToFeature = (coupon) => ({
   title: coupon.type === 'Percentage' ? `${coupon.value} discount` : `${coupon.value} discount`,
   text: coupon.minimum_order ? `Use ${coupon.code} on orders above Rs. ${coupon.minimum_order}` : `Use code ${coupon.code}`,
-  image: coupon.metadata?.image || 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=800&q=80',
+  image: coupon.metadata?.image || '',
 })
 
 function FeaturedOffers({ coupons }) {
@@ -21,7 +21,7 @@ function FeaturedOffers({ coupons }) {
               Book now
             </button>
           </div>
-          <img className="h-64 w-full object-cover sm:h-full" src={item.image} alt={item.title} />
+          {item.image ? <img className="h-64 w-full object-cover sm:h-full" src={item.image} alt={item.title} /> : <div className="h-64 bg-[#002a5c] sm:h-full" />}
         </article>
       ))}
     </section>

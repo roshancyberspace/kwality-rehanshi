@@ -171,7 +171,7 @@ function App() {
       const subServiceList = parentService?.sub_services || parentService?.subServices || []
       const parentSubService = subServiceList.find((sub) => String(sub.id) === String(item.sub_service_id))
       const rawRating = item.rating || parentService?.rating
-      const rating = rawRating ? (isNaN(rawRating) ? String(rawRating) : Number(rawRating).toFixed(2)) : '4.80'
+      const rating = rawRating ? (isNaN(rawRating) ? String(rawRating) : Number(rawRating).toFixed(2)) : ''
 
       return {
         type: 'service-package',

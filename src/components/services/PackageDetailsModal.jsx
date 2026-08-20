@@ -1,7 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 
-const fallbackBrands = ['LG', 'VOLTAS', 'Haier', 'HITACHI', 'Panasonic', 'Mitsubishi Electric', 'BLUE STAR', 'DAIKIN', 'SAMSUNG', 'Godrej', 'TOSHIBA', '& more']
-
 const getOriginalPrice = (item) => item.originalPrice || item.original_price
 
 const normalizeText = (value = '') => String(value).trim().toLowerCase()
@@ -33,12 +31,7 @@ const parseReviewCount = (value = '') => {
 const getRatingDistribution = (reviews, section) => {
   const liveCounts = [5, 4, 3, 2, 1].map((rating) => reviews.filter((review) => Math.round(Number(review.rating)) === rating).length)
   if (reviews.length) return liveCounts
-
-  const total = parseReviewCount(section.metadata?.reviews) || 100
-  const fiveStarPercent = Math.min(100, Math.max(0, Number(section.metadata?.five_star_percent || 86)))
-  const fiveStarCount = Math.round((total * fiveStarPercent) / 100)
-  const remainder = Math.max(0, total - fiveStarCount)
-  return [fiveStarCount, Math.round(remainder * 0.42), Math.round(remainder * 0.24), Math.round(remainder * 0.15), Math.round(remainder * 0.19)]
+  return [0, 0, 0, 0, 0]
 }
 
 const emptyReviewForm = (customerName = '') => ({
@@ -158,82 +151,60 @@ const getBannerImage = (item, sections) => {
     || item.image
 }
 
-const buildFallbackSections = (item) => [
-  {
-    section_key: 'summary',
-    section_type: 'summary',
-    title: 'Package summary',
-    body: item.description,
-    items: ['Service warranty available', 'Price shown before booking', 'Professional brings required tools'],
-    metadata: { offer: item.offer },
-    sort_order: 1,
-  },
-  {
-    section_key: 'included',
-    section_type: 'list',
-    title: 'Included in this service',
-    items: item.included || item.highlights || ['Inspection', 'Service delivery', 'Final check'],
-    metadata: { tone: 'positive' },
-    sort_order: 2,
-  },
-  {
-    section_key: 'not_included',
-    section_type: 'list',
-    title: 'Not included',
-    items: item.notIncluded || item.not_included || ['Spare parts are charged extra', 'Major repair work after inspection'],
-    sort_order: 3,
-  },
-  {
-    section_key: 'process',
-    section_type: 'steps',
-    title: 'Our process',
-    items: item.process || ['Book slot', 'Professional visit', 'Service completion', 'Final quality check'],
-    sort_order: 4,
-  },
-  {
-    section_key: 'requirements',
-    section_type: 'cards',
-    title: 'What we will need from you',
-    body: 'Please keep the service area accessible before the professional arrives.',
-    items: ['Access to service area', 'Adult supervision during service'],
-    sort_order: 5,
-  },
-  {
-    section_key: 'brands',
-    section_type: 'grid',
-    title: 'We service all brands*',
-    body: '*Brand names are used for service compatibility information only.',
-    items: fallbackBrands,
-    sort_order: 6,
-  },
-  {
-    section_key: 'faq',
-    section_type: 'faq',
-    title: 'Frequently asked questions',
-    metadata: {
-      faqs: [
-        { question: 'What does this service include?', answer: 'The included work is listed in the included section for this package.' },
-        { question: 'Will extra material be charged separately?', answer: 'Yes, spare parts or extra material are quoted after inspection and used only after approval.' },
-        { question: 'Is there any service warranty?', answer: item.warranty || 'Eligible service issues are covered under the stated service warranty.' },
-      ],
-    },
-    sort_order: 7,
-  },
-  {
-    section_key: 'reviews',
-    section_type: 'review_summary',
-    title: 'Customer reviews',
-    metadata: { rating: item.rating || '4.8', reviews: item.jobs || '8K bookings', five_star_percent: 86 },
-    sort_order: 8,
-  },
-  {
-    section_key: 'warranty',
-    section_type: 'note',
-    title: 'Warranty and important notes',
-    body: item.warranty || '30 day service warranty is applicable on eligible service issues.',
-    sort_order: 9,
-  },
-]
+const buildFallbackSections = (item) => {
+  const sections = []
+  if (item.description) {
+    sections.push({
+      section_key: 'summary',
+      section_type: 'summary',
+      title: 'Package summary',
+      body: item.description,
+      items: [],
+      metadata: { offer: item.offer },
+      sort_order: 1,
+    })
+  }
+  const included = item.included || item.highlights
+  if (included?.length) {
+    sections.push({
+      section_key: 'included',
+      section_type: 'list',
+      title: 'Included in this service',
+      items: included,
+      metadata: { tone: 'positive' },
+      sort_order: 2,
+    })
+  }
+  const notIncluded = item.notIncluded || item.not_included
+  if (notIncluded?.length) {
+    sections.push({
+      section_key: 'not_included',
+      section_type: 'list',
+      title: 'Not included',
+      items: notIncluded,
+      sort_order: 3,
+    })
+  }
+  if (item.process?.length) {
+    sections.push({
+      section_key: 'process',
+      section_type: 'steps',
+      title: 'Our process',
+      items: item.process,
+      sort_order: 4,
+    })
+  }
+  if (item.warranty) {
+    sections.push({
+      section_key: 'warranty',
+      section_type: 'note',
+      title: 'Warranty and important notes',
+      body: item.warranty,
+      sort_order: 5,
+    })
+  }
+  return sections
+}
 
 function ListSection({ section }) {
   const positive = section.metadata?.tone === 'positive' || section.section_key === 'included'
@@ -366,7 +337,7 @@ function ReviewSummarySection({ item, onSaveReview, reviews = [], section, servi
   const displayReviewCount = matchedReviews.length || parseReviewCount(section.metadata?.reviews)
   const displayRating = matchedReviews.length
     ? (matchedReviews.reduce((sum, review) => sum + (Number(review.rating) || 0), 0) / matchedReviews.length).toFixed(2)
-    : section.metadata?.rating || '4.8'
+    : section.metadata?.rating || item.rating || ''
   const startAddReview = () => {
     setEditingReview(null)
     setReviewForm(emptyReviewForm())

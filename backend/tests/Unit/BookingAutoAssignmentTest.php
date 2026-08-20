@@ -383,13 +383,38 @@ class BookingAutoAssignmentTest extends TestCase
         $this->assertNull($booking->partner_id);
     }
 
-    public function test_vendor_without_exact_subservice_is_not_assigned(): void
+    public function test_vendor_with_same_service_but_other_subservice_can_be_assigned(): void
     {
         $catalog = $this->seedCatalog();
         $this->setAutoSettings(['auto_approve' => '1', 'enabled' => '1', 'delay_minutes' => '0']);
-        $this->makePartner([
+        $partner = $this->makePartner([
             'sub_service_ids' => [$catalog['otherSub']->id],
             'service_ids' => [$catalog['service']->id],
+        ]);
+
+        $booking = $this->makeBooking($catalog, [
+            'status' => 'Accepted',
+            'metadata' => [
+                'items' => [['id' => $catalog['package']->id, 'service_id' => $catalog['service']->id]],
+                'service_address' => ['city' => 'Lucknow', 'pincode' => '226001'],
+                'approval' => ['status' => 'accepted', 'accepted_at' => now()->subMinutes(5)->toDateTimeString()],
+            ],
+        ]);
+
+        app(BookingAutoAssignmentManager::class)->assignIfPossible($booking);
+        $booking->refresh();
+
+        $this->assertSame($partner->id, $booking->partner_id);
+        $this->assertSame('Professional Assigned', $booking->status);
+    }
+
+    public function test_vendor_from_different_service_is_not_assigned(): void
+    {
+        $catalog = $this->seedCatalog();
+        $this->setAutoSettings(['enabled' => '1', 'delay_minutes' => '0']);
+        $this->makePartner([
+            'sub_service_ids' => [],
+            'service_ids' => [999],
         ]);
 
         $booking = $this->makeBooking($catalog, [
@@ -593,5 +618,73 @@ class BookingAutoAssignmentTest extends TestCase
         app(BookingAutoAssignmentManager::class)->assignIfPossible($booking->fresh());
         $booking->refresh();
         $this->assertNotNull($booking->partner_id);
+    }
+
+    public function test_exact_subservice_vendor_is_preferred_over_service_only(): void
+    {
+        $catalog = $this->seedCatalog();
+        $this->setAutoSettings(['enabled' => '1', 'delay_minutes' => '0']);
+        $this->makePartner([
+            'name' => 'Service Only Vendor',
+            'sub_service_ids' => [$catalog['otherSub']->id],
+            'service_ids' => [$catalog['service']->id],
+            'rating' => 5,
+        ]);
+        $exact = $this->makePartner([
+            'name' => 'Exact Sub Vendor',
+            'phone' => '9000000008',
+            'sub_service_ids' => [$catalog['subService']->id],
+            'service_ids' => [$catalog['service']->id],
+            'rating' => 3,
+        ]);
+
+        $booking = $this->makeBooking($catalog, [
+            'status' => 'Accepted',
+            'metadata' => [
+                'items' => [['id' => $catalog['package']->id, 'service_id' => $catalog['service']->id]],
+                'service_address' => ['city' => 'Lucknow', 'pincode' => '226001'],
+                'approval' => ['status' => 'accepted', 'accepted_at' => now()->subMinutes(5)->toDateTimeString()],
+            ],
+        ]);
+
+        app(BookingAutoAssignmentManager::class)->assignIfPossible($booking);
+        $booking->refresh();
+
+        $this->assertSame($exact->id, $booking->partner_id);
+    }
+
+    public function test_completed_booking_frees_busy_partner_for_next_assignment(): void
+    {
+        $catalog = $this->seedCatalog();
+        $this->setAutoSettings(['enabled' => '1', 'delay_minutes' => '0']);
+        $partner = $this->makePartner([
+            'availability' => 'Busy',
+            'sub_service_ids' => [$catalog['subService']->id],
+            'service_ids' => [$catalog['service']->id],
+        ]);
+
+        $this->makeBooking($catalog, [
+            'status' => 'Completed',
+            'partner_id' => $partner->id,
+            'professional_name' => $partner->name,
+        ]);
+
+        $waiting = $this->makeBooking($catalog, [
+            'status' => 'Accepted',
+            'metadata' => [
+                'items' => [['id' => $catalog['package']->id, 'service_id' => $catalog['service']->id]],
+                'service_address' => ['city' => 'Lucknow', 'pincode' => '226001'],
+                'approval' => ['status' => 'accepted', 'accepted_at' => now()->subMinutes(5)->toDateTimeString()],
+            ],
+        ]);
+
+        $manager = app(BookingAutoAssignmentManager::class);
+        $manager->releasePartnerIfIdle($partner->id);
+        $partner->refresh();
+        $this->assertSame('Available', $partner->availability);
+
+        $manager->processDueBookings();
+        $waiting->refresh();
+        $this->assertSame($partner->id, $waiting->partner_id);
     }
 }

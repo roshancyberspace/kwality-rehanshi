@@ -35,6 +35,7 @@ export const adminNavItems = [
   ['Admin Users', 'shield'],
   ['Roles', 'lock'],
   ['Settings', 'gear'],
+  ['Login Logs', 'clock'],
 ]
 
 export const adminNavSections = [
@@ -112,6 +113,7 @@ export const adminNavSections = [
       ['Admin Users', 'shield'],
       ['Roles', 'lock'],
       ['Settings', 'gear'],
+      ['Login Logs', 'clock'],
     ],
   },
 ]
@@ -176,22 +178,6 @@ export const applySidebarNavOrder = (sections, order) => {
 
   return next
 }
-
-export const topServices = [
-  ['AC Repair', 284, 'Rs. 1.8L'],
-  ['Women Salon at Home', 231, 'Rs. 1.4L'],
-  ['Deep Home Cleaning', 166, 'Rs. 2.9L'],
-  ['Electrician Visit', 142, 'Rs. 42K'],
-]
-
-export const bookingStatusSummary = [
-  ['Pending', 18],
-  ['Professional Assigned', 13],
-  ['On The Way', 25],
-  ['Completed', 23],
-  ['Cancelled', 17],
-  ['Refunded', 13],
-]
 
 export const splitBookingDate = (dateTime) => {
   const [date, time, period] = dateTime.split(', ')

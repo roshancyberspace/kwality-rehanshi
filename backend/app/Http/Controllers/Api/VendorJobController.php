@@ -6,6 +6,7 @@ use App\Models\Booking;
 use App\Models\AdminNotification;
 use App\Models\Partner;
 use App\Models\VendorJob;
+use App\Support\BookingAutoAssignmentManager;
 use App\Support\BookingCustomerMailer;
 use App\Support\BookingExtraItemsManager;
 use App\Support\BookingMetadataEnricher;
@@ -24,6 +25,8 @@ class VendorJobController extends CrudController
 
     public function index(Request $request)
     {
+        app(BookingAutoAssignmentManager::class)->tick();
+
         $partnerId = $request->filled('partner_id') ? $request->integer('partner_id') : null;
         $shouldSync = $partnerId && ! $request->boolean('skip_sync');
 
@@ -434,16 +437,25 @@ class VendorJobController extends CrudController
         if ($job->status === 'Rejected') {
             $bookingUpdate['partner_id'] = null;
             $bookingUpdate['professional_name'] = null;
-            Partner::whereKey($job->partner_id)
-                ->where('availability', 'Busy')
-                ->update(['availability' => 'Available']);
+            $bookingUpdate['status'] = 'Accepted';
+            $bookingUpdate['timeline'][] = 'Vendor rejected assignment; waiting for another professional';
         }
 
         $booking->update($bookingUpdate);
         $booking->refresh();
 
+        if (in_array($job->status, ['Completed', 'Rejected'], true)) {
+            app(BookingAutoAssignmentManager::class)->releasePartnerIfIdle((int) $job->partner_id);
+        }
+
         if ($job->status === 'Completed') {
             app(WalletManager::class)->syncBooking($booking);
+            app(BookingAutoAssignmentManager::class)->processDueBookings();
+        }
+
+        if ($job->status === 'Rejected') {
+            app(BookingAutoAssignmentManager::class)->scheduleIfEnabled($booking->fresh());
+            app(BookingAutoAssignmentManager::class)->processDueBookings();
         }
 
         if ($job->status === 'Rejected' && $previousStatus !== $nextStatus) {

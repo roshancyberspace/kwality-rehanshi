@@ -175,6 +175,7 @@ class CustomerAuthController extends Controller
 
         $token = $customer->createToken('auth_token')->plainTextToken;
         $this->syncDevice($customer, $this->devicePayload($request));
+        $this->recordCustomerLoginLog($customer, $request);
 
         return response()->json($this->publicCustomer($customer->fresh(), $token));
     }
@@ -264,8 +265,34 @@ class CustomerAuthController extends Controller
 
         $token = $customer->createToken('auth_token')->plainTextToken;
         $this->syncDevice($customer, $this->devicePayload($request));
+        $this->recordCustomerLoginLog($customer, $request);
 
         return response()->json($this->publicCustomer($customer->fresh(), $token));
+    }
+
+    private function recordCustomerLoginLog(CustomerProfile $customer, Request $request): void
+    {
+        $lastDevice = ($customer->metadata ?? [])['last_device'] ?? [];
+        \App\Models\LoginLog::create([
+            'user_type' => 'Customer',
+            'user_id' => $customer->id,
+            'user_name' => $customer->name,
+            'email' => $customer->email,
+            'phone' => $customer->phone,
+            'role' => 'Customer',
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+            'device_name' => $request->input('device_name') ?: ($lastDevice['device_name'] ?? ($request->input('platform') ? ucfirst($request->input('platform')) : 'Customer Device')),
+            'device_id' => $request->input('device_id') ?: ($lastDevice['device_id'] ?? null),
+            'platform' => $request->input('platform') ?: ($lastDevice['platform'] ?? 'web'),
+            'fcm_token' => $request->input('fcm_token') ?: $request->input('device_token') ?: ($lastDevice['fcm_token'] ?? $lastDevice['push_token'] ?? null),
+            'apns_token' => $request->input('apns_token') ?: ($lastDevice['apns_token'] ?? null),
+            'latitude' => $request->input('latitude') ?: $request->input('lat'),
+            'longitude' => $request->input('longitude') ?: $request->input('lng'),
+            'location_name' => ($customer->metadata ?? [])['city'] ?? null,
+            'status' => 'Success',
+            'is_blocked' => false,
+        ]);
     }
 
     private function availabilityErrors(?string $email, ?string $phone): array

@@ -108,7 +108,7 @@ function CartPage({
       const parts = [currentSelectedAddress.flat, currentSelectedAddress.street, currentSelectedAddress.city].filter(Boolean).join(', ')
       return `${currentSelectedAddress.label || 'Home'} - ${parts}`
     }
-    return locationLabel || 'Home - 5256, Vibhuti Khand, Gomti Nagar, Lucknow...'
+    return locationLabel || 'Select an address'
   }, [currentSelectedAddress, locationLabel])
 
   useEffect(() => {
@@ -264,7 +264,7 @@ function CartPage({
       street: loc.street || loc.subText?.split(',').slice(0, 3).join(', ') || loc.mainText,
       city: loc.city || 'Lucknow',
       state: loc.state || 'Uttar Pradesh',
-      pincode: loc.pincode || '226010',
+      pincode: loc.pincode || '',
       mobile: currentUser?.phone || '',
     })
     setAddressModalStep('address_form')

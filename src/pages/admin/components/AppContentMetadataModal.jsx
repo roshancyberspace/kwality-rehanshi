@@ -97,7 +97,7 @@ function AppContentMetadataModal({ isSaving, onClose, onSave, record }) {
   const addPreset = (presetType) => {
     setMeta((current) => {
       if (presetType === 'stats') {
-        return { ...current, stats: current.stats?.length ? current.stats : [{ value: '4.8', label: 'Average rating' }] }
+        return { ...current, stats: current.stats?.length ? current.stats : [] }
       }
       if (presetType === 'items') {
         return { ...current, items: current.items?.length ? current.items : ['Verified Professionals', 'Transparent Pricing'] }

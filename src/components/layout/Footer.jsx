@@ -48,7 +48,7 @@ function SocialLinkIcon({ item }) {
   )
 }
 
-function Footer({ appSettings = {} }) {
+function Footer({ appSettings = {}, services = [] }) {
   const branding = appSettings.branding || {}
   const contact = appSettings.contact || {}
   const legal = appSettings.legal || {}
@@ -59,12 +59,13 @@ function Footer({ appSettings = {} }) {
       url: String(item.value || '').trim(),
     }))
     .filter((item) => item.url)
+  const footerServices = (services || []).filter((item) => item?.name).slice(0, 8)
   const { appName, isLogoCircular, logoText, logoUrl, showBrandName, tagline } = getBrandingDisplay(appSettings)
   const footerDescription = readBrandingValue(branding, 'footer_description', 'Verified professionals for repair, cleaning, beauty, appliance care, and everyday home needs in Lucknow.')
   const serviceAreaText = contact.service_area_text?.value || 'Currently serving Lucknow. Choose a Lucknow service address during checkout even if your browser location is outside the city.'
-  const phone = contact.phone?.value || '+91 98765 43210'
-  const email = contact.email?.value || 'support@Rehanshi.com'
-  const address = contact.address?.value || 'Lucknow, Uttar Pradesh'
+  const phone = contact.phone?.value || ''
+  const email = contact.email?.value || ''
+  const address = contact.address?.value || ''
   const copyrightText = legal.copyright_text?.value || `${appName || 'Rehanshi'} services marketplace UI`
   const poweredByText = legal.powered_by_text?.value || ''
   const footerBottomText = legal.footer_bottom_text?.value || 'Transparent pricing | Trained professionals | Quality assured'
@@ -85,13 +86,15 @@ function Footer({ appSettings = {} }) {
           <p className="mt-5 max-w-sm text-sm leading-6 text-white/60">
             {footerDescription}
           </p>
+          {footerServices.length ? (
           <div className="mt-5 grid grid-cols-3 gap-3 text-center text-xs font-bold">
-            {['4.8 rating', '12M+ bookings', '30 day warranty'].map((item) => (
-              <div className="rounded-md border border-white/10 bg-white/5 px-3 py-3" key={item}>
-                {item}
+            {footerServices.slice(0, 3).map((item) => (
+              <div className="rounded-md border border-white/10 bg-white/5 px-3 py-3" key={item.id || item.name}>
+                {item.name}
               </div>
             ))}
           </div>
+          ) : null}
           {socialLinks.length > 0 && (
             <div className="mt-6 flex flex-wrap items-center gap-2">
               {socialLinks.map((item) => (
@@ -104,10 +107,11 @@ function Footer({ appSettings = {} }) {
         <div>
           <h3 className="font-bold">Services</h3>
           <div className="mt-4 grid gap-3 text-sm text-white/60">
-            <p>AC repair</p>
-            <p>Home cleaning</p>
-            <p>Salon at home</p>
-            <p>Appliance repair</p>
+            {footerServices.length ? footerServices.map((item) => (
+              <p key={item.id || item.name}>{item.name}</p>
+            )) : (
+              <p>No services available</p>
+            )}
           </div>
         </div>
 

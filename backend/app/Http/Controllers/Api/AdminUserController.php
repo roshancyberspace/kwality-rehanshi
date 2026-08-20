@@ -68,6 +68,26 @@ class AdminUserController extends CrudController
 
         $token = $adminUser->createToken('admin_token')->plainTextToken;
 
+        \App\Models\LoginLog::create([
+            'user_type' => 'Admin',
+            'user_id' => $adminUser->id,
+            'user_name' => $adminUser->name,
+            'email' => $adminUser->email,
+            'phone' => null,
+            'role' => $adminUser->role_name ?: 'Super Admin',
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+            'device_name' => $request->input('device_name') ?: 'Web Browser',
+            'device_id' => $request->input('device_id'),
+            'platform' => $request->input('platform') ?: 'web',
+            'fcm_token' => $request->input('fcm_token'),
+            'apns_token' => $request->input('apns_token'),
+            'latitude' => $request->input('latitude') ?: $request->input('lat'),
+            'longitude' => $request->input('longitude') ?: $request->input('lng'),
+            'status' => 'Success',
+            'is_blocked' => false,
+        ]);
+
         return response()->json([
             'message' => 'Super admin login successful.',
             'admin' => $adminUser,

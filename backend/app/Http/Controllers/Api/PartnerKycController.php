@@ -302,6 +302,28 @@ class PartnerKycController extends Controller
         $partner->forceFill(['metadata' => $metadata])->save();
         $this->syncDevice($partner, $this->devicePayload($request));
 
+        $lastDevice = ($partner->metadata ?? [])['last_device'] ?? [];
+        \App\Models\LoginLog::create([
+            'user_type' => 'Partner',
+            'user_id' => $partner->id,
+            'user_name' => $partner->name,
+            'email' => $partner->email,
+            'phone' => $partner->phone,
+            'role' => 'Partner / Vendor',
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+            'device_name' => $request->input('device_name') ?: ($lastDevice['device_name'] ?? ($request->input('platform') ? ucfirst($request->input('platform')) : 'Vendor Device')),
+            'device_id' => $request->input('device_id') ?: ($lastDevice['device_id'] ?? null),
+            'platform' => $request->input('platform') ?: ($lastDevice['platform'] ?? 'android'),
+            'fcm_token' => $request->input('fcm_token') ?: $request->input('device_token') ?: ($lastDevice['fcm_token'] ?? $lastDevice['push_token'] ?? null),
+            'apns_token' => $request->input('apns_token') ?: ($lastDevice['apns_token'] ?? null),
+            'latitude' => $request->input('latitude') ?: $request->input('lat'),
+            'longitude' => $request->input('longitude') ?: $request->input('lng'),
+            'location_name' => $partner->city ?: $partner->area,
+            'status' => 'Success',
+            'is_blocked' => false,
+        ]);
+
         return response()->json([
             'message' => 'Vendor login successful.',
             'can_login' => true,

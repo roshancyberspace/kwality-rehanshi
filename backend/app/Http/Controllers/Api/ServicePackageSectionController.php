@@ -33,10 +33,12 @@ class ServicePackageSectionController extends CrudController
     {
         $query = ServicePackageSection::query()
             ->with([
-                'servicePackage:id,name,service_id,sub_service_id',
+                'servicePackage.service:id,name,category_id',
+                'servicePackage.subService:id,name,service_id',
                 'service:id,name',
             ])
-            ->latest('id');
+            ->orderBy('sort_order')
+            ->orderBy('id');
 
         if ($request->filled('service_id')) {
             $serviceId = $request->integer('service_id');

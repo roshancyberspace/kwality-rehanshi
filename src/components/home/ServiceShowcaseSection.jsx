@@ -111,16 +111,22 @@ function ServiceShowcaseSection({
                 </h3>
 
                 {/* Rating & Review Count */}
+                {(item.rating || item.reviews) ? (
                 <div className="flex items-center gap-1 text-xs sm:text-[13px] text-[#555555]">
-                  <span className="text-[#1D1D1D] text-[11px] font-semibold">★</span>
-                  <span className="font-medium text-[#222222]">{item.rating || '4.75'}</span>
-                  <span>({item.reviews || '204K'})</span>
+                  {item.rating ? (
+                    <>
+                      <span className="text-[#1D1D1D] text-[11px] font-semibold">★</span>
+                      <span className="font-medium text-[#222222]">{item.rating}</span>
+                    </>
+                  ) : null}
+                  {item.reviews ? <span>({item.reviews})</span> : null}
                 </div>
+                ) : null}
 
-                {/* Price */}
+                {item.price ? (
                 <div className="mt-0.5 flex items-center gap-2 text-sm sm:text-[15px] text-[#1D1D1D]">
                   <span className="font-medium text-[#1A1A1A]">
-                    {item.price || 'Rs.499'}
+                    {item.price}
                   </span>
                   {item.originalPrice && (
                     <span className="text-[13px] font-normal text-[#888888] line-through">
@@ -128,6 +134,7 @@ function ServiceShowcaseSection({
                     </span>
                   )}
                 </div>
+                ) : null}
               </div>
             </article>
           ))}

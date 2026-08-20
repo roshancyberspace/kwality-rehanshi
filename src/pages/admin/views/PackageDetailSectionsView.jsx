@@ -35,6 +35,7 @@ const fetchAllRows = async (endpoint) => {
 }
 
 const sectionTemplates = [
+  ['all', 'All sections', 'all'],
   ['summary', 'Package summary', 'summary'],
   ['included', 'Included', 'list'],
   ['not_included', 'Not included', 'list'],
@@ -57,7 +58,7 @@ const defaultSectionTitles = {
 }
 const defaultSectionMetadata = {
   faq: { faqs: [{ question: '', answer: '' }] },
-  reviews: { rating: '4.8', reviews: 'Customer reviews', five_star_percent: 86 },
+  reviews: { rating: '', reviews: '', five_star_percent: '' },
 }
 
 const blankForm = {
@@ -384,7 +385,7 @@ function FaqEditor({ items, metadata, onItemsChange, onMetadataChange }) {
 }
 
 function ReviewSummaryEditor({ metadata, onMetadataChange }) {
-  const rating = Number(metadata.rating || 4.8)
+  const rating = Number(metadata.rating || 0)
   const setValue = (key, value) => onMetadataChange(updateMetadataValue(metadata, key, value))
 
   return (
@@ -549,7 +550,7 @@ function PackageDetailSectionsView({ onRefresh }) {
   const [services, setServices] = useState([])
   const [packages, setPackages] = useState([])
   const [brands, setBrands] = useState([])
-  const [activeKey, setActiveKey] = useState('summary')
+  const [activeKey, setActiveKey] = useState('all')
   const [editorMode, setEditorMode] = useState(null)
   const [editingRecord, setEditingRecord] = useState(null)
   const [form, setForm] = useState(blankForm)
@@ -565,7 +566,7 @@ function PackageDetailSectionsView({ onRefresh }) {
     value: item.id,
   }))
   const serviceOptions = services.map((item) => ({ label: `#${item.id} - ${item.name}`, value: item.id }))
-  const sectionKeyOptions = sectionTemplates.map(([value, label]) => ({ label, value }))
+  const sectionKeyOptions = sectionTemplates.filter(([value]) => value !== 'all').map(([value, label]) => ({ label, value }))
   const sectionTypeOptions = sectionTypes.map((item) => ({ label: item.replace(/_/g, ' '), value: item }))
   const statusOptions = statuses.map((item) => ({ label: item, value: item }))
   const metadata = useMemo(() => parseMetadata(form.metadata), [form.metadata])
@@ -612,7 +613,9 @@ function PackageDetailSectionsView({ onRefresh }) {
     return () => window.clearTimeout(timer)
   }, [])
 
-  const activeTemplate = sectionTemplates.find(([key]) => key === activeKey) || sectionTemplates[0]
+  const activeTemplate = (activeKey === 'all'
+    ? sectionTemplates.find(([key]) => key === 'summary')
+    : sectionTemplates.find(([key]) => key === activeKey)) || sectionTemplates.find(([key]) => key === 'summary')
   const resolvePackage = (section) => (
     section.service_package
     || section.servicePackage
@@ -648,9 +651,10 @@ function PackageDetailSectionsView({ onRefresh }) {
 
     return sections.filter((section) => {
       if (!hasQuery) {
-        const matchesTab = activeKey === 'custom'
-          ? !sectionTemplates.some(([key]) => key === section.section_key && key !== 'custom')
-          : section.section_key === activeKey
+        const matchesTab = activeKey === 'all'
+          || (activeKey === 'custom'
+            ? !sectionTemplates.some(([key]) => key === section.section_key && key !== 'custom' && key !== 'all')
+            : section.section_key === activeKey)
         if (!matchesTab) return false
       }
 
@@ -891,8 +895,8 @@ function PackageDetailSectionsView({ onRefresh }) {
 
     return {
       ...section,
-      package_name: <span className="block truncate">{servicePackage?.name || 'Not selected'}</span>,
-      service_name: <span className="block truncate">{service?.name || 'Not selected'}</span>,
+      package_name: <span className="block truncate">{servicePackage?.name || section.package_name || 'Not selected'}</span>,
+      service_name: <span className="block truncate">{service?.name || section.service_name_label || section.service_name || 'Not selected'}</span>,
       title: <span className="block truncate font-bold text-slate-800">{section.title}</span>,
       status: <StatusBadge>{section.status || 'Active'}</StatusBadge>,
       is_visible: (
@@ -906,7 +910,7 @@ function PackageDetailSectionsView({ onRefresh }) {
         />
       ),
       actions: (
-        <div className="flex flex-nowrap items-center gap-1">
+        <div className="flex flex-nowrap items-center justify-center gap-1">
           <ActionButton onClick={() => startEdit(section)} size="sm">Edit</ActionButton>
           <ActionButton onClick={() => deleteSection(section)} size="sm" tone="danger">Delete</ActionButton>
         </div>
@@ -983,6 +987,7 @@ function PackageDetailSectionsView({ onRefresh }) {
         dense
         fitToWidth
         key={`sections-${activeKey}-${search}-${serviceFilter}-${subServiceFilter}-${sectionNameFilter}-${sections.length}`}
+        pageSize={25}
         paginated
         rows={rows}
       />

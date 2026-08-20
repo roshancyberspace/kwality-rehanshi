@@ -11,6 +11,7 @@ const iconPaths = {
   card: 'M3 7h18v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2ZM3 10h18',
   cash: 'M3 7h18v10H3ZM7 12h.01M17 12h.01M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z',
   chart: 'M4 19V5M4 19h16M8 16V9M12 16V6M16 16v-4',
+  clock: 'M12 6v6l4 2M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Z',
   document: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6ZM14 3.5 18.5 8H14V3.5ZM6 20V4h6v5h5v11H6Z',
   gear: 'M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM19.4 15a1.8 1.8 0 0 0 .36 1.98l.04.04-2.12 2.12-.04-.04a1.8 1.8 0 0 0-1.98-.36 1.8 1.8 0 0 0-1.1 1.66V20.5h-3v-.06a1.8 1.8 0 0 0-1.1-1.66 1.8 1.8 0 0 0-1.98.36l-.04.04-2.12-2.12.04-.04A1.8 1.8 0 0 0 4.6 15a1.8 1.8 0 0 0-1.66-1.1H2.9v-3h.04A1.8 1.8 0 0 0 4.6 9a1.8 1.8 0 0 0-.36-1.98l-.04-.04 2.12-2.12.04.04A1.8 1.8 0 0 0 8.34 5.26 1.8 1.8 0 0 0 9.44 3.6V3.5h3v.1a1.8 1.8 0 0 0 1.1 1.66 1.8 1.8 0 0 0 1.98-.36l.04-.04 2.12 2.12-.04.04A1.8 1.8 0 0 0 19.4 9a1.8 1.8 0 0 0 1.66 1.1h.04v3h-.04A1.8 1.8 0 0 0 19.4 15Z',
   grid: 'M4 4h6v6H4ZM14 4h6v6h-6ZM4 14h6v6H4ZM14 14h6v6h-6Z',
@@ -38,13 +39,6 @@ function SidebarIcon({ name }) {
       <path d={iconPaths[name] || iconPaths.grid} />
     </svg>
   )
-}
-
-const notificationFallbackAvatars = {
-  Booking: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=160&q=80',
-  Payment: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=160&q=80',
-  Partner: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=160&q=80',
-  Support: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=160&q=80',
 }
 
 const formatNotificationDate = (value) => {
@@ -88,7 +82,7 @@ const getNotificationMeta = (notification) => {
   return {
     actorName: metadata.actor_name || metadata.user_name || notification.audience || 'System',
     actorRole: metadata.actor_role || metadata.role || relatedType,
-    avatarUrl: metadata.avatar_url || notificationFallbackAvatars[relatedType] || notificationFallbackAvatars.Support,
+    avatarUrl: metadata.avatar_url || '',
     relatedLabel,
     relatedType,
     timestamp: notification.sent_at || notification.created_at,
@@ -120,7 +114,7 @@ function AdminLayout({
   const { isLogoCircular, logoText, logoUrl } = getBrandingDisplay(appSettings)
   const firstName = adminProfile?.name?.split(' ')[0] || 'Admin'
   const designation = adminProfile?.role_name || 'Administrator'
-  const avatarUrl = buildBackendUrl(adminProfile?.metadata?.avatar_url || adminProfile?.metadata?.profile_picture || adminProfile?.avatar_url || adminProfile?.image || '') || 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=160&q=80'
+  const avatarUrl = buildBackendUrl(adminProfile?.metadata?.avatar_url || adminProfile?.metadata?.profile_picture || adminProfile?.avatar_url || adminProfile?.image || '')
   const navItems = navSections.flatMap((section) => section.items)
   const handleTabChange = (tab) => {
     onTabChange(tab)
@@ -321,7 +315,11 @@ function AdminLayout({
                         return (
                           <article className="rounded-lg bg-slate-50 p-3" key={notification.id}>
                             <div className="flex items-start gap-3">
+                              {meta.avatarUrl ? (
                               <img alt="" className="h-10 w-10 shrink-0 rounded-full object-cover ring-2 ring-white" src={meta.avatarUrl} />
+                              ) : (
+                              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#D9F3C8] text-sm font-black text-[#67B529] ring-2 ring-white">{String(meta.actorName || 'A').slice(0, 1).toUpperCase()}</span>
+                              )}
                               <div className="min-w-0 flex-1">
                                 <div className="flex items-start justify-between gap-3">
                                   <p className="min-w-0 text-sm font-bold leading-snug text-slate-900">{notification.title}</p>
@@ -338,7 +336,11 @@ function AdminLayout({
                   </div>
                 </div>
                 <button className="group col-start-3 row-start-1 flex h-10 items-center gap-2 rounded-xl px-1 text-left transition duration-200 hover:bg-slate-100 hover:text-[#003F86] lg:order-none" onClick={onOpenProfileSettings} type="button">
+                  {avatarUrl ? (
                   <img alt={firstName} className="h-10 w-10 rounded-full object-cover transition duration-200 group-hover:ring-2 group-hover:ring-blue-300" src={avatarUrl} />
+                  ) : (
+                  <span className="grid h-10 w-10 place-items-center rounded-full bg-[#D9F3C8] text-sm font-black text-[#67B529]">{String(firstName).slice(0, 1).toUpperCase()}</span>
+                  )}
                   <span className="hidden leading-tight lg:block">
                     <span className="block text-sm font-black text-slate-800 transition group-hover:text-[#003F86]">{firstName}</span>
                     <span className="block text-xs font-bold text-slate-500 transition group-hover:text-[#67B529]">{designation}</span>

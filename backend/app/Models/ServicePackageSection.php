@@ -28,6 +28,8 @@ class ServicePackageSection extends Model
         'is_visible' => 'boolean',
     ];
 
+    protected $appends = ['package_name', 'service_name_label', 'sub_service_name'];
+
     public function servicePackage()
     {
         return $this->belongsTo(ServicePackage::class);
@@ -36,5 +38,20 @@ class ServicePackageSection extends Model
     public function service()
     {
         return $this->belongsTo(Service::class);
+    }
+
+    public function getPackageNameAttribute(): ?string
+    {
+        return $this->servicePackage?->name;
+    }
+
+    public function getServiceNameLabelAttribute(): ?string
+    {
+        return $this->service?->name ?: $this->servicePackage?->service?->name;
+    }
+
+    public function getSubServiceNameAttribute(): ?string
+    {
+        return $this->servicePackage?->subService?->name;
     }
 }

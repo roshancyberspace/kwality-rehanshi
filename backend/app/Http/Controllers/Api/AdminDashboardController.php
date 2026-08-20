@@ -9,8 +9,11 @@ use App\Models\CustomerProfile;
 use App\Models\Partner;
 use App\Models\Payment;
 use App\Models\Payout;
+use App\Models\Service;
+use App\Models\ServicePackage;
 use App\Models\VendorWallet;
 use App\Models\WalletTransaction;
+use App\Support\BookingAutoAssignmentManager;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -18,16 +21,27 @@ class AdminDashboardController extends Controller
 {
     public function dashboard(Request $request)
     {
+        app(BookingAutoAssignmentManager::class)->tick();
+
         $recentLimit = max(1, min(20, (int) $request->integer('recent_limit', 8)));
 
         $bookingAggregates = Booking::query()
             ->selectRaw('COUNT(*) as total_bookings')
             ->selectRaw("SUM(CASE WHEN status IN ('Pending', 'Pending Approval') THEN 1 ELSE 0 END) as pending_bookings")
             ->selectRaw("SUM(CASE WHEN status = 'Completed' THEN 1 ELSE 0 END) as completed_bookings")
+            ->selectRaw("SUM(CASE WHEN status = 'Cancelled' THEN 1 ELSE 0 END) as cancelled_bookings")
             ->selectRaw("SUM(CASE WHEN LOWER(COALESCE(payment_status, '')) IN ('paid', 'cash') OR status = 'Completed' THEN amount ELSE 0 END) as booking_revenue")
             ->first();
 
         $paymentRevenue = (float) Payment::query()
+            ->whereRaw('LOWER(status) in (?, ?, ?, ?, ?)', ['paid', 'cash', 'success', 'successful', 'completed'])
+            ->sum('amount');
+
+        $pendingPaymentAmount = (float) Payment::query()
+            ->whereRaw('LOWER(status) in (?, ?, ?)', ['pending', 'unpaid', 'due'])
+            ->sum('amount');
+
+        $paidPaymentAmount = (float) Payment::query()
             ->whereRaw('LOWER(status) in (?, ?, ?, ?, ?)', ['paid', 'cash', 'success', 'successful', 'completed'])
             ->sum('amount');
 
@@ -84,8 +98,15 @@ class AdminDashboardController extends Controller
                 'total_bookings' => (int) ($bookingAggregates->total_bookings ?? 0),
                 'pending_bookings' => (int) ($bookingAggregates->pending_bookings ?? 0),
                 'completed_bookings' => (int) ($bookingAggregates->completed_bookings ?? 0),
+                'cancelled_bookings' => (int) ($bookingAggregates->cancelled_bookings ?? 0),
                 'customers_count' => CustomerProfile::query()->count(),
+                'partners_count' => Partner::query()->count(),
                 'active_partners_count' => Partner::query()->where('status', '!=', 'Inactive')->count(),
+                'services_count' => Service::query()->count(),
+                'packages_count' => ServicePackage::query()->count(),
+                'payments_count' => Payment::query()->count(),
+                'paid_payments' => $paidPaymentAmount,
+                'pending_payments' => $pendingPaymentAmount,
                 'platform_fees' => $platformFees,
                 'vendor_payable' => (float) ($wallet->vendor_payable ?? 0),
                 'cash_collected' => (float) ($wallet->cash_collected ?? 0),

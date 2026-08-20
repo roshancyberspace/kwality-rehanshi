@@ -13,8 +13,10 @@ use Throwable;
 
 class CampaignNotificationDispatcher
 {
-    public function __construct(private CustomerPasswordMailer $mailer)
-    {
+    public function __construct(
+        private CustomerPasswordMailer $mailer,
+        private FcmV1Client $fcmClient
+    ) {
     }
 
     public function send(AdminNotification $notification, bool $retryFailedOnly = false): array
@@ -132,6 +134,8 @@ class CampaignNotificationDispatcher
             'email' => $partner->email,
             'phone' => $partner->phone,
             'devices' => $partner->metadata['devices'] ?? [],
+            'last_device' => $partner->metadata['last_device'] ?? null,
+            'push_token' => $partner->metadata['push_token'] ?? $partner->metadata['fcm_token'] ?? null,
         ])->all();
     }
 
@@ -144,6 +148,8 @@ class CampaignNotificationDispatcher
             'email' => $customer->email,
             'phone' => $customer->phone,
             'devices' => $customer->metadata['devices'] ?? [],
+            'last_device' => $customer->metadata['last_device'] ?? null,
+            'push_token' => $customer->metadata['push_token'] ?? $customer->metadata['fcm_token'] ?? null,
         ])->all();
     }
 
@@ -161,10 +167,25 @@ class CampaignNotificationDispatcher
             return strlen($phone) >= 10 ? $phone : null;
         }
 
-        $token = collect($recipient['devices'] ?? [])
-            ->map(fn ($device) => $device['push_token'] ?? $device['fcm_token'] ?? null)
+        $devices = $recipient['devices'] ?? [];
+        if (empty($devices) && !empty($recipient['last_device'])) {
+            $devices = [$recipient['last_device']];
+        }
+
+        $token = collect($devices)
+            ->map(fn ($device) => is_array($device)
+                ? ($device['fcm_token'] ?? $device['push_token'] ?? $device['device_token'] ?? $device['apns_token'] ?? null)
+                : (is_string($device) ? $device : null)
+            )
             ->filter()
             ->first();
+
+        if (!$token && !empty($recipient['push_token'])) {
+            $token = (string) $recipient['push_token'];
+        }
+        if (!$token && !empty($recipient['fcm_token'])) {
+            $token = (string) $recipient['fcm_token'];
+        }
 
         return $token ? (string) $token : null;
     }
@@ -248,42 +269,24 @@ class CampaignNotificationDispatcher
 
     private function sendPush(string $token, AdminNotification $notification): void
     {
-        $serverKey = (string) config('services.fcm.server_key');
-        if ($serverKey === '') {
-            if (config('app.debug')) {
-                Log::info('Campaign push stored in-app (no FCM_SERVER_KEY)', [
-                    'notification_id' => $notification->id,
-                ]);
-
-                return;
-            }
-
-            throw new \RuntimeException('Push gateway is not configured (FCM_SERVER_KEY).');
+        if (! $this->fcmClient->isConfigured()) {
+            throw new \RuntimeException('Firebase push gateway is not configured. Please ensure Firebase Service Account JSON is uploaded or FCM_SERVER_KEY is set.');
         }
 
         $imageUrl = $this->publicImageUrl($notification);
-        $payload = [
-            'to' => $token,
-            'notification' => array_filter([
-                'title' => $notification->title,
-                'body' => $notification->message,
-                'image' => $imageUrl,
-            ]),
-            'data' => array_filter([
-                'notification_id' => (string) $notification->id,
-                'audience' => $notification->audience,
-                'image' => $imageUrl,
-            ]),
+        $data = [
+            'notification_id' => (string) $notification->id,
+            'audience' => (string) $notification->audience,
+            'channel' => (string) $notification->channel,
         ];
 
-        $response = Http::timeout(20)
-            ->withToken($serverKey)
-            ->withHeaders(['Authorization' => 'key='.$serverKey])
-            ->post('https://fcm.googleapis.com/fcm/send', $payload);
-
-        if (! $response->successful()) {
-            throw new \RuntimeException('FCM returned HTTP '.$response->status());
-        }
+        $this->fcmClient->send(
+            $token,
+            $notification->title,
+            $notification->message,
+            $imageUrl,
+            $data
+        );
     }
 
     private function refreshReport(AdminNotification $notification): array

@@ -25,6 +25,7 @@ import ProfilesView from './views/ProfilesView'
 import ReportsView from './views/ReportsView'
 import RolesPermissionsView from './views/RolesPermissionsView'
 import SettingsView from './views/SettingsView'
+import LoginLogsView from './views/LoginLogsView'
 import { makeColumns as buildColumns } from './utils/adminColumns'
 import { askConfirmation, askTextInput, showErrorAlert, showSuccessAlert } from './utils/confirmations'
 import { preparePayload } from './utils/formPayload'
@@ -262,7 +263,7 @@ function AdminDashboardPage({ appSettings = {}, authenticatedAdmin, onAdminProfi
     try {
       const useServerPaging = SERVER_PAGINATED_TABS.includes(tab)
       const payload = await adminApi.list(config.endpoint, {
-        per_page: useServerPaging ? 15 : 25,
+        per_page: useServerPaging ? (tab === 'Service Packages' ? 50 : 15) : 25,
         ...(options.lite ? { lite: 1 } : {}),
         ...params,
       })
@@ -297,7 +298,7 @@ function AdminDashboardPage({ appSettings = {}, authenticatedAdmin, onAdminProfi
           all: 1,
           lite: 1,
           options: 1,
-          limit: 500,
+          limit: 10000,
         })
       return readRows(payload)
     })
@@ -424,7 +425,7 @@ function AdminDashboardPage({ appSettings = {}, authenticatedAdmin, onAdminProfi
     try {
       const payload = await adminApi.list(config.endpoint, {
         page,
-        per_page: 15,
+        per_page: tab === 'Service Packages' ? 50 : 15,
         ...(search ? { q: search } : {}),
         ...(status ? { status } : {}),
         ...(fromDate ? { from_date: fromDate } : {}),
@@ -593,7 +594,13 @@ function AdminDashboardPage({ appSettings = {}, authenticatedAdmin, onAdminProfi
       ['Total Bookings', Number(stats.total_bookings || 0), 'All service bookings'],
       ['Pending Bookings', Number(stats.pending_bookings || 0), 'Needs action'],
       ['Completed Bookings', Number(stats.completed_bookings || 0), 'Successfully delivered'],
+      ['Cancelled Bookings', Number(stats.cancelled_bookings || 0), 'Cancelled booking records'],
       ['Customers', Number(stats.customers_count || 0), 'Registered customer profiles'],
+      ['Partners', Number(stats.partners_count || stats.active_partners_count || 0), 'Partner records'],
+      ['Services', Number(stats.services_count || 0), 'Service catalog records'],
+      ['Packages', Number(stats.packages_count || 0), 'Service package records'],
+      ['Paid Payments', `Rs. ${Number(stats.paid_payments || stats.payment_revenue || 0).toLocaleString('en-IN')}`, 'Successful payment records'],
+      ['Pending Payments', `Rs. ${Number(stats.pending_payments || 0).toLocaleString('en-IN')}`, 'Unpaid payment records'],
       ['Active Professionals', Number(stats.active_partners_count || 0), 'Available partner records'],
       ['Platform Fees', `Rs. ${Number(stats.platform_fees || 0).toLocaleString('en-IN')}`, 'Commission earned'],
       ['Vendor Payable', `Rs. ${Number(stats.vendor_payable || 0).toLocaleString('en-IN')}`, 'Available vendor wallet balance'],
@@ -1463,6 +1470,10 @@ function AdminDashboardPage({ appSettings = {}, authenticatedAdmin, onAdminProfi
 
     if (activeTab === 'Settings') {
       return <SettingsView />
+    }
+
+    if (activeTab === 'Login Logs') {
+      return <LoginLogsView authenticatedAdmin={authenticatedAdmin} />
     }
 
     if (activeTab === 'Pages') {

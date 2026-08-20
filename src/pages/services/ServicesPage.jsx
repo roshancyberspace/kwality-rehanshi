@@ -141,7 +141,7 @@ function ServicesPage({
         }}
       />
 
-      <Footer appSettings={appSettings} />
+      <Footer appSettings={appSettings} services={services} />
     </main>
   )
 }

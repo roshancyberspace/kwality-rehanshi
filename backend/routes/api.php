@@ -37,6 +37,7 @@ use App\Http\Controllers\Api\RateItemController;
 use App\Http\Controllers\Api\VendorJobController;
 use App\Http\Controllers\Api\VendorWalletController;
 use App\Http\Controllers\Api\WalletTransactionController;
+use App\Http\Controllers\Api\LoginLogController;
 use App\Http\Controllers\Api\PageController;
 use Illuminate\Support\Facades\Route;
 
@@ -155,11 +156,14 @@ Route::prefix('v1')->group(function () {
     Route::apiResource('notifications', AdminNotificationController::class);
     Route::get('admin/dashboard', [AdminDashboardController::class, 'dashboard']);
     Route::get('admin/reports', [AdminDashboardController::class, 'reports']);
-    Route::apiResource('notifications', AdminNotificationController::class);
     Route::apiResource('roles', RoleController::class);
     Route::post('admin-users/login', [AdminUserController::class, 'login']);
     Route::patch('admin-users/{adminUser}/password', [AdminUserController::class, 'updatePassword']);
     Route::apiResource('admin-users', AdminUserController::class);
     Route::apiResource('settings', SettingController::class);
+    Route::post('login-logs/{loginLog}/block', [LoginLogController::class, 'block']);
+    Route::post('login-logs/{loginLog}/unblock', [LoginLogController::class, 'unblock']);
+    Route::apiResource('login-logs', LoginLogController::class);
     Route::post('checkout/calculate', [BookingController::class, 'calculateCheckout']);
 });
+

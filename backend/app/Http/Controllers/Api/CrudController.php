@@ -95,7 +95,7 @@ abstract class CrudController extends Controller
 
             $perPageParam = strtolower(trim((string) $request->input('per_page', '')));
             if (in_array($perPageParam, ['all', '-1'], true) || $request->boolean('all')) {
-                $limit = max(1, min(10000, (int) $request->input('limit', $lite ? 500 : 2000)));
+                $limit = max(1, min(20000, (int) $request->input('limit', $lite ? 5000 : 10000)));
                 $items = $query->limit($limit)->get();
                 if ($lite) {
                     $items = $items->map(fn ($item) => $this->presentLite($item));
@@ -111,7 +111,7 @@ abstract class CrudController extends Controller
             }
 
             $perPage = (int) $request->integer('per_page', 25);
-            $paginator = $query->paginate(max(1, min(100, $perPage)));
+            $paginator = $query->paginate(max(1, min(200, $perPage)));
             if ($lite) {
                 $paginator->setCollection(
                     $paginator->getCollection()->map(fn ($item) => $this->presentLite($item))

@@ -22,7 +22,7 @@ export const defaultMembership = (partner = {}) => {
     certificate_no: vendorId ? `RHC-CERT-${vendorId}` : '',
     designation: partner.skill || 'Certified Service Professional',
     id_card_no: vendorId ? `RHC-ID-${vendorId}` : '',
-    member_since: new Date().toISOString().slice(0, 10),
+    member_since: partner.created_at ? String(partner.created_at).slice(0, 10) : '',
     public_note: 'This vendor is authorized to provide listed services under KwalityCareKwalityCarestandards.',
     published: false,
     tier: 'Certified',

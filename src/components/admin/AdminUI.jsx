@@ -234,7 +234,7 @@ export function DataTable({
     }
     const columnMinimums = fitToWidth
       ? {
-          actions: 'w-[8%]',
+          actions: 'w-[8%] text-center',
           amount: 'w-[8%]',
           booking_no: 'w-[11%]',
           cash_collected: 'w-[10%]',
@@ -258,7 +258,7 @@ export function DataTable({
           vendor_payable: 'w-[10%]',
         }
       : {
-          actions: 'min-w-[160px] whitespace-nowrap',
+          actions: 'min-w-[160px] whitespace-nowrap text-center',
           address: 'min-w-[230px]',
           area: 'min-w-[150px]',
           availability: 'min-w-[130px] whitespace-nowrap',

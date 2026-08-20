@@ -5,16 +5,28 @@ import PackageDetailsModal from '../../components/services/PackageDetailsModal'
 import { getCartTotal, getDisplayCart, getCartItemQuantity, getCartItemKey, getPackageAmount } from '../../components/services/ServiceCartUtils'
 import { ServiceDetailSkeleton } from '../../components/common/Shimmer'
 import { formatDisplayName } from '../../utils/displayText'
+import { buildBackendUrl } from '../../config/urls'
+
+const packageImageUrl = (path) => buildBackendUrl(path || '')
 
 const groupLabels = {
   annual: 'Annual plan',
+  bleach: 'Bleach',
+  'd-tan': 'D-Tan / Bleach',
+  'face-cleanup': 'Face Cleanup',
+  facial: 'Facials',
   general: 'Popular packages',
+  'hair-cut-styling': 'Hair cut & styling',
   install: 'Install & uninstall',
+  'korean-facials': 'Korean Facials',
+  'manicure-pedicure': 'Pedicure / Manicure',
   repair: 'Repair & gas refill',
   service: 'Service',
+  threading: 'Threading',
+  waxing: 'Waxing',
 }
 
-const groupOrder = ['annual', 'service', 'repair', 'install', 'general']
+const groupOrder = ['waxing', 'threading', 'd-tan', 'bleach', 'korean-facials', 'facial', 'face-cleanup', 'manicure-pedicure', 'hair-cut-styling', 'annual', 'service', 'repair', 'install', 'general']
 
 function QuantityStepper({ className = '', item, onAdd, onUpdateQuantity, quantity }) {
   const itemKey = item.id ?? item.name
@@ -54,14 +66,15 @@ function QuantityStepper({ className = '', item, onAdd, onUpdateQuantity, quanti
   )
 }
 
-const getServiceTitle = (service) =>
-  service?.name === 'AC & Appliance Repair' ? 'AC Repair & Service' : service?.name || 'Service details'
+const getServiceTitle = (service) => service?.name || 'Service details'
 
 const getCouponTitle = (coupon) => {
-  if (!coupon) return 'Get Rs. 50 off'
+  if (!coupon) return ''
+  if (coupon.title) return coupon.title
   if (coupon.type === 'Percentage' && String(coupon.value).includes('%')) return `${coupon.value} coupon`
   if (coupon.type === 'Percentage') return `${coupon.value}% coupon`
-  return `${coupon.value} coupon`
+  if (coupon.value) return `${coupon.value} coupon`
+  return coupon.code || ''
 }
 
 const normalizeText = (value = '') => String(value).trim().toLowerCase()
@@ -93,10 +106,10 @@ const formatReviewDate = (dateValue) => {
 const getReviewServiceName = (review) => normalizeText(review.serviceName || review.service_name || review.service)
 
 const getPackageGroupImage = (packages = [], fallbackImage = '') =>
-  packages.find((item) => item.image)?.image || fallbackImage
+  packageImageUrl(packages.find((item) => item.image)?.image || fallbackImage)
 
-function RatingStars({ rating = 4.8 }) {
-  const roundedRating = Math.round(Number(rating) || 4.8)
+function RatingStars({ rating = 0 }) {
+  const roundedRating = Math.round(Number(rating) || 0)
 
   return (
     <span className="flex items-center gap-0.5 text-base leading-none text-yellow-400" aria-label={`${rating} out of 5 stars`}>
@@ -128,17 +141,9 @@ function ReviewsModal({ onClose, packages = [], reviews = [], service, target })
   const displayReviewCount = matchedReviews.length || parseReviewCount(targetReviewText) || parseReviewCount(service?.metadata?.bookings)
   const displayRating = matchedReviews.length
     ? (matchedReviews.reduce((sum, review) => sum + (Number(review.rating) || 0), 0) / matchedReviews.length).toFixed(2)
-    : targetRating || service?.rating || '4.8'
+    : targetRating || service?.rating || ''
   const distribution = [5, 4, 3, 2, 1].map((rating) => matchedReviews.filter((review) => Math.round(Number(review.rating)) === rating).length)
-  const fallbackTotal = displayReviewCount || 100
-  const fallbackDistribution = [
-    Math.round(fallbackTotal * 0.86),
-    Math.round(fallbackTotal * 0.07),
-    Math.round(fallbackTotal * 0.03),
-    Math.round(fallbackTotal * 0.02),
-    Math.max(0, fallbackTotal - Math.round(fallbackTotal * 0.98)),
-  ]
-  const bars = matchedReviews.length ? distribution : fallbackDistribution
+  const bars = distribution
   const maxBar = Math.max(...bars, 1)
 
   const handleClose = useCallback(() => {
@@ -351,20 +356,11 @@ function ServiceDetailPage({
   const primaryCoupon = coupons[0]
 
   const activeCouponsList = useMemo(() => {
-    const list = (coupons && coupons.length > 0)
-      ? coupons.map((c, idx) => ({
-          id: c.id || c.code || `coupon-${idx}`,
-          title: getCouponTitle(c) || c.title || '20% coupon',
-          description: c.description || 'On orders above Rs.150',
-        }))
-      : [
-          { id: 'c1', title: '20% coupon', description: 'On orders above Rs.150' },
-          { id: 'c2', title: 'Rs.100 instant discount', description: 'Applicable on online UPI payments' },
-        ]
-    if (list.length === 1) {
-      list.push({ id: 'c2-extra', title: 'Rs.100 instant discount', description: 'Applicable on online UPI payments' })
-    }
-    return list
+    return (coupons || []).map((c, idx) => ({
+      id: c.id || c.code || `coupon-${idx}`,
+      title: getCouponTitle(c),
+      description: c.description || (c.minimum_order ? `On orders above Rs.${c.minimum_order}` : ''),
+    })).filter((c) => c.title)
   }, [coupons])
 
   useEffect(() => {
@@ -458,7 +454,7 @@ function ServiceDetailPage({
         />
         <ServiceDetailSkeleton />
         <div className="hidden lg:block">
-          <Footer appSettings={appSettings} />
+          <Footer appSettings={appSettings} services={service ? [service] : []} />
         </div>
       </main>
     )
@@ -581,9 +577,11 @@ function ServiceDetailPage({
               onClick={() => setReviewsTarget({ type: 'service', item: service })}
               type="button"
             >
-              <RatingStars rating={service.rating || '4.78'} />
-              <span className="ml-1 text-neutral-800 font-bold">{service.rating || '4.78'}</span>
-              <span className="text-neutral-500 font-normal">({service.metadata?.bookings || '5.1 M bookings'})</span>
+              <RatingStars rating={service.rating || 0} />
+              <span className="ml-1 text-neutral-800 font-bold">{service.rating || 'No ratings yet'}</span>
+              {service.metadata?.bookings ? (
+              <span className="text-neutral-500 font-normal">({service.metadata.bookings})</span>
+              ) : null}
             </button>
           </div>
 
@@ -640,12 +638,10 @@ function ServiceDetailPage({
               className="group flex flex-col items-center text-center cursor-pointer focus:outline-none transition-transform duration-200 active:scale-95"
             >
               <div className="h-[76px] w-[76px] sm:h-[84px] sm:w-[84px] rounded-[11px] bg-slate-100 overflow-hidden shadow-xs border border-neutral-200/80 transition-transform duration-200 group-hover:scale-105 flex items-center justify-center">
-                {group.id === 'annual' ? (
-                  <span className="text-[11px] font-black text-[#67B529] leading-tight text-center p-1">
-                    <span className="block text-[9px] text-slate-500">Upto</span>30%<span className="block">OFF</span>
-                  </span>
+                {group.image ? (
+                  <img src={group.image} alt={formatDisplayName(group.name)} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110" />
                 ) : (
-                  <img src={group.image || service?.image} alt={formatDisplayName(group.name)} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110" />
+                  <img src={service?.image} alt={formatDisplayName(group.name)} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110" />
                 )}
               </div>
               <span className="mt-2 text-sm sm:text-[13px] font-semibold text-neutral-800 leading-tight line-clamp-2 px-1 group-hover:text-[#003F86] transition-colors">
@@ -683,10 +679,10 @@ function ServiceDetailPage({
                   onClick={() => setReviewsTarget({ type: 'service', item: service })}
                   type="button"
                 >
-                  <RatingStars rating={service.rating || '4.8'} />
-                  <span className="rating-dotted-underline">{service.rating || '4.8'} rating</span>
+                  <RatingStars rating={service.rating || 0} />
+                  <span className="rating-dotted-underline">{service.rating ? `${service.rating} rating` : 'No ratings yet'}</span>
                 </button>
-                <span>{service.metadata?.bookings || 'Trusted bookings'}</span>
+                <span>{service.metadata?.bookings || ''}</span>
               </div>
             </div>
             <p className="max-w-xl text-xs leading-5 text-blue-800">{service.description}</p>
@@ -717,16 +713,10 @@ function ServiceDetailPage({
                     displayActiveGroup === group.id ? 'border-[#003F86] shadow-[0_0_0_2px_rgba(0,84,166,0.22)]' : 'border-transparent group-hover:border-blue-200'
                   }`}
                 >
-                  {group.id === 'annual' ? (
-                    <span className="grid h-full w-full place-items-center rounded-xl bg-blue-50 text-center text-lg font-black leading-5 text-[#67B529]">
-                      <span>
-                        <span className="block text-xs text-blue-800">Upto</span>
-                        30%
-                        <span className="block">OFF</span>
-                      </span>
-                    </span>
-                  ) : (
+                  {group.image ? (
                     <img className="h-full w-full object-cover rounded-[10px] p-0.5 transition duration-300 group-hover:scale-110" src={group.image} alt="" />
+                  ) : (
+                    <img className="h-full w-full object-cover rounded-[10px] p-0.5 transition duration-300 group-hover:scale-110" src={service?.image} alt="" />
                   )}
                 </span>
                 <span className="mt-3 block min-h-[60px] w-full text-sm font-medium capitalize leading-5">
@@ -804,7 +794,7 @@ function ServiceDetailPage({
                         )}
                         <img
                           className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                          src={item.image || service.image}
+                          src={packageImageUrl(item.image || service.image)}
                           alt={item.name}
                         />
                       </div>
@@ -993,16 +983,12 @@ function ServiceDetailPage({
                   <div className="h-[76px] w-[76px] sm:h-[82px] sm:w-[82px] rounded-[15px] border border-black/5 shadow-xs p-2 flex items-center justify-center overflow-hidden transition-transform duration-200 group-hover:scale-105">
                     {item.image && (typeof item.image === 'string') && (item.image.startsWith('http') || item.image.startsWith('/') || item.image.endsWith('.png') || item.image.endsWith('.svg') || item.image.endsWith('.webp') || item.image.endsWith('.jpg') || item.image.endsWith('.jpeg')) ? (
                       <img
-                        src={item.image}
+                        src={packageImageUrl(item.image)}
                         alt={item.name}
                         className="h-12 w-12 sm:h-14 sm:w-14 object-contain transition-transform duration-300 group-hover:scale-110 drop-shadow-xs"
                       />
-                    ) : item.id === 'annual' ? (
-                      <span className="text-[11px] font-black text-[#67B529] leading-tight text-center">
-                        <span className="block text-[9px] text-slate-500">Upto</span>30%<span className="block">OFF</span>
-                      </span>
                     ) : (
-                      <span className="text-3xl select-none">{item.image || '✨'}</span>
+                      <span className="text-3xl select-none">{item.image || ''}</span>
                     )}
                   </div>
                   <span className="mt-2 text-xs sm:text-[13px] font-semibold text-neutral-800 leading-tight line-clamp-2 px-1 group-hover:text-[#6338E0] transition-colors">
@@ -1027,7 +1013,7 @@ function ServiceDetailPage({
       )}
 
       <div className="hidden lg:block">
-        <Footer appSettings={appSettings} />
+        <Footer appSettings={appSettings} services={service ? [service] : []} />
       </div>
     </main>
   )

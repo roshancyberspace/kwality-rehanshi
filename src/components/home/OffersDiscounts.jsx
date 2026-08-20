@@ -9,9 +9,7 @@ const couponToOffer = (coupon) => ({
   text: coupon.minimum_order
     ? `Use on orders above Rs.${coupon.minimum_order}.`
     : "Limited period offer.",
-  image:
-    coupon.metadata?.image ||
-    "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=1200&q=80",
+  image: coupon.metadata?.image || "",
 });
 
 function OffersDiscounts({ content, coupons, onShowServices }) {
@@ -130,12 +128,14 @@ function OffersDiscounts({ content, coupons, onShowServices }) {
               className="group relative h-40 w-[260px] max-w-[78vw] flex-none snap-start overflow-hidden rounded-2xl shadow-xl sm:h-44 sm:w-[340px] sm:max-w-none sm:rounded-3xl lg:h-44 lg:w-[calc((100%-2rem)/3)]"
             >
               {/* Background */}
+              {offer.image ? (
               <img
                 src={offer.image}
                 alt={offer.title}
                 loading="lazy"
                 className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-110"
               />
+              ) : null}
 
               {/* Overlay */}
               <div className="absolute inset-0 bg-gradient-to-r from-[#003F86]/95 via-[#003F86]/75 to-[#67B529]/55"></div>

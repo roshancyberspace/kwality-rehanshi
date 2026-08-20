@@ -11,6 +11,7 @@ use App\Models\ServicePackage;
 use App\Models\Setting;
 use App\Models\VendorJob;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -37,8 +38,45 @@ class BookingAutoAssignmentManager
             return;
         }
 
-        AutoAssignBookingJob::dispatch($booking->id)
-            ->delay(now()->addSeconds((int) ($this->delayMinutes() * 60)));
+        if ($this->delayMinutes() <= 0) {
+            $this->assignIfPossible($booking);
+
+            return;
+        }
+
+        try {
+            AutoAssignBookingJob::dispatch($booking->id)
+                ->delay(now()->addSeconds((int) ($this->delayMinutes() * 60)));
+        } catch (Throwable $exception) {
+            Log::warning('Auto assignment queue dispatch failed; cron/API tick will retry', [
+                'booking_id' => $booking->id,
+                'error' => $exception->getMessage(),
+            ]);
+        }
+    }
+
+    public function tick(): array
+    {
+        if (! $this->enabled() && ! $this->autoApprove()) {
+            return [
+                'checked' => 0,
+                'approved' => 0,
+                'assigned' => 0,
+                'skipped' => 0,
+            ];
+        }
+
+        if (! Cache::add('bookings-auto-assign-tick', 1, 15)) {
+            return [
+                'checked' => 0,
+                'approved' => 0,
+                'assigned' => 0,
+                'skipped' => 0,
+                'throttled' => true,
+            ];
+        }
+
+        return $this->processDueBookings();
     }
 
     public function approveIfPossible(Booking $booking, bool $scheduleAssignment = true): ?Booking
@@ -220,13 +258,10 @@ class BookingAutoAssignmentManager
         $checked = 0;
         $approved = 0;
         $assigned = 0;
-        $delayCutoff = now()->subSeconds((int) ($this->delayMinutes() * 60));
-
         if ($this->autoApprove()) {
             Booking::query()
                 ->whereNull('partner_id')
                 ->whereIn('status', ['Pending Approval', 'Pending'])
-                ->where('created_at', '<=', $delayCutoff)
                 ->oldest('id')
                 ->chunkById(50, function ($bookings) use (&$checked, &$approved) {
                     foreach ($bookings as $booking) {
@@ -246,6 +281,8 @@ class BookingAutoAssignmentManager
         }
 
         if ($this->enabled()) {
+            $this->releaseIdlePartners();
+
             Booking::query()
                 ->whereNull('partner_id')
                 ->where('status', 'Accepted')
@@ -374,6 +411,42 @@ class BookingAutoAssignmentManager
         return $booking;
     }
 
+    public function releasePartnerIfIdle(?int $partnerId): void
+    {
+        if (! $partnerId) {
+            return;
+        }
+
+        $hasActiveJob = Booking::query()
+            ->where('partner_id', $partnerId)
+            ->whereNotIn('status', [
+                'Completed',
+                'Cancelled',
+                'Canceled',
+                'Rejected',
+                'Refunded',
+                'Vendor Rejected',
+            ])
+            ->exists();
+
+        if ($hasActiveJob) {
+            return;
+        }
+
+        Partner::query()
+            ->whereKey($partnerId)
+            ->whereIn('availability', ['Busy', 'On job'])
+            ->update(['availability' => 'Available']);
+    }
+
+    public function releaseIdlePartners(): void
+    {
+        Partner::query()
+            ->whereIn('availability', ['Busy', 'On job'])
+            ->pluck('id')
+            ->each(fn ($id) => $this->releasePartnerIfIdle((int) $id));
+    }
+
     private function findAvailablePartner(Booking $booking, array $requirements): ?Partner
     {
         $candidates = Partner::query()
@@ -416,25 +489,17 @@ class BookingAutoAssignmentManager
         $requiredSubIds = $requirements['sub_service_ids'];
         $requiredServiceIds = $requirements['service_ids'];
 
-        if ($requiredSubIds !== []) {
-            if ($partnerSubIds === []) {
+        $hasSubMatch = $requiredSubIds !== [] && $partnerSubIds !== []
+            && ! empty(array_intersect($requiredSubIds, $partnerSubIds));
+        $hasServiceMatch = $requiredServiceIds !== [] && $partnerServiceIds !== []
+            && ! empty(array_intersect($requiredServiceIds, $partnerServiceIds));
+
+        if (! $hasSubMatch && ! $hasServiceMatch) {
+            if ($partnerServiceIds === [] && $partnerSubIds === [] && $this->legacyKeywordMatch($partner, $requirements['keywords'])) {
+                $hasServiceMatch = true;
+            } else {
                 return null;
             }
-            if (empty(array_intersect($requiredSubIds, $partnerSubIds))) {
-                return null;
-            }
-        } elseif ($requiredServiceIds !== []) {
-            if ($partnerServiceIds !== [] && empty(array_intersect($requiredServiceIds, $partnerServiceIds))) {
-                return null;
-            }
-            if ($partnerServiceIds === [] && $partnerSubIds === []) {
-                // Legacy partners without ID lists: soft keyword fallback only when no IDs exist.
-                if (! $this->legacyKeywordMatch($partner, $requirements['keywords'])) {
-                    return null;
-                }
-            }
-        } else {
-            return null;
         }
 
         $bookingPincode = $requirements['pincode'];
@@ -451,45 +516,47 @@ class BookingAutoAssignmentManager
         $bookingArea = strtolower(trim((string) $requirements['area']));
         $partnerArea = strtolower(trim((string) ($partner->area ?? '')));
 
+        $skillOffset = $hasSubMatch ? 0 : 10;
+
         if ($bookingPincode) {
             if (in_array($bookingPincode, $partnerPins, true)) {
-                return 0; // exact pincode / serviceable list
+                return $skillOffset + 0; // exact pincode / serviceable list
             }
 
             if ($partnerPins !== [] && ! empty(array_intersect($partnerPins, $requirements['nearby_pincodes']))) {
-                return 1; // nearby/serviceable pincode
+                return $skillOffset + 1; // nearby/serviceable pincode
             }
 
             if ($bookingCity && $partnerCity && $bookingCity === $partnerCity) {
-                return 2; // same city fallback
+                return $skillOffset + 2; // same city fallback
             }
 
             if ($this->matchArea()) {
                 if ($bookingArea && $partnerArea && str_contains($bookingArea, $partnerArea)) {
-                    return 3;
+                    return $skillOffset + 3;
                 }
                 if ($partnerArea && str_contains(strtolower((string) $requirements['address']), $partnerArea)) {
-                    return 3;
+                    return $skillOffset + 3;
                 }
 
                 return null;
             }
 
-            return 4; // skill match without location preference
+            return $skillOffset + 4; // skill match without location preference
         }
 
         if ($this->matchArea()) {
             if ($bookingArea && $partnerArea && (str_contains($bookingArea, $partnerArea) || str_contains($partnerArea, $bookingArea))) {
-                return 3;
+                return $skillOffset + 3;
             }
             if ($partnerArea && str_contains(strtolower((string) $requirements['address']), $partnerArea)) {
-                return 3;
+                return $skillOffset + 3;
             }
 
             return null;
         }
 
-        return 5;
+        return $skillOffset + 5;
     }
 
     private function legacyKeywordMatch(Partner $partner, array $keywords): bool

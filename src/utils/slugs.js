@@ -17,10 +17,10 @@ export const resolveServiceBySlug = (services, categories, slug) => {
 
   return {
     ...category,
-    description: category.description || `Book trusted ${category.name} professionals at your doorstep.`,
-    duration: '30-120 mins',
-    includes: ['Inspection visit', `${category.name} service`, 'Final quality check'],
-    packages: [],
-    rating: category.metadata?.rating || '4.8',
+    description: category.description || '',
+    duration: category.duration || '',
+    includes: category.includes || [],
+    packages: category.packages || [],
+    rating: category.metadata?.rating || category.rating || '',
   }
 }
