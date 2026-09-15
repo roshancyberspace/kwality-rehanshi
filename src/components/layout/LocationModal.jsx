@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useGooglePlaces } from '../../hooks/useGooglePlaces'
+import { useBodyScrollLock } from '../../utils/modalScrollLock'
 
 function CloseIcon() {
   return (
@@ -39,6 +40,7 @@ function PinIcon() {
 }
 
 function LocationModal({ currentLocation, onClose, onLocationSelect }) {
+  useBodyScrollLock(true)
   const isPlaceholderLocation = ['Use current location', 'Detecting location...', 'Location not detected'].includes(currentLocation)
   const [query, setQuery] = useState(isPlaceholderLocation ? '' : currentLocation || '')
   const [suggestions, setSuggestions] = useState([])

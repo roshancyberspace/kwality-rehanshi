@@ -1,5 +1,6 @@
 import { ActionButton, Modal } from '../../../components/admin/AdminUI'
 import { buildBackendUrl } from '../../../config/urls'
+import { formatDateTime } from '../utils/formatters'
 
 function countCard(label, value, tone = 'slate') {
   const tones = {
@@ -61,6 +62,14 @@ function NotificationReportModal({ isResending, onClose, onResend, report }) {
                 <span className="rounded-md bg-blue-50 text-blue-700 border border-blue-200/60 px-2 py-0.5">
                   Route: {notification.metadata.screen}
                   {notification.metadata.action_type ? ` (${notification.metadata.action_type})` : ''}
+                </span>
+              </>
+            )}
+            {notification.sent_at && (
+              <>
+                <span>·</span>
+                <span className="text-slate-500 font-medium">
+                  Sent: {formatDateTime(notification.sent_at)}
                 </span>
               </>
             )}

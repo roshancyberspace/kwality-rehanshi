@@ -1,14 +1,8 @@
-import { useEffect } from 'react'
+import { useBodyScrollLock } from '../../utils/modalScrollLock'
 import RaiseTicketForm from './RaiseTicketForm'
 
 export default function RaiseTicketModal({ onClose, onSuccess, user }) {
-  useEffect(() => {
-    const previous = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.body.style.overflow = previous
-    }
-  }, [])
+  useBodyScrollLock(true)
 
   return (
     <div

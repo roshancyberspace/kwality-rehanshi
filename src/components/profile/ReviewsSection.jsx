@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useBodyScrollLock } from '../../utils/modalScrollLock'
 
 const defaultReview = {
   orderId: '',
@@ -9,6 +10,7 @@ const defaultReview = {
 
 function ReviewsSection({ onAddReview, orders = [], reviews }) {
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false)
+  useBodyScrollLock(isReviewModalOpen)
   const [selectedReview, setSelectedReview] = useState(null)
   const [reviewForm, setReviewForm] = useState(defaultReview)
   const getOrderReview = (order) => {

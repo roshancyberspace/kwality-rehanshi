@@ -287,6 +287,13 @@ export const moduleConfigs = {
         formStep: 'basics',
       },
       { name: 'sort_order', label: 'Display order', type: 'number', defaultValue: 0, formStep: 'basics', hint: 'Lower numbers appear first' },
+      {
+        name: 'is_new_arrival',
+        label: 'Display in New Arrival',
+        type: 'checkbox',
+        defaultValue: 0,
+        formStep: 'basics',
+      },
 
       // Step 2 — Listing card (shown on ServiceDetailPage package rows)
       {
@@ -1130,15 +1137,15 @@ export const moduleConfigs = {
       { name: 'status', label: 'Status', type: 'select', options: ['Sent', 'Draft'], defaultValue: 'Sent' },
     ],
     columns: [
-      ['channel', 'Channel'],
-      ['audience', 'Audience'],
-      ['title', 'Title'],
-      ['screen', 'Screen Target'],
-      ['targeted_count', 'Targeted'],
-      ['sent_count', 'Sent'],
-      ['failed_count', 'Failed'],
-      ['status', 'Status'],
-      ['sent_at', 'Sent At'],
+      ['channel', 'Channel', 'min-w-[100px] text-center'],
+      ['audience', 'Audience', 'min-w-[140px]'],
+      ['title', 'Title', 'min-w-[240px] font-bold text-slate-800'],
+      ['screen', 'Screen Target', 'min-w-[160px]'],
+      ['targeted_count', 'Targeted', 'min-w-[100px] text-center'],
+      ['sent_count', 'Sent', 'min-w-[90px] text-center'],
+      ['failed_count', 'Failed', 'min-w-[90px] text-center'],
+      ['status', 'Status', 'min-w-[100px] text-center'],
+      ['sent_at', 'Sent At', 'min-w-[180px] whitespace-nowrap text-left'],
     ],
   },
   'Admin Users': {

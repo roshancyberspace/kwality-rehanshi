@@ -3,7 +3,7 @@ const CUSTOM_SELECT_VALUE = '__custom__'
 const normalizeValue = (field, rawValue) => {
   if (field.type === 'tags') {
     return String(rawValue)
-      .split(',')
+      .split(/[\n,]/)
       .map((item) => item.trim())
       .filter(Boolean)
   }
@@ -26,6 +26,10 @@ const normalizeValue = (field, rawValue) => {
   if (field.name === 'rating' && rawValue !== '' && rawValue !== null && rawValue !== undefined) {
     const numericRating = Number(rawValue)
     return Number.isFinite(numericRating) ? numericRating : rawValue
+  }
+
+  if (field.type === 'checkbox') {
+    return rawValue === true || rawValue === 1 || rawValue === '1' || rawValue === 'true' ? 1 : 0
   }
 
   if (field.type === 'json') {
@@ -83,7 +87,7 @@ export const preparePayload = (fields, form) => {
   const payload = fields.reduce((next, field) => {
     const rawValue = form[field.name]
     if (rawValue === undefined || field.type === 'file') return next
-    if (rawValue === '' && field.type !== 'multiselect') return next
+    if (rawValue === '' && field.type !== 'multiselect' && field.type !== 'checkbox') return next
     if (shouldOmitField(field, rawValue)) return next
 
     next[field.name] = normalizeValue(field, rawValue)

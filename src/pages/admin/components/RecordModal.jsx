@@ -180,16 +180,16 @@ function RecordModal({ actionLoadingId, activeTab, config, form, modalState, onC
 
   return (
     <Modal noPadding onClose={onClose} title={`${modalState.mode === 'edit' ? 'Edit' : 'Add'} ${activeTab}`}>
-      <form className="flex flex-col max-h-[85vh]" onSubmit={requestSave}>
+      <form className="flex flex-col max-h-[88vh]" onSubmit={requestSave}>
         {isMultiStep ? (
-          <div className="border-b border-slate-200 bg-slate-50/90 px-5 py-3">
+          <div className="border-b border-slate-200 bg-slate-50/90 px-5 py-2.5">
             <div className="flex flex-wrap items-center gap-2">
               {formSteps.map((step, index) => {
                 const isActive = index === stepIndex
                 const isDone = index < stepIndex
                 return (
                   <button
-                    className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-black transition ${
+                    className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-black transition ${
                       isActive
                         ? 'bg-[#67B529] text-white shadow-sm'
                         : isDone
@@ -207,7 +207,7 @@ function RecordModal({ actionLoadingId, activeTab, config, form, modalState, onC
                     }}
                     type="button"
                   >
-                    <span className={`grid h-5 w-5 place-items-center rounded-full text-[10px] ${isActive ? 'bg-white/20' : isDone ? 'bg-[#67B529] text-white' : 'bg-slate-100 text-slate-500'}`}>
+                    <span className={`grid h-4.5 w-4.5 place-items-center rounded-full text-[10px] ${isActive ? 'bg-white/20' : isDone ? 'bg-[#67B529] text-white' : 'bg-slate-100 text-slate-500'}`}>
                       {isDone ? '✓' : index + 1}
                     </span>
                     {step.title}
@@ -216,19 +216,19 @@ function RecordModal({ actionLoadingId, activeTab, config, form, modalState, onC
               })}
             </div>
             {currentStep?.description ? (
-              <p className="mt-2 text-xs font-semibold text-slate-500">{currentStep.description}</p>
+              <p className="mt-1 text-xs font-semibold text-slate-500">{currentStep.description}</p>
             ) : null}
           </div>
         ) : null}
 
-        <div className="grid max-h-[72vh] gap-4 overflow-y-auto p-5 md:grid-cols-2 custom-thin-scrollbar flex-1">
+        <div className="grid max-h-[75vh] gap-3 overflow-y-auto p-4 sm:p-5 md:grid-cols-2 custom-thin-scrollbar flex-1">
           {formSections.length ? formSections.map((section) => {
             const sectionFields = visibleFields.filter((field) => field.formSection === section.id)
             if (!sectionFields.length) return null
             return (
-              <section className="col-span-full rounded-xl border border-slate-200 bg-slate-50/70 p-4" key={section.id}>
-                <h3 className="mb-3 text-sm font-bold text-slate-800">{section.title}</h3>
-                <div className="grid gap-4 md:grid-cols-2">
+              <section className="col-span-full rounded-xl border border-slate-200 bg-slate-50/70 p-3.5" key={section.id}>
+                <h3 className="mb-2 text-sm font-bold text-slate-800">{section.title}</h3>
+                <div className="grid gap-3 md:grid-cols-2">
                   {sectionFields.map((field) => {
                     const isEdit = modalState.mode === 'edit'
                     const isPassword = field.type === 'password'
@@ -271,12 +271,12 @@ function RecordModal({ actionLoadingId, activeTab, config, form, modalState, onC
         </div>
 
         {stepError ? (
-          <div className="border-t border-amber-100 bg-amber-50 px-5 py-2 text-xs font-bold text-amber-800">
+          <div className="border-t border-amber-100 bg-amber-50 px-5 py-1.5 text-xs font-bold text-amber-800">
             {stepError}
           </div>
         ) : null}
 
-        <div className="flex shrink-0 items-center justify-between gap-2 border-t border-slate-200 bg-slate-50/80 px-5 py-3.5">
+        <div className="flex shrink-0 items-center justify-between gap-2 border-t border-slate-200 bg-slate-50/80 px-5 py-3">
           <div className="text-xs font-bold text-slate-400">
             {isMultiStep ? `Step ${stepIndex + 1} of ${formSteps.length}` : null}
           </div>

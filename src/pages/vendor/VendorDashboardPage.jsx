@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useBodyScrollLock } from '../../utils/modalScrollLock'
 import { buildVendorPublicPath, defaultMembership, IdentityCard, MembershipCertificate } from '../../components/vendor/MembershipAssets'
 import { buildBackendUrl, buildDocumentUrl, buildFrontendUrl } from '../../config/urls'
 import { vendorApi } from '../../services/vendorApi'
@@ -252,6 +253,7 @@ function JobProgressTimeline({ job, compact = false }) {
 }
 
 function JobDetailsModal({ job, onClose }) {
+  useBodyScrollLock(Boolean(job))
   if (!job) return null
 
   const customerLocation = getCustomerLocation(job)
@@ -352,6 +354,7 @@ function JobDetailsModal({ job, onClose }) {
 }
 
 function AddExtraItemsModal({ job, onClose, onConfirm }) {
+  useBodyScrollLock(Boolean(job))
   const [rateItems, setRateItems] = useState([])
   const [selectedItems, setSelectedItems] = useState([])
   const [isLoading, setIsLoading] = useState(true)

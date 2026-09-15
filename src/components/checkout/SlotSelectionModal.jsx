@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
+import { useBodyScrollLock } from '../../utils/modalScrollLock'
 
 const getApproxDuration = (items = []) => {
   if (!items || !items.length) return '45 mins'
@@ -98,6 +99,7 @@ function SlotSelectionModal({
   onSaveSlots,
   confirmText = 'Confirm',
 }) {
+  useBodyScrollLock(isOpen)
   const [step, setStep] = useState('list') // 'list' or 'picker'
   const [activeCategory, setActiveCategory] = useState(null)
   const [tempSlots, setTempSlots] = useState({})

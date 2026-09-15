@@ -1,49 +1,24 @@
-import { useEffect, useRef, useState } from "react";
-import ServiceCircleCard from "./ServiceCircleCard";
+import { useEffect, useRef } from "react";
 
 function ServicesSection({
   content,
+  packages = [],
   services = [],
+  onOpenPackageDetails,
   onOpenServiceDetails,
   onShowServices,
 }) {
   const scrollRef = useRef(null);
   const intervalRef = useRef(null);
-  const [activeDot, setActiveDot] = useState(0);
 
-  const totalPages = Math.max(1, services.length > 4 ? services.length - 3 : 1);
-
-  const updateActiveDot = () => {
-    const row = scrollRef.current;
-    if (!row) return;
-    const card = row.querySelector("[data-service-card]");
-    if (!card) return;
-    const gap = 24;
-    const cardWidth = card.offsetWidth + gap;
-    const currentIdx = Math.round(row.scrollLeft / cardWidth);
-    setActiveDot(Math.min(totalPages - 1, Math.max(0, currentIdx)));
-  };
-
-  const scrollToPage = (pageIndex) => {
-    const row = scrollRef.current;
-    if (!row) return;
-    const card = row.querySelector("[data-service-card]");
-    if (!card) return;
-    const gap = 24;
-    const cardWidth = card.offsetWidth + gap;
-    row.scrollTo({
-      left: pageIndex * cardWidth,
-      behavior: "smooth",
-    });
-    setActiveDot(pageIndex);
-  };
+  const displayPackages = (packages || []).slice(0, 20);
 
   const scrollNext = () => {
     const row = scrollRef.current;
     if (!row) return;
-    const card = row.querySelector("[data-service-card]");
+    const card = row.querySelector("[data-package-card]");
     if (!card) return;
-    const gap = 24;
+    const gap = 20;
     const scrollAmount = card.offsetWidth + gap;
     const maxScroll = row.scrollWidth - row.clientWidth;
 
@@ -57,9 +32,9 @@ function ServicesSection({
   const scrollPrev = () => {
     const row = scrollRef.current;
     if (!row) return;
-    const card = row.querySelector("[data-service-card]");
+    const card = row.querySelector("[data-package-card]");
     if (!card) return;
-    const gap = 24;
+    const gap = 20;
     const scrollAmount = card.offsetWidth + gap;
 
     if (row.scrollLeft <= 10) {
@@ -71,9 +46,10 @@ function ServicesSection({
 
   const startAutoSlide = () => {
     stopAutoSlide();
+    if (displayPackages.length <= 1) return;
     intervalRef.current = setInterval(() => {
       scrollNext();
-    }, 4000);
+    }, 3500);
   };
 
   const stopAutoSlide = () => {
@@ -85,66 +61,98 @@ function ServicesSection({
   useEffect(() => {
     startAutoSlide();
     return () => stopAutoSlide();
-  }, [services.length]);
+  }, [displayPackages.length]);
+
+  if (!displayPackages || displayPackages.length === 0) {
+    return null;
+  }
+
+  const handleCardClick = (pkg) => {
+    if (onOpenPackageDetails) {
+      onOpenPackageDetails(pkg, pkg.parentService);
+    } else if (onOpenServiceDetails && pkg.parentService) {
+      onOpenServiceDetails(pkg.parentService);
+    }
+  };
 
   return (
-    <section id="services" className="hidden bg-white py-12 lg:block">
+    <section id="new-and-noteworthy" className="bg-white pt-2 pb-2 sm:pt-5 sm:pb-4 block">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        {/* Custom Reference Header */}
-        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+        {/* Header */}
+        <div className="flex items-center sm:items-end justify-between gap-4">
           <div>
-            <div className="inline-flex items-center gap-1.5 rounded-full bg-[#EEF9E8] px-3 py-1 text-xs font-bold text-[#4E9B1F] border border-[#67B529]/25 mb-3">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#4E9B1F]" />
-              <span>OUR SERVICES</span>
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-[#EEF9E8] px-2.5 sm:px-3 py-0.5 sm:py-1 text-[11px] sm:text-xs font-bold text-[#4E9B1F] border border-[#67B529]/25 mb-1 sm:mb-2.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#4E9B1F] animate-pulse" />
+              <span>NEW ARRIVALS</span>
             </div>
 
-            <h2 className="text-2xl sm:text-3xl lg:text-[34px] font-black text-slate-900 tracking-tight leading-tight">
-              What are you <span className="text-[#0066FF]">looking for?</span>
+            <h2 className="text-[22px] sm:text-3xl lg:text-[34px] font-black text-slate-900 tracking-tight leading-tight">
+              New and <span className="text-[#0066FF]">noteworthy</span>
             </h2>
 
-            <p className="mt-2 text-xs sm:text-sm text-slate-500 font-medium max-w-2xl">
-              {content?.description || "Choose from our wide range of medical services provided by experienced specialists."}
+            {/* Subtitle: Hidden on mobile view */}
+            <p className="hidden sm:block mt-1.5 text-xs sm:text-sm text-slate-500 font-medium max-w-2xl">
+              {content?.description || "Explore our newly added service packages crafted to deliver the best experience."}
             </p>
           </div>
 
-          <button
-            onClick={onShowServices}
-            type="button"
-            className="inline-flex items-center gap-2 rounded-full bg-[#4E9B1F] px-5 py-2.5 text-xs sm:text-sm font-extrabold text-white shadow-md transition duration-200 hover:bg-[#43871b] hover:scale-105 shrink-0 cursor-pointer"
-          >
-            <span>View All Services</span>
-            <span>→</span>
-          </button>
+          {/* Circular Navigation Arrow Buttons: Hidden on mobile view */}
+          <div className="hidden sm:flex items-center gap-3 shrink-0">
+            <button
+              onClick={scrollPrev}
+              type="button"
+              aria-label="Previous"
+              className="flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-sm transition-all duration-200 hover:border-slate-300 hover:bg-slate-50 hover:shadow active:scale-95 cursor-pointer"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5 text-slate-600"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth="1.75"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 12H5m0 0l6-6m-6 6l6 6" />
+              </svg>
+            </button>
+
+            <button
+              onClick={scrollNext}
+              type="button"
+              aria-label="Next"
+              className="flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-sm transition-all duration-200 hover:border-slate-300 hover:bg-slate-50 hover:shadow active:scale-95 cursor-pointer"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5 text-slate-600"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth="1.75"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14m0 0l-6-6m6 6l-6 6" />
+              </svg>
+            </button>
+          </div>
         </div>
 
         {/* Carousel Container */}
         <div
-          className="relative mt-8"
+          className="relative mt-3 sm:mt-6"
           onMouseEnter={stopAutoSlide}
           onMouseLeave={startAutoSlide}
+          onTouchStart={stopAutoSlide}
+          onTouchEnd={startAutoSlide}
         >
-          {/* Previous Button - Green and positioned far outside */}
-          <button
-            onClick={scrollPrev}
-            aria-label="Previous services"
-            className="absolute -left-6 lg:-left-10 xl:-left-12 top-1/2 z-20 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-[#4E9B1F] text-white shadow-lg shadow-[#4E9B1F]/30 transition-all duration-200 hover:bg-[#3f8018] hover:scale-110 active:scale-95 lg:flex cursor-pointer border border-white/20"
-            type="button"
-          >
-            <svg className="h-5 w-5 stroke-[2.5]" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-              <path d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-
-          {/* Slider - Exactly 4 cards visible without cutting */}
+          {/* Slider */}
           <div
             ref={scrollRef}
-            onScroll={updateActiveDot}
             className="
             flex
-            gap-6
+            gap-3.5 sm:gap-5 lg:gap-6
             overflow-x-auto
             scroll-smooth
-            py-4 px-0.5
+            py-1.5 px-0.5
             snap-x
             snap-mandatory
             [-ms-overflow-style:none]
@@ -152,54 +160,38 @@ function ServicesSection({
             [&::-webkit-scrollbar]:hidden
             "
           >
-            {services.map((service, index) => (
-              <div
-                key={service.name || index}
-                data-service-card
-                className="w-[calc(50%-12px)] sm:w-[calc((100%-48px)/3)] lg:w-[calc((100%-72px)/4)] flex-none snap-start h-full"
-              >
-                <ServiceCircleCard
-                  index={index}
-                  service={service}
-                  onSelect={() =>
-                    onOpenServiceDetails(service)
-                  }
-                />
-              </div>
-            ))}
-          </div>
+            {displayPackages.map((pkg, index) => {
+              const packageImage = pkg.image || pkg.parentService?.image || "/placeholder-service.jpg";
+              return (
+                <div
+                  key={pkg.id || `${pkg.name}-${index}`}
+                  data-package-card
+                  className="w-[175px] sm:w-[220px] md:w-[245px] lg:w-[calc((100%-72px)/4)] flex-none snap-start"
+                >
+                  <div
+                    onClick={() => handleCardClick(pkg)}
+                    className="group flex flex-col cursor-pointer text-left"
+                  >
+                    {/* Pure Image Container */}
+                    <div className="relative aspect-[4/3] w-full rounded-xl sm:rounded-2xl overflow-hidden bg-slate-100 shadow-sm">
+                      <img
+                        src={packageImage}
+                        alt={pkg.name}
+                        loading="lazy"
+                        className="h-full w-full object-cover object-center transition-transform duration-300 ease-out group-hover:scale-105"
+                      />
+                    </div>
 
-          {/* Next Button - Green and positioned far outside */}
-          <button
-            onClick={scrollNext}
-            aria-label="Next services"
-            className="absolute -right-6 lg:-right-10 xl:-right-12 top-1/2 z-20 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-[#4E9B1F] text-white shadow-lg shadow-[#4E9B1F]/30 transition-all duration-200 hover:bg-[#3f8018] hover:scale-110 active:scale-95 lg:flex cursor-pointer border border-white/20"
-            type="button"
-          >
-            <svg className="h-5 w-5 stroke-[2.5]" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-              <path d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
+                    {/* Image ke just neeche uska naam */}
+                    <h3 className="mt-2 text-[14px] sm:text-[15px] lg:text-[16px] font-bold text-slate-800 leading-snug line-clamp-2 group-hover:text-[#0066FF] transition-colors">
+                      {pkg.name}
+                    </h3>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
-
-        {/* Carousel Pagination Dots */}
-        {totalPages > 1 && (
-          <div className="mt-4 flex justify-center items-center gap-2">
-            {Array.from({ length: totalPages }).map((_, dotIdx) => (
-              <button
-                key={dotIdx}
-                onClick={() => scrollToPage(dotIdx)}
-                aria-label={`Go to slide ${dotIdx + 1}`}
-                className={`transition-all duration-300 rounded-full cursor-pointer ${
-                  dotIdx === activeDot
-                    ? "w-6 h-2 bg-[#0066FF]"
-                    : "w-2 h-2 bg-slate-300 hover:bg-slate-400"
-                }`}
-                type="button"
-              />
-            ))}
-          </div>
-        )}
       </div>
     </section>
   );

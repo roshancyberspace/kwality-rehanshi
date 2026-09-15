@@ -127,13 +127,29 @@ function KebabMenu({ onDelete, onEdit, row }) {
   )
 }
 
+function isCouponExpired(row) {
+  const status = String(row?.status || '').toLowerCase()
+  if (status === 'expired') return true
+  if (row?.expires_at) {
+    const expDate = new Date(row.expires_at)
+    if (!Number.isNaN(expDate.getTime())) {
+      const endOfDay = new Date(expDate)
+      endOfDay.setHours(23, 59, 59, 999)
+      return endOfDay.getTime() < Date.now()
+    }
+  }
+  return false
+}
+
 function CouponCard({ onDelete, onEdit, row }) {
   const [copied, setCopied] = useState(false)
   const appliesTo = APPLIES_LABELS[String(row.applies_to || 'all').toLowerCase()] || formatValue(row.applies_to || 'All')
-  const status = formatValue(row.status) || 'Active'
-  const isActive = String(status).toLowerCase() === 'active'
+  const isExpired = isCouponExpired(row)
+  const status = isExpired ? 'Expired' : (formatValue(row.status) || 'Active')
+  const isActive = !isExpired && String(status).toLowerCase() === 'active'
   const isPercentage = String(row.type || '').toLowerCase() === 'percentage'
   const code = row.code || '—'
+  const accentColor = isExpired ? '#DC2626' : GREEN
 
   const handleCopy = async () => {
     const ok = await copyText(row.code)
@@ -143,22 +159,32 @@ function CouponCard({ onDelete, onEdit, row }) {
   }
 
   return (
-    <article className="relative flex overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-      <div className="relative flex w-8 shrink-0 items-center justify-center" style={{ backgroundColor: GREEN }}>
-        <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rotate-[-90deg] whitespace-nowrap text-[8px] font-black tracking-[0.18em] text-white">
+    <article className={`relative flex overflow-hidden rounded-xl border transition-shadow hover:shadow-md ${
+      isExpired
+        ? 'border-rose-200 bg-rose-50/20 shadow-xs'
+        : 'border-slate-200 bg-white shadow-sm'
+    }`}>
+      {/* Left Strip */}
+      <div className="relative flex w-7 shrink-0 items-center justify-center" style={{ backgroundColor: accentColor }}>
+        <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rotate-[-90deg] whitespace-nowrap text-[7.5px] font-black tracking-[0.18em] text-white">
           COUPON CODE
         </span>
-        <span className="absolute -right-1.5 top-[52%] h-2.5 w-2.5 rounded-full bg-[#F8FAFC] ring-1 ring-slate-200" />
+        <span className="absolute -right-1.5 top-[50%] h-2.5 w-2.5 rounded-full bg-[#F8FAFC] ring-1 ring-slate-200" />
       </div>
 
       <div className="min-w-0 flex-1 px-2.5 py-2">
-        <div className="flex items-center justify-between gap-2">
-          <p className="truncate text-lg font-black leading-none tracking-tight" style={{ color: GREEN }}>
+        {/* Header: Discount & Status */}
+        <div className="flex items-center justify-between gap-1.5">
+          <p className="truncate text-base font-black leading-tight tracking-tight" style={{ color: accentColor }}>
             {discountLabel(row)}
           </p>
-          <div className="flex shrink-0 items-center gap-0.5">
+          <div className="flex shrink-0 items-center gap-1">
             <span className={`rounded-full px-1.5 py-px text-[9px] font-black ${
-              isActive ? 'bg-[#E8F5E9] text-[#1B5E3B]' : 'bg-slate-100 text-slate-500'
+              isExpired
+                ? 'bg-rose-100 text-rose-700 border border-rose-200/60'
+                : isActive
+                ? 'bg-[#E8F5E9] text-[#1B5E3B]'
+                : 'bg-slate-100 text-slate-500'
             }`}>
               {status}
             </span>
@@ -166,56 +192,67 @@ function CouponCard({ onDelete, onEdit, row }) {
           </div>
         </div>
 
-        <div className="mt-1.5 flex items-center gap-2">
+        {/* Code Bar */}
+        <div className="mt-1 flex items-center gap-2">
           <button
-            className="flex min-w-0 flex-1 items-center justify-between rounded border border-slate-200 bg-slate-50 px-2 py-0.5 font-mono text-[11px] font-black tracking-wide text-slate-800"
+            className={`flex min-w-0 flex-1 items-center justify-between rounded border px-2 py-0.5 font-mono text-[11px] font-black tracking-wide transition-colors ${
+              isExpired
+                ? 'border-rose-200 bg-rose-50/60 text-rose-900 hover:bg-rose-100/60'
+                : 'border-slate-200 bg-slate-50 text-slate-800 hover:bg-slate-100'
+            }`}
             onClick={handleCopy}
+            title="Click to copy code"
             type="button"
           >
             <span className="truncate">{code}</span>
-            <span className="ml-1 text-slate-400"><CopyIcon /></span>
+            <span className="ml-1 flex items-center gap-1 text-[9.5px] font-sans font-bold text-slate-400">
+              {copied ? <span className="text-emerald-600 font-black">Copied!</span> : <CopyIcon />}
+            </span>
           </button>
           <p className="shrink-0 text-[10px] font-semibold text-slate-500">{formatValue(row.scope_summary || 'All Services')}</p>
         </div>
 
+        {/* Dashed Cut Line */}
         <div className="relative my-1.5">
-          <span className="block border-t border-dashed border-slate-300" />
-          <span className="absolute left-1/2 top-1/2 grid h-4 w-4 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-white text-[#1B5E3B]">
+          <span className={`block border-t border-dashed ${isExpired ? 'border-rose-200' : 'border-slate-300'}`} />
+          <span className="absolute left-1/2 top-1/2 grid h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-white" style={{ color: accentColor }}>
             <ScissorsIcon />
           </span>
         </div>
 
-        <div className="grid grid-cols-4 gap-x-2">
-          <div>
-            <p className="text-[8px] font-black uppercase tracking-wider text-slate-400">Min</p>
-            <p className="truncate text-[11px] font-black text-slate-800">{row.minimum_order ? moneyLabel(row.minimum_order) : '—'}</p>
+        {/* Details Row (Compact & fully visible date) */}
+        <div className="grid grid-cols-[1fr_1.3fr_0.8fr_1fr] gap-x-1 text-left">
+          <div className="min-w-0">
+            <p className="text-[8px] font-bold uppercase tracking-wider text-slate-400">Min</p>
+            <p className="truncate text-[10.5px] font-black text-slate-800">{row.minimum_order ? moneyLabel(row.minimum_order) : '—'}</p>
           </div>
-          <div>
-            <p className="text-[8px] font-black uppercase tracking-wider text-slate-400">Expires</p>
-            <p className="truncate text-[11px] font-black text-slate-800">{row.expires_at ? formatDate(row.expires_at) : '—'}</p>
+          <div className="min-w-0">
+            <p className="text-[8px] font-bold uppercase tracking-wider text-slate-400">Expires</p>
+            <p className={`whitespace-nowrap text-[10.5px] font-black ${isExpired ? 'text-rose-600' : 'text-slate-800'}`}>
+              {row.expires_at ? formatDate(row.expires_at) : 'Never'}
+            </p>
           </div>
-          <div>
-            <p className="text-[8px] font-black uppercase tracking-wider text-slate-400">Limit</p>
-            <p className="truncate text-[11px] font-black text-slate-800">{row.usage_limit ? formatValue(row.usage_limit) : '—'}</p>
+          <div className="min-w-0">
+            <p className="text-[8px] font-bold uppercase tracking-wider text-slate-400">Limit</p>
+            <p className="truncate text-[10.5px] font-black text-slate-800">{row.usage_limit ? formatValue(row.usage_limit) : '∞'}</p>
           </div>
-          <div>
-            <p className="text-[8px] font-black uppercase tracking-wider text-slate-400">Applies</p>
-            <p className="truncate text-[11px] font-black text-slate-800">{appliesTo}</p>
+          <div className="min-w-0">
+            <p className="text-[8px] font-bold uppercase tracking-wider text-slate-400">Applies</p>
+            <p className="truncate text-[10.5px] font-black text-slate-800" title={appliesTo}>{appliesTo}</p>
           </div>
         </div>
 
-        <div className="mt-1.5 flex items-center justify-between gap-2">
-          <span className="inline-flex items-center gap-1 text-[10px] font-bold" style={{ color: GREEN }}>
+        {/* Bottom Tag */}
+        <div className="mt-1 flex items-center justify-between pt-1 border-t border-slate-100">
+          <span className="inline-flex items-center gap-1 text-[9.5px] font-bold" style={{ color: accentColor }}>
             <TagIcon />
             {isPercentage ? 'Percentage' : 'Fixed'}
           </span>
-          <button
-            className="rounded border border-slate-200 px-2 py-0.5 text-[10px] font-black text-[#1B5E3B] hover:bg-[#E8F5E9]"
-            onClick={handleCopy}
-            type="button"
-          >
-            {copied ? 'Copied' : 'Copy Code'}
-          </button>
+          {isExpired && (
+            <span className="text-[9px] font-black uppercase tracking-wider text-rose-500">
+              Expired
+            </span>
+          )}
         </div>
       </div>
     </article>

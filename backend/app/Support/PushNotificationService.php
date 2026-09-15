@@ -6,6 +6,7 @@ use App\Models\AdminNotification;
 use App\Models\Booking;
 use App\Models\Coupon;
 use App\Models\CustomerProfile;
+use App\Models\NotificationDelivery;
 use App\Models\Partner;
 use App\Models\Payout;
 use App\Models\ServicePackage;
@@ -52,13 +53,42 @@ class PushNotificationService
             'metadata' => [
                 'customer_id' => $customerModel->id,
                 'customer_name' => $customerModel->name,
+                'customer_phone' => $customerModel->phone,
+                'customer_email' => $customerModel->email,
                 'screen' => $deepLinkData['screen'] ?? 'Home',
                 'action_type' => $deepLinkData['action_type'] ?? 'general',
                 ...$deepLinkData,
             ],
         ]);
 
-        $this->dispatchDevicePush($customerModel, $title, $message, $deepLinkData, $imageUrl);
+        $deliveryResult = $this->dispatchDevicePush($customerModel, $title, $message, $deepLinkData, $imageUrl);
+
+        NotificationDelivery::create([
+            'admin_notification_id' => $notification->id,
+            'recipient_type' => 'customer',
+            'recipient_id' => $customerModel->id,
+            'recipient_name' => $customerModel->name ?: 'Customer #'.$customerModel->id,
+            'channel' => 'Push',
+            'contact' => $deliveryResult['contact'] ?: ($customerModel->phone ?: $customerModel->email),
+            'status' => $deliveryResult['status'],
+            'error' => $deliveryResult['error'],
+            'sent_at' => $deliveryResult['status'] === 'sent' ? now() : null,
+        ]);
+
+        $report = [
+            'targeted' => 1,
+            'sent' => $deliveryResult['status'] === 'sent' ? 1 : 0,
+            'failed' => $deliveryResult['status'] === 'failed' ? 1 : 0,
+            'skipped' => $deliveryResult['status'] === 'skipped' ? 1 : 0,
+            'pending' => 0,
+        ];
+
+        $metadata = is_array($notification->metadata) ? $notification->metadata : [];
+        $metadata['delivery_report'] = $report;
+        $notification->update([
+            'status' => $deliveryResult['status'] === 'sent' ? 'Sent' : ($deliveryResult['status'] === 'failed' ? 'Failed' : 'Skipped'),
+            'metadata' => $metadata,
+        ]);
 
         return $notification;
     }
@@ -94,13 +124,42 @@ class PushNotificationService
             'metadata' => [
                 'partner_id' => $partnerModel->id,
                 'partner_name' => $partnerModel->name,
+                'partner_phone' => $partnerModel->phone,
+                'partner_email' => $partnerModel->email,
                 'screen' => $deepLinkData['screen'] ?? 'VendorDashboard',
                 'action_type' => $deepLinkData['action_type'] ?? 'general',
                 ...$deepLinkData,
             ],
         ]);
 
-        $this->dispatchDevicePush($partnerModel, $title, $message, $deepLinkData, $imageUrl);
+        $deliveryResult = $this->dispatchDevicePush($partnerModel, $title, $message, $deepLinkData, $imageUrl);
+
+        NotificationDelivery::create([
+            'admin_notification_id' => $notification->id,
+            'recipient_type' => 'partner',
+            'recipient_id' => $partnerModel->id,
+            'recipient_name' => $partnerModel->name ?: 'Partner #'.$partnerModel->id,
+            'channel' => 'Push',
+            'contact' => $deliveryResult['contact'] ?: ($partnerModel->phone ?: $partnerModel->email),
+            'status' => $deliveryResult['status'],
+            'error' => $deliveryResult['error'],
+            'sent_at' => $deliveryResult['status'] === 'sent' ? now() : null,
+        ]);
+
+        $report = [
+            'targeted' => 1,
+            'sent' => $deliveryResult['status'] === 'sent' ? 1 : 0,
+            'failed' => $deliveryResult['status'] === 'failed' ? 1 : 0,
+            'skipped' => $deliveryResult['status'] === 'skipped' ? 1 : 0,
+            'pending' => 0,
+        ];
+
+        $metadata = is_array($notification->metadata) ? $notification->metadata : [];
+        $metadata['delivery_report'] = $report;
+        $notification->update([
+            'status' => $deliveryResult['status'] === 'sent' ? 'Sent' : ($deliveryResult['status'] === 'failed' ? 'Failed' : 'Skipped'),
+            'metadata' => $metadata,
+        ]);
 
         return $notification;
     }
@@ -133,18 +192,57 @@ class PushNotificationService
             ],
         ]);
 
+        $targeted = 0;
+        $sent = 0;
+        $failed = 0;
+        $skipped = 0;
+
         try {
             CustomerProfile::query()
                 ->where('status', '!=', 'Blocked')
-                ->whereNotNull('metadata->devices')
-                ->chunk(100, function ($customers) use ($title, $message, $deepLinkData, $imageUrl) {
+                ->chunk(100, function ($customers) use ($notification, $title, $message, $deepLinkData, $imageUrl, &$targeted, &$sent, &$failed, &$skipped) {
                     foreach ($customers as $customer) {
-                        $this->dispatchDevicePush($customer, $title, $message, $deepLinkData, $imageUrl);
+                        $targeted++;
+                        $res = $this->dispatchDevicePush($customer, $title, $message, $deepLinkData, $imageUrl);
+                        NotificationDelivery::create([
+                            'admin_notification_id' => $notification->id,
+                            'recipient_type' => 'customer',
+                            'recipient_id' => $customer->id,
+                            'recipient_name' => $customer->name ?: 'Customer #'.$customer->id,
+                            'channel' => 'Push',
+                            'contact' => $res['contact'] ?: ($customer->phone ?: $customer->email),
+                            'status' => $res['status'],
+                            'error' => $res['error'],
+                            'sent_at' => $res['status'] === 'sent' ? now() : null,
+                        ]);
+
+                        if ($res['status'] === 'sent') {
+                            $sent++;
+                        } elseif ($res['status'] === 'failed') {
+                            $failed++;
+                        } else {
+                            $skipped++;
+                        }
                     }
                 });
         } catch (Throwable $e) {
             Log::warning('Customer broadcast push failed', ['error' => $e->getMessage()]);
         }
+
+        $report = [
+            'targeted' => $targeted,
+            'sent' => $sent,
+            'failed' => $failed,
+            'skipped' => $skipped,
+            'pending' => 0,
+        ];
+
+        $metadata = is_array($notification->metadata) ? $notification->metadata : [];
+        $metadata['delivery_report'] = $report;
+        $notification->update([
+            'status' => $sent > 0 ? 'Sent' : ($failed > 0 ? 'Failed' : ($targeted > 0 ? 'Skipped' : 'Sent')),
+            'metadata' => $metadata,
+        ]);
 
         return $notification;
     }
@@ -166,7 +264,7 @@ class PushNotificationService
         $serviceOtp = data_get($booking->metadata, 'service_otp', '');
         $otpText = $serviceOtp ? " Share OTP {$serviceOtp} with technician upon arrival." : '';
 
-        $title = "Booking Confirmed #{$booking->booking_no}";
+        $title = "Booking Confirmed".$this->bookingSuffix($booking);
         $body = "Your booking for {$booking->service_name} has been confirmed.{$otpText}";
 
         return $this->notifyCustomer($customer, $title, $body, [
@@ -192,7 +290,7 @@ class PushNotificationService
         }
 
         $partnerName = $booking->professional_name ?: 'Our service technician';
-        $title = "Service In Progress #{$booking->booking_no}";
+        $title = "Service In Progress".$this->bookingSuffix($booking);
         $body = "{$partnerName} has started working on your {$booking->service_name} service.";
 
         return $this->notifyCustomer($customer, $title, $body, [
@@ -218,7 +316,7 @@ class PushNotificationService
         $itemCount = count($extraItems);
         $countText = $itemCount > 0 ? " ({$itemCount} item".($itemCount > 1 ? 's' : '').')' : '';
 
-        $title = "Extra Items Added for Approval #{$booking->booking_no}";
+        $title = "Extra Items Added for Approval".$this->bookingSuffix($booking);
         $body = "The technician has added extra parts/services{$countText} for {$booking->service_name}. Please review and approve in the app.";
 
         return $this->notifyCustomer($customer, $title, $body, [
@@ -242,7 +340,7 @@ class PushNotificationService
             return null;
         }
 
-        $title = "Service Completed #{$booking->booking_no}";
+        $title = "Service Completed".$this->bookingSuffix($booking);
         $body = "Your {$booking->service_name} service is completed! Please rate your service experience.";
 
         return $this->notifyCustomer($customer, $title, $body, [
@@ -267,7 +365,7 @@ class PushNotificationService
         }
 
         $reasonText = $reason ? " Reason: {$reason}" : '';
-        $title = "Booking Cancelled #{$booking->booking_no}";
+        $title = "Booking Cancelled".$this->bookingSuffix($booking);
         $body = "Your booking for {$booking->service_name} has been cancelled.{$reasonText}";
 
         return $this->notifyCustomer($customer, $title, $body, [
@@ -333,7 +431,7 @@ class PushNotificationService
     public function sendBookingAssigned(Partner $partner, Booking $booking, ?VendorJob $job = null): ?AdminNotification
     {
         $slotText = optional($booking->scheduled_at)->format('d M, h:i A') ?: 'Scheduled Slot';
-        $title = "New Job Assigned #{$booking->booking_no}";
+        $title = "New Job Assigned".$this->bookingSuffix($booking);
         $body = "New job: {$booking->service_name} scheduled for {$slotText}. Tap to review details & accept.";
 
         return $this->notifyPartner($partner, $title, $body, [
@@ -356,7 +454,7 @@ class PushNotificationService
      */
     public function sendVendorWorkStarted(Partner $partner, Booking $booking, ?VendorJob $job = null): ?AdminNotification
     {
-        $title = "Job Started #{$booking->booking_no}";
+        $title = "Job Started".$this->bookingSuffix($booking);
         $body = "Service work is in progress for {$booking->service_name}. Complete all checklist items and upload after photos.";
 
         return $this->notifyPartner($partner, $title, $body, [
@@ -374,7 +472,7 @@ class PushNotificationService
      */
     public function sendVendorBookingCompleted(Partner $partner, Booking $booking, ?VendorJob $job = null): ?AdminNotification
     {
-        $title = "Job Completed Successfully #{$booking->booking_no}";
+        $title = "Job Completed Successfully".$this->bookingSuffix($booking);
         $body = "Great job! {$booking->service_name} completed. Earnings have been credited to your vendor wallet.";
 
         return $this->notifyPartner($partner, $title, $body, [
@@ -430,26 +528,55 @@ class PushNotificationService
     // HELPER & DISPATCH METHODS
     // ==========================================
 
+    private function bookingSuffix(mixed $booking): string
+    {
+        $no = $booking instanceof Booking
+            ? ($booking->booking_no ?: ($booking->id ? "#{$booking->id}" : ''))
+            : (string) $booking;
+
+        $no = trim((string) $no);
+        if ($no === '') {
+            return '';
+        }
+
+        return str_starts_with($no, '#') ? " {$no}" : " #{$no}";
+    }
+
     private function dispatchDevicePush(
         Model $model,
         string $title,
         string $body,
         array $data = [],
         ?string $imageUrl = null
-    ): void {
+    ): array {
         $tokens = $this->collectDeviceTokens($model);
         if (empty($tokens)) {
-            return;
+            return [
+                'status' => 'skipped',
+                'contact' => $model->phone ?: $model->email ?: null,
+                'error' => 'No active push device token registered for this user',
+            ];
         }
 
         if (! $this->fcmClient->isConfigured()) {
-            return;
+            return [
+                'status' => 'failed',
+                'contact' => $tokens[0] ?? ($model->phone ?: $model->email),
+                'error' => 'Firebase push gateway is not configured (missing FCM credentials)',
+            ];
         }
 
+        $sentCount = 0;
+        $lastError = null;
+        $usedContact = null;
+
         foreach ($tokens as $token) {
+            $usedContact = $token;
             try {
                 $this->fcmClient->send($token, $title, $body, $imageUrl, $data);
+                $sentCount++;
             } catch (Throwable $e) {
+                $lastError = mb_substr($e->getMessage(), 0, 500);
                 Log::warning('Device push delivery failed', [
                     'model' => class_basename($model),
                     'id' => $model->getKey(),
@@ -457,6 +584,20 @@ class PushNotificationService
                 ]);
             }
         }
+
+        if ($sentCount > 0) {
+            return [
+                'status' => 'sent',
+                'contact' => $usedContact ?: ($model->phone ?: $model->email),
+                'error' => null,
+            ];
+        }
+
+        return [
+            'status' => 'failed',
+            'contact' => $usedContact ?: ($model->phone ?: $model->email),
+            'error' => $lastError ?: 'FCM delivery failed',
+        ];
     }
 
     private function collectDeviceTokens(Model $model): array

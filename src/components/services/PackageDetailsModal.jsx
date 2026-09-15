@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useBodyScrollLock } from '../../utils/modalScrollLock'
 
 const getOriginalPrice = (item) => item.originalPrice || item.original_price
 
@@ -583,6 +584,7 @@ function PackageDetailsModal({
   reviews = [],
   serviceName = '',
 }) {
+  useBodyScrollLock(Boolean(item))
   const [openFaq, setOpenFaq] = useState(null)
   const [isClosing, setIsClosing] = useState(false)
   const closeTimerRef = useRef(null)

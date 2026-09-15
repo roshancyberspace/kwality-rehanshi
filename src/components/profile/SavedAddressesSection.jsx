@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useGooglePlaces } from '../../hooks/useGooglePlaces'
 import { askAppConfirmation, notify } from '../../utils/feedback'
+import { useBodyScrollLock } from '../../utils/modalScrollLock'
 
 const LABEL_TAGS = ['Home', 'Work', 'Other']
 const CITIES = [
@@ -25,6 +26,7 @@ function SavedAddressesSection({
   savedAddresses,
 }) {
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false)
+  useBodyScrollLock(isAddressModalOpen)
   const [modalStep, setModalStep] = useState('location_search')
   const [openMenuId, setOpenMenuId] = useState(null)
   const [isSaving, setIsSaving] = useState(false)

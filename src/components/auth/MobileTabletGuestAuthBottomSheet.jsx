@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { frontendApi } from '../../services/frontendApi'
 import { notify } from '../../utils/feedback'
+import { useBodyScrollLock } from '../../utils/modalScrollLock'
 
 const RESEND_SECONDS = 45
 
@@ -243,19 +244,13 @@ export default function MobileTabletGuestAuthBottomSheet({
   const requestLock = useRef(false)
   const sheetRef = useRef(null)
 
+  useBodyScrollLock(true)
+
   useEffect(() => {
     if (resendIn <= 0) return undefined
     const timer = window.setTimeout(() => setResendIn((value) => Math.max(0, value - 1)), 1000)
     return () => window.clearTimeout(timer)
   }, [resendIn])
-
-  useEffect(() => {
-    const previous = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.body.style.overflow = previous
-    }
-  }, [])
 
   const runLocked = async (fn) => {
     if (requestLock.current) return

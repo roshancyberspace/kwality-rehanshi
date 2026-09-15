@@ -187,14 +187,25 @@ function SelectField({ commonClass, field, onChange, value }) {
         {field.allowCustom ? <option value={CUSTOM_SELECT_VALUE}>Custom...</option> : null}
       </select>
       {showCustomInput ? (
-        <input
-          className={`${commonClass} !mt-2`}
-          onChange={(event) => onChange(field.name, event.target.value)}
-          placeholder={field.customPlaceholder || `Custom ${String(field.label || '').toLowerCase()}`}
-          required={field.required}
-          type="text"
-          value={stringValue}
-        />
+        field.customType === 'textarea' || field.name === 'warranty' ? (
+          <textarea
+            className={`${commonClass} !mt-2 min-h-[72px] resize-y`}
+            onChange={(event) => onChange(field.name, event.target.value)}
+            placeholder={field.customPlaceholder || `Custom ${String(field.label || '').toLowerCase()}`}
+            required={field.required}
+            rows={field.customRows || 3}
+            value={stringValue}
+          />
+        ) : (
+          <input
+            className={`${commonClass} !mt-2`}
+            onChange={(event) => onChange(field.name, event.target.value)}
+            placeholder={field.customPlaceholder || `Custom ${String(field.label || '').toLowerCase()}`}
+            required={field.required}
+            type="text"
+            value={stringValue}
+          />
+        )
       ) : null}
       {field.hint ? <span className="mt-1 block text-xs font-semibold text-slate-500">{field.hint}</span> : null}
     </label>
@@ -431,7 +442,25 @@ function MediaUploadField({ commonClass, field, onChange, value }) {
 
 function FieldControl({ field, value, onChange }) {
   const safeValue = value ?? ''
-  const commonClass = 'mt-1.5 w-full rounded-lg border border-slate-400 bg-white px-3 py-2 text-sm font-semibold outline-none focus:border-[#67B529] focus:ring-2 focus:ring-[#67B529]/20 read-only:cursor-not-allowed read-only:border-slate-300 read-only:bg-slate-100 read-only:text-slate-600 read-only:focus:border-slate-300 read-only:focus:ring-0'
+  const commonClass = 'mt-1 w-full rounded-lg border border-slate-400 bg-white px-3 py-1.5 text-sm font-semibold outline-none focus:border-[#67B529] focus:ring-2 focus:ring-[#67B529]/20 read-only:cursor-not-allowed read-only:border-slate-300 read-only:bg-slate-100 read-only:text-slate-600 read-only:focus:border-slate-300 read-only:focus:ring-0'
+
+  if (field.type === 'checkbox') {
+    const isChecked = Boolean(value === true || value === 1 || value === '1' || value === 'true')
+    return (
+      <div className="flex flex-col justify-start">
+        <label className="flex items-center gap-2.5 cursor-pointer select-none mt-3.5 sm:mt-5">
+          <input
+            type="checkbox"
+            checked={isChecked}
+            onChange={(event) => onChange(field.name, event.target.checked ? 1 : 0)}
+            className="h-4.5 w-4.5 rounded border-slate-400 text-[#4E9B1F] focus:ring-[#4E9B1F] cursor-pointer"
+          />
+          <span className="text-sm font-bold text-slate-700">{field.label}</span>
+        </label>
+        {field.hint ? <span className="mt-0.5 block text-xs font-semibold text-slate-500">{field.hint}</span> : null}
+      </div>
+    )
+  }
 
   if (field.type === 'richtext') {
     return <RichTextField field={field} onChange={onChange} value={safeValue} />
@@ -445,6 +474,22 @@ function FieldControl({ field, value, onChange }) {
         onChange={onChange}
         value={safeValue}
       />
+    )
+  }
+
+  if (field.type === 'tags') {
+    return (
+      <label className="block">
+        <span className="text-sm font-bold text-slate-700">{field.label}</span>
+        <textarea
+          className={`${commonClass} min-h-[72px] resize-y`}
+          onChange={(event) => onChange(field.name, event.target.value)}
+          placeholder={field.placeholder || (field.hint || 'Comma separated values')}
+          value={Array.isArray(safeValue) ? safeValue.join(', ') : safeValue}
+          rows={field.rows || 3}
+        />
+        {field.hint ? <span className="mt-0.5 block text-xs font-semibold text-slate-500">{field.hint}</span> : null}
+      </label>
     )
   }
 

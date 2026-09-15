@@ -1,9 +1,11 @@
 import { useState } from 'react'
+import { useBodyScrollLock } from '../../utils/modalScrollLock'
 import ForgotPasswordForm from './ForgotPasswordForm'
 import LoginForm from './LoginForm'
 import SignupForm from './SignupForm'
 
 function AuthModal({ defaultMode = 'login', onClose, onLogin, onOpenBecomeProvider }) {
+  useBodyScrollLock(true)
   const [mode, setMode] = useState(defaultMode)
   const [signupStep, setSignupStep] = useState(1)
   const [isClosing, setIsClosing] = useState(false)

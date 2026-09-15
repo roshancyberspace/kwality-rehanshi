@@ -46,6 +46,14 @@ class CampaignNotificationDispatcher
             ->orderByDesc('id')
             ->get();
 
+        if ($rows->isEmpty()) {
+            $this->backfillDeliveriesForNotification($notification);
+            $rows = NotificationDelivery::query()
+                ->where('admin_notification_id', $notification->id)
+                ->orderByDesc('id')
+                ->get();
+        }
+
         $counts = [
             'targeted' => $rows->count(),
             'sent' => $rows->where('status', 'sent')->count(),
@@ -62,6 +70,129 @@ class CampaignNotificationDispatcher
         ];
     }
 
+    public function backfillDeliveriesForNotification(AdminNotification $notification): void
+    {
+        $metadata = is_array($notification->metadata) ? $notification->metadata : [];
+        $channel = $notification->channel ?: 'Push';
+        $status = strtolower((string) $notification->status);
+
+        if (! empty($metadata['partner_id'])) {
+            $partner = Partner::find($metadata['partner_id']);
+            $name = $partner?->name ?: ($metadata['partner_name'] ?? 'Partner #'.$metadata['partner_id']);
+            $contact = $partner ? $this->contactFor([
+                'email' => $partner->email,
+                'phone' => $partner->phone,
+                'devices' => $partner->metadata['devices'] ?? [],
+                'last_device' => $partner->metadata['last_device'] ?? null,
+                'push_token' => $partner->metadata['push_token'] ?? $partner->metadata['fcm_token'] ?? null,
+            ], strtolower($channel)) : ($metadata['partner_phone'] ?? $metadata['partner_email'] ?? null);
+
+            $delStatus = $status === 'failed' ? 'failed' : ($status === 'sent' ? 'sent' : ($contact ? 'sent' : 'skipped'));
+            $error = $delStatus === 'skipped' ? 'No active push token on file' : null;
+
+            NotificationDelivery::create([
+                'admin_notification_id' => $notification->id,
+                'recipient_type' => 'partner',
+                'recipient_id' => (int) $metadata['partner_id'],
+                'recipient_name' => $name,
+                'channel' => $channel,
+                'contact' => $contact ?: ($partner?->phone ?: $partner?->email),
+                'status' => $delStatus,
+                'error' => $error,
+                'sent_at' => $delStatus === 'sent' ? ($notification->sent_at ?: now()) : null,
+            ]);
+        } elseif (! empty($metadata['customer_id'])) {
+            $customer = CustomerProfile::find($metadata['customer_id']);
+            $name = $customer?->name ?: ($metadata['customer_name'] ?? 'Customer #'.$metadata['customer_id']);
+            $contact = $customer ? $this->contactFor([
+                'email' => $customer->email,
+                'phone' => $customer->phone,
+                'devices' => $customer->metadata['devices'] ?? [],
+                'last_device' => $customer->metadata['last_device'] ?? null,
+                'push_token' => $customer->metadata['push_token'] ?? $customer->metadata['fcm_token'] ?? null,
+            ], strtolower($channel)) : ($metadata['customer_phone'] ?? $metadata['customer_email'] ?? null);
+
+            $delStatus = $status === 'failed' ? 'failed' : ($status === 'sent' ? 'sent' : ($contact ? 'sent' : 'skipped'));
+            $error = $delStatus === 'skipped' ? 'No active push token on file' : null;
+
+            NotificationDelivery::create([
+                'admin_notification_id' => $notification->id,
+                'recipient_type' => 'customer',
+                'recipient_id' => (int) $metadata['customer_id'],
+                'recipient_name' => $name,
+                'channel' => $channel,
+                'contact' => $contact ?: ($customer?->phone ?: $customer?->email),
+                'status' => $delStatus,
+                'error' => $error,
+                'sent_at' => $delStatus === 'sent' ? ($notification->sent_at ?: now()) : null,
+            ]);
+        } elseif (in_array(strtolower((string) $notification->audience), ['admin', 'super admin', 'admin users', 'super_admin'])) {
+            $admins = \App\Models\AdminUser::all();
+            if ($admins->isEmpty()) {
+                NotificationDelivery::create([
+                    'admin_notification_id' => $notification->id,
+                    'recipient_type' => 'admin',
+                    'recipient_id' => 1,
+                    'recipient_name' => 'Super Admin',
+                    'channel' => $channel,
+                    'contact' => 'Admin Panel',
+                    'status' => 'sent',
+                    'error' => null,
+                    'sent_at' => $notification->sent_at ?: now(),
+                ]);
+            } else {
+                foreach ($admins as $admin) {
+                    NotificationDelivery::create([
+                        'admin_notification_id' => $notification->id,
+                        'recipient_type' => 'admin',
+                        'recipient_id' => $admin->id,
+                        'recipient_name' => $admin->name ?: 'Admin',
+                        'channel' => $channel,
+                        'contact' => $admin->email ?: $admin->name,
+                        'status' => 'sent',
+                        'error' => null,
+                        'sent_at' => $notification->sent_at ?: now(),
+                    ]);
+                }
+            }
+        } else {
+            $recipients = $this->resolveRecipients($notification);
+            foreach ($recipients as $recipient) {
+                $contact = $this->contactFor($recipient, strtolower($channel));
+                $delStatus = $status === 'failed' ? 'failed' : ($contact ? 'sent' : 'skipped');
+                NotificationDelivery::create([
+                    'admin_notification_id' => $notification->id,
+                    'recipient_type' => $recipient['type'],
+                    'recipient_id' => $recipient['id'],
+                    'recipient_name' => $recipient['name'],
+                    'channel' => $channel,
+                    'contact' => $contact ?: ($recipient['phone'] ?? $recipient['email'] ?? null),
+                    'status' => $delStatus,
+                    'error' => $delStatus === 'skipped' ? 'No active '.$channel.' contact on file' : null,
+                    'sent_at' => $delStatus === 'sent' ? ($notification->sent_at ?: now()) : null,
+                ]);
+            }
+        }
+
+        $this->refreshReportCountsOnly($notification);
+    }
+
+    public function refreshReportCountsOnly(AdminNotification $notification): void
+    {
+        $rows = NotificationDelivery::query()->where('admin_notification_id', $notification->id)->get();
+        $counts = [
+            'targeted' => $rows->count(),
+            'sent' => $rows->where('status', 'sent')->count(),
+            'failed' => $rows->where('status', 'failed')->count(),
+            'skipped' => $rows->where('status', 'skipped')->count(),
+            'pending' => $rows->where('status', 'pending')->count(),
+        ];
+
+        $metadata = is_array($notification->metadata) ? $notification->metadata : [];
+        $metadata['delivery_report'] = $counts;
+        $notification->update(['metadata' => $metadata]);
+    }
+
     private function createDeliveries(AdminNotification $notification, string $channel): \Illuminate\Support\Collection
     {
         $recipients = $this->resolveRecipients($notification);
@@ -75,9 +206,9 @@ class CampaignNotificationDispatcher
                 'recipient_id' => $recipient['id'],
                 'recipient_name' => $recipient['name'],
                 'channel' => $notification->channel,
-                'contact' => $contact,
+                'contact' => $contact ?: ($recipient['phone'] ?? $recipient['email'] ?? null),
                 'status' => $contact ? 'pending' : 'skipped',
-                'error' => $contact ? null : 'No '.$channel.' contact on file',
+                'error' => $contact ? null : 'No active '.$channel.' contact on file',
             ]));
         }
 
@@ -88,11 +219,21 @@ class CampaignNotificationDispatcher
     {
         $audience = strtolower(trim((string) $notification->audience));
         $city = trim((string) data_get($notification->metadata, 'city', ''));
-        $customerIds = array_values(array_filter(array_map('intval', data_get($notification->metadata, 'customer_ids', []) ?: [])));
-        $partnerIds = array_values(array_filter(array_map('intval', data_get($notification->metadata, 'partner_ids', []) ?: [])));
+        
+        $customerIds = array_values(array_filter(array_map('intval', (array) (data_get($notification->metadata, 'customer_ids', []) ?: []))));
+        if ($singleCustId = data_get($notification->metadata, 'customer_id')) {
+            $customerIds[] = (int) $singleCustId;
+        }
+        $customerIds = array_values(array_unique(array_filter($customerIds)));
 
-        if (str_contains($audience, 'specific partner')) {
-            $query = Partner::query()->where('status', 'Active')->whereIn('id', $partnerIds ?: [0]);
+        $partnerIds = array_values(array_filter(array_map('intval', (array) (data_get($notification->metadata, 'partner_ids', []) ?: []))));
+        if ($singlePartId = data_get($notification->metadata, 'partner_id')) {
+            $partnerIds[] = (int) $singlePartId;
+        }
+        $partnerIds = array_values(array_unique(array_filter($partnerIds)));
+
+        if (! empty($partnerIds) || str_contains($audience, 'specific partner')) {
+            $query = Partner::query()->whereIn('id', $partnerIds ?: [0]);
 
             return $this->mapPartners($query->get(['id', 'name', 'email', 'phone', 'metadata']));
         }
@@ -103,9 +244,8 @@ class CampaignNotificationDispatcher
             );
         }
 
-        if (str_contains($audience, 'specific customer')) {
+        if (! empty($customerIds) || str_contains($audience, 'specific customer')) {
             $query = CustomerProfile::query()
-                ->where('status', '!=', 'Blocked')
                 ->whereIn('id', $customerIds ?: [0]);
 
             return $this->mapCustomers($query->get(['id', 'name', 'email', 'phone', 'metadata']));

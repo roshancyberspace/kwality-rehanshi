@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Models\AdminNotification;
+use App\Models\NotificationDelivery;
 use App\Support\CampaignNotificationDispatcher;
 use Illuminate\Http\Request;
 
@@ -162,8 +163,28 @@ class AdminNotificationController extends CrudController
 
     private function present(AdminNotification $item): array
     {
-        $report = data_get($item->metadata, 'delivery_report', []);
+        $report = data_get($item->metadata, 'delivery_report');
         $metadata = is_array($item->metadata) ? $item->metadata : [];
+
+        if (! is_array($report)) {
+            $deliveries = NotificationDelivery::where('admin_notification_id', $item->id)->get();
+            if ($deliveries->isNotEmpty()) {
+                $report = [
+                    'targeted' => $deliveries->count(),
+                    'sent' => $deliveries->where('status', 'sent')->count(),
+                    'failed' => $deliveries->where('status', 'failed')->count(),
+                    'skipped' => $deliveries->where('status', 'skipped')->count(),
+                ];
+            } else {
+                $hasRecipient = ! empty($metadata['customer_id']) || ! empty($metadata['partner_id']);
+                $report = [
+                    'targeted' => $hasRecipient ? 1 : 0,
+                    'sent' => ($hasRecipient && strtolower((string) $item->status) === 'sent') ? 1 : 0,
+                    'failed' => ($hasRecipient && strtolower((string) $item->status) === 'failed') ? 1 : 0,
+                    'skipped' => ($hasRecipient && strtolower((string) $item->status) === 'skipped') ? 1 : 0,
+                ];
+            }
+        }
 
         return [
             ...$item->toArray(),

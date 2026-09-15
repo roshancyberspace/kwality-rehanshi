@@ -244,6 +244,41 @@ export const makeColumns = (config, { actionLoadingId, appSettings = {}, canChan
         ? <span className="text-xs font-black text-slate-600">{formatWorkPhotos(row)}</span>
       : key === 'expires_at'
         ? <span className="whitespace-nowrap">{formatDate(row[key])}</span>
+      : key === 'sent_at'
+        ? <span className="whitespace-nowrap text-xs font-semibold text-slate-600">{formatDateTime(row[key])}</span>
+      : config.endpoint === '/notifications' && key === 'targeted_count'
+        ? (
+          <span className="inline-flex min-w-8 items-center justify-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-800">
+            {row.targeted_count ?? 0}
+          </span>
+        )
+      : config.endpoint === '/notifications' && key === 'sent_count'
+        ? (
+          <span className="inline-flex min-w-8 items-center justify-center rounded-full bg-[#EEF9E8] px-2.5 py-0.5 text-xs font-bold text-[#2E7D32]">
+            {row.sent_count ?? 0}
+          </span>
+        )
+      : config.endpoint === '/notifications' && key === 'failed_count'
+        ? (
+          <span className="inline-flex min-w-8 items-center justify-center rounded-full bg-rose-50 px-2.5 py-0.5 text-xs font-bold text-rose-700">
+            {row.failed_count ?? 0}
+          </span>
+        )
+      : config.endpoint === '/notifications' && key === 'channel'
+        ? (
+          <span className="inline-flex items-center justify-center rounded-md bg-white border border-slate-200 px-2 py-0.5 text-xs font-bold text-slate-700 shadow-2xs">
+            {formatValue(row.channel)}
+          </span>
+        )
+      : config.endpoint === '/notifications' && key === 'screen'
+        ? (
+          <span className="inline-flex items-center gap-1 text-xs font-semibold text-slate-700">
+            {row.screen || 'Home'}
+            {row.action_type && row.action_type !== 'general' && (
+              <span className="text-[10.5px] font-medium text-slate-400">({row.action_type})</span>
+            )}
+          </span>
+        )
       : config.endpoint === '/coupons' && key === 'applies_to'
         ? (
           <StatusBadge>

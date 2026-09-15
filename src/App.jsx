@@ -552,6 +552,34 @@ function App() {
   }, [])
 
   useEffect(() => {
+    const checkModalState = () => {
+      const modalElements = document.querySelectorAll(
+        '[role="dialog"], [aria-modal="true"], .swal2-shown, .animate-modal-fade, .animate-modal-fade-in, [data-modal-open="true"]'
+      )
+      const hasModal = modalElements.length > 0 || document.body.classList.contains('swal2-shown')
+      if (hasModal) {
+        if (!document.body.classList.contains('modal-open')) {
+          document.body.classList.add('modal-open')
+          document.documentElement.classList.add('modal-open')
+        }
+      }
+    }
+
+    const observer = new MutationObserver(() => {
+      checkModalState()
+    })
+
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['class', 'style'],
+    })
+
+    return () => observer.disconnect()
+  }, [])
+
+  useEffect(() => {
     let ignore = false
 
     const validateAuth = async () => {
@@ -1037,6 +1065,7 @@ function App() {
           <HomePage
             {...commonProps}
             packageGroups={livePackageGroups}
+            servicePackages={frontendData?.servicePackages || []}
             categories={liveCategories}
             content={frontendData?.contentByType}
             coupons={frontendData?.coupons}
@@ -1044,7 +1073,7 @@ function App() {
             services={liveServices}
             onOpenProfile={() => navigate(routes.profile)}
             onOpenServiceDetails={openServiceDetails}
-  
+            onOpenPackageDetails={openPackageDetails}
           />
           {isProtectedLoginOpen && (
             <AuthModal
@@ -1287,6 +1316,7 @@ function App() {
       <HomePage
         {...commonProps}
         packageGroups={livePackageGroups}
+        servicePackages={frontendData?.servicePackages || []}
         categories={liveCategories}
         content={frontendData?.contentByType}
         coupons={frontendData?.coupons}

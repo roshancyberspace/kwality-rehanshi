@@ -27,6 +27,13 @@ body {
   background: var(--brand-page);
 }
 
+body.modal-open,
+html.modal-open {
+  overflow: hidden !important;
+  overscroll-behavior: none !important;
+  touch-action: none;
+}
+
 html {
   -webkit-text-size-adjust: 100%;
   scroll-behavior: smooth;

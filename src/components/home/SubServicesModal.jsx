@@ -1,6 +1,8 @@
 import React from 'react';
+import { useBodyScrollLock } from '../../utils/modalScrollLock';
 
 export default function SubServicesModal({ onClose, onSelectSubService, service }) {
+  useBodyScrollLock(Boolean(service));
   if (!service) return null;
 
   const subServices = service.sub_services || service.subServices || [];

@@ -1,4 +1,5 @@
 import { forwardRef, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useBodyScrollLock } from '../../utils/modalScrollLock'
 
 const badgeStyles = {
   Active: 'bg-[#EEF9E8] text-[#67B529] ring-[#67B529]/30',
@@ -269,16 +270,19 @@ export function DataTable({
           actions: 'min-w-[160px] whitespace-nowrap text-center',
           address: 'min-w-[230px]',
           area: 'min-w-[150px]',
+          audience: 'min-w-[140px]',
           availability: 'min-w-[130px] whitespace-nowrap',
           booking_no: 'min-w-[170px] whitespace-nowrap',
           bookings: 'min-w-[110px] text-center',
           bookings_count: 'min-w-[110px] text-center',
+          channel: 'min-w-[100px] text-center',
           commission_percentage: 'min-w-[120px]',
           customer: 'min-w-[230px]',
           customer_name: 'min-w-[230px]',
           documents: 'min-w-[140px]',
           email: 'min-w-[220px]',
           earnings: 'min-w-[130px]',
+          failed_count: 'min-w-[90px] text-center',
           kyc: 'min-w-[130px]',
           kyc_status: 'min-w-[130px]',
           name: 'min-w-[240px]',
@@ -291,11 +295,15 @@ export function DataTable({
           partner_name: 'min-w-[220px]',
           rating: 'min-w-[120px]',
           scheduled_at: 'min-w-[160px] whitespace-nowrap',
+          screen: 'min-w-[160px]',
+          sent_at: 'min-w-[180px] whitespace-nowrap',
+          sent_count: 'min-w-[90px] text-center',
           service: 'min-w-[220px]',
           service_name: 'min-w-[220px]',
           services: 'min-w-[250px]',
           skill: 'min-w-[180px]',
           status: 'min-w-[130px]',
+          targeted_count: 'min-w-[100px] text-center',
           title: 'min-w-[200px]',
           subject: 'min-w-[200px]',
         }
@@ -483,6 +491,7 @@ export function FormInput({ label, placeholder, type = 'text' }) {
 }
 
 export function Modal({ children, onClose, title, noPadding = false, maxWidth = 'max-w-xl' }) {
+  useBodyScrollLock(true)
   const [isClosing, setIsClosing] = useState(false)
   const closeSmoothly = () => {
     setIsClosing(true)

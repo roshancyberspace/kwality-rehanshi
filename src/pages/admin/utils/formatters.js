@@ -59,6 +59,9 @@ export const normalizeForInput = (value, type) => {
   if (type === 'select' && typeof value === 'boolean') {
     return value ? 'Yes' : 'No'
   }
+  if (type === 'checkbox') {
+    return value === true || value === 1 || value === '1' || value === 'true' ? 1 : 0
+  }
   if (value === null || value === undefined) return ''
   if (type === 'datetime-local') return String(value).slice(0, 16)
   if (type === 'date') return String(value).slice(0, 10)

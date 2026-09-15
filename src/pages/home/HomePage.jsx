@@ -10,7 +10,7 @@ import Footer from '../../components/layout/Footer'
 import Navbar from '../../components/layout/Navbar'
 import ServiceShowcaseSection from '../../components/home/ServiceShowcaseSection'
 import { selectSectionServices, serviceToCard } from '../../components/home/serviceSectionUtils'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { HomeSkeleton } from '../../components/common/Shimmer'
 import SubServicesModal from '../../components/home/SubServicesModal'
 
@@ -24,6 +24,8 @@ function HomePage({
   cartCount,
   coupons,
   mobileBanners = [],
+  packageGroups = {},
+  servicePackages = [],
   testimonials = [],
   reviews = [],
   onGlobalSearch,
@@ -43,6 +45,63 @@ function HomePage({
 }) {
   const hasServices = services?.length || categories?.length
   const [activeModalService, setActiveModalService] = useState(null)
+
+  const newlyAddedPackages = useMemo(() => {
+    let list = []
+    if (servicePackages && servicePackages.length > 0) {
+      list = [...servicePackages]
+    } else if (packageGroups && Object.keys(packageGroups).length > 0) {
+      list = Object.values(packageGroups).flat()
+    } else if (services && services.length > 0) {
+      services.forEach((s) => {
+        const subServices = s.sub_services || s.subServices || []
+        subServices.forEach((sub) => {
+          const pkgs = sub.packages || []
+          pkgs.forEach((pkg) => {
+            list.push({ ...pkg, parentService: s, subService: sub })
+          })
+        })
+        const directPkgs = s.packages || []
+        directPkgs.forEach((pkg) => {
+          list.push({ ...pkg, parentService: s })
+        })
+      })
+    }
+
+    // Attach parentService and subService if missing
+    list = list.map((pkg) => {
+      const parent = pkg.parentService || services?.find((s) => String(s.id) === String(pkg.service_id))
+      const subList = parent?.sub_services || parent?.subServices || []
+      const sub = pkg.subService || subList.find((item) => String(item.id) === String(pkg.sub_service_id))
+      return {
+        ...pkg,
+        parentService: parent,
+        subService: sub,
+        image: pkg.image || sub?.image || parent?.image,
+      }
+    })
+
+    // Filter only packages marked as 'Display in New Arrival'
+    const newArrivals = list.filter((pkg) => {
+      const isMarked = pkg.is_new_arrival === 1 ||
+        pkg.is_new_arrival === '1' ||
+        pkg.is_new_arrival === true ||
+        pkg.is_new_arrival === 'true' ||
+        pkg.metadata?.is_new_arrival === 1 ||
+        pkg.metadata?.is_new_arrival === true ||
+        pkg.metadata?.is_new_arrival === '1'
+      const isActive = !pkg.status || String(pkg.status).toLowerCase() === 'active'
+      return isMarked && isActive
+    })
+
+    // Sort newest/latest first and limit to top 20
+    return newArrivals.sort((a, b) => {
+      if (b.created_at && a.created_at) {
+        return new Date(b.created_at) - new Date(a.created_at)
+      }
+      return (Number(b.id) || 0) - (Number(a.id) || 0)
+    }).slice(0, 20)
+  }, [servicePackages, packageGroups, services])
 
   const handleServiceClick = (service) => {
     const subServices = service.sub_services || service.subServices || []
@@ -98,7 +157,14 @@ function HomePage({
         </section>
           )}
           <OffersDiscounts content={content.offers?.[0]} coupons={coupons} onShowServices={onShowServices} />
-          <ServicesSection content={content.services_section?.[0]} services={services} onOpenServiceDetails={handleServiceClick} onShowServices={onShowServices} />
+          <ServicesSection
+            content={content.services_section?.[0]}
+            packages={newlyAddedPackages}
+            services={services}
+            onOpenPackageDetails={onOpenPackageDetails}
+            onOpenServiceDetails={handleServiceClick}
+            onShowServices={onShowServices}
+          />
           <MostBookedServices content={content.most_booked?.[0]} services={services} onOpenServiceDetails={handleShowcaseItemClick} onShowServices={onShowServices} />
           
           {(() => {
