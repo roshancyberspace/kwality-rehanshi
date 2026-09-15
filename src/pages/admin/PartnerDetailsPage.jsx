@@ -1002,7 +1002,7 @@ function PartnerDetailsPage({ adminProfile, onBackHome, onOpenPartnerEdit, onTab
         )}
       </div>
       {isIdCardOpen && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/50 p-4">
+        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/50 backdrop-blur-md p-4 animate-modal-fade">
           <div className="w-full max-w-md overflow-hidden rounded-lg bg-white shadow-2xl">
             <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
               <h3 className="text-lg font-black text-slate-800">Vendor ID Card</h3>

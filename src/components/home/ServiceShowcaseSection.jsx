@@ -39,19 +39,19 @@ function ServiceShowcaseSection({
               >
                 <span className="text-base font-medium">
                   <svg
-  xmlns="http://www.w3.org/2000/svg"
-  width="20"
-  height="24"
-  viewBox="0 0 24 24"
-  fill="none"
-  stroke="currentColor"
-  stroke-width="1.5"
-  stroke-linecap="round"
-  stroke-linejoin="round"
->
-  <path d="M22 12H3" />
-  <path d="M7 9L3 12L7 15" />
-</svg>
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="20"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M22 12H3" />
+                    <path d="M7 9L3 12L7 15" />
+                  </svg>
                 </span>
               </button>
               <button
@@ -62,21 +62,19 @@ function ServiceShowcaseSection({
               >
                 <span className="text-base font-medium">
                   <svg
-  xmlns="http://www.w3.org/2000/svg"
-  width="20"
-  height="24"
-  viewBox="0 0 24 24"
-  fill="none"
-  stroke="currentColor"
-  stroke-width="1.5"
-  stroke-linecap="round"
-  stroke-linejoin="round"
->
-  
-  <path d="M2 12H21" />
-  
-  <path d="M17 9L21 12L17 15" />
-</svg>
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="20"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M2 12H21" />
+                    <path d="M17 9L21 12L17 15" />
+                  </svg>
                 </span>
               </button>
             </div>

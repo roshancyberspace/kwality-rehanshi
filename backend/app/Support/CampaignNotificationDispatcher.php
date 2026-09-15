@@ -274,11 +274,32 @@ class CampaignNotificationDispatcher
         }
 
         $imageUrl = $this->publicImageUrl($notification);
+        $metadata = is_array($notification->metadata) ? $notification->metadata : [];
+
         $data = [
             'notification_id' => (string) $notification->id,
             'audience' => (string) $notification->audience,
             'channel' => (string) $notification->channel,
+            'click_action' => 'FLUTTER_NOTIFICATION_CLICK',
+            'screen' => (string) ($metadata['screen'] ?? 'Home'),
+            'action_type' => (string) ($metadata['action_type'] ?? 'general'),
+            'priority' => 'high',
+            'timestamp' => (string) now()->timestamp,
         ];
+
+        foreach (['booking_id', 'booking_no', 'package_id', 'service_id', 'coupon_id', 'coupon_code', 'discount_value', 'tab', 'url', 'target_id'] as $key) {
+            if (! empty($metadata[$key])) {
+                $data[$key] = (string) $metadata[$key];
+            }
+        }
+
+        if (! empty($metadata['deep_link_data']) && is_array($metadata['deep_link_data'])) {
+            foreach ($metadata['deep_link_data'] as $k => $v) {
+                if ($v !== null && $v !== '') {
+                    $data[(string) $k] = is_scalar($v) ? (string) $v : json_encode($v);
+                }
+            }
+        }
 
         $this->fcmClient->send(
             $token,

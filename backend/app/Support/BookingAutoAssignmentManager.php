@@ -133,6 +133,7 @@ class BookingAutoAssignmentManager
                 $fresh = $locked->fresh();
                 app(WalletManager::class)->syncBooking($fresh);
                 app(BookingCustomerMailer::class)->sendStatusUpdate($fresh, $previousStatus);
+                app(PushNotificationService::class)->sendBookingConfirmed($fresh);
 
                 if ($scheduleAssignment && $this->enabled()) {
                     $this->scheduleIfEnabled($fresh);
@@ -353,7 +354,7 @@ class BookingAutoAssignmentManager
             $partner->update(['availability' => 'Busy']);
         }
 
-        VendorJob::updateOrCreate(
+        $vendorJob = VendorJob::updateOrCreate(
             ['job_no' => $booking->booking_no],
             [
                 'partner_id' => $partner->id,
@@ -398,6 +399,7 @@ class BookingAutoAssignmentManager
         ]);
 
         $booking = $booking->fresh();
+        app(PushNotificationService::class)->sendBookingAssigned($partner, $booking, $vendorJob);
         app(WalletManager::class)->syncBooking($booking);
         app(BookingCustomerMailer::class)->sendStatusUpdate($booking, $previousStatus);
 
@@ -435,7 +437,6 @@ class BookingAutoAssignmentManager
 
         Partner::query()
             ->whereKey($partnerId)
-            ->whereIn('availability', ['Busy', 'On job'])
             ->update(['availability' => 'Available']);
     }
 

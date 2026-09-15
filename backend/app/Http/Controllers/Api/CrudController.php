@@ -259,6 +259,7 @@ abstract class CrudController extends Controller
             'email',
             'price',
             'image',
+            'banner_media',
             'kyc_status',
             'business_name',
         ];
@@ -340,13 +341,19 @@ abstract class CrudController extends Controller
 
         foreach ($this->imageFields() as $field) {
             if (array_key_exists($field, $rules) && $request->hasFile($field)) {
-                $rules[$field] = ['nullable', 'image', 'max:3072'];
+                $rules[$field] = ['nullable', 'image', 'max:5120'];
+            }
+        }
+
+        foreach ($this->mediaFields() as $field) {
+            if (array_key_exists($field, $rules) && $request->hasFile($field)) {
+                $rules[$field] = ['nullable', 'file', 'mimes:jpeg,png,jpg,webp,gif,svg,mp4,webm,mov,ogg,m4v,avi', 'max:51200'];
             }
         }
 
         $data = $request->validate($rules);
 
-        foreach ($this->imageFields() as $field) {
+        foreach (array_unique(array_merge($this->imageFields(), $this->mediaFields())) as $field) {
             if (! array_key_exists($field, $rules) || ! $request->hasFile($field)) {
                 continue;
             }
@@ -370,6 +377,11 @@ abstract class CrudController extends Controller
     protected function imageFields(): array
     {
         return ['image'];
+    }
+
+    protected function mediaFields(): array
+    {
+        return ['banner_media', 'video', 'video_url'];
     }
 
     protected function imageDirectory(): string

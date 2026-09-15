@@ -36,6 +36,14 @@ class GuestCartAuthController extends Controller
         [$identifier, $channel] = $this->normalizeIdentifier($data['login']);
         $customer = $this->findCustomerByIdentifier($identifier);
 
+        if ($customer && in_array(strtolower($customer->status ?? ''), ['deleted', 'inactive_deleted'], true)) {
+            return response()->json([
+                'message' => 'This account has been deleted. Please contact support or use a different mobile number/email.',
+                'errors' => ['login' => ['This account has been deleted. Please contact support or use a different mobile number/email.']],
+                'is_deleted' => true,
+            ], 422);
+        }
+
         return response()->json([
             'exists' => (bool) $customer,
             'channel' => $channel,
@@ -52,6 +60,17 @@ class GuestCartAuthController extends Controller
         ]);
 
         [$identifier, $channel] = $this->normalizeIdentifier($data['login']);
+
+        $customer = $this->findCustomerByIdentifier($identifier);
+
+        if ($customer && in_array(strtolower($customer->status ?? ''), ['deleted', 'inactive_deleted'], true)) {
+            return response()->json([
+                'message' => 'This account has been deleted. Please contact support or use a different mobile number/email.',
+                'errors' => ['login' => ['This account has been deleted. Please contact support or use a different mobile number/email.']],
+                'is_deleted' => true,
+            ], 422);
+        }
+
         $cacheKey = $this->otpCacheKey($identifier);
         $existing = Cache::get($cacheKey);
 
@@ -120,10 +139,6 @@ class GuestCartAuthController extends Controller
                 : $this->maskPhone($identifier),
             'resend_after' => self::RESEND_COOLDOWN_SECONDS,
         ];
-
-        if (config('app.debug')) {
-            $response['debug_otp'] = $otp;
-        }
 
         return response()->json($response);
     }

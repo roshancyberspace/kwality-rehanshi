@@ -12,7 +12,6 @@ export const customerColumns = [
   { key: 'name', label: 'Customer' },
   { key: 'phone', label: 'Phone' },
   { key: 'email', label: 'Email' },
-  { key: 'address', label: 'Address' },
   { key: 'bookings', label: 'Bookings' },
   { key: 'lastBooking', label: 'Last Booking' },
   { key: 'status', label: 'Status', render: (row) => <StatusBadge>{row.status}</StatusBadge> },

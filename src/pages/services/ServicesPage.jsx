@@ -78,16 +78,17 @@ function ServicesPage({
             </h1>
             {onBackHome ? (
               <button
-                aria-label="Go to homepage"
-                className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-slate-200 bg-white text-[#003F86] shadow-sm transition hover:border-[#67B529] hover:bg-[#EEF9E8] hover:text-[#67B529]"
+                aria-label="Back to home"
+                className="inline-flex items-center gap-1.5 text-sm font-semibold text-blue-700 hover:text-[#003F86] transition-colors cursor-pointer group"
                 onClick={onBackHome}
                 type="button"
               >
-                <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
+                <svg className="h-4.5 w-4.5 transition-transform group-hover:-translate-y-0.5" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
                   <path d="M3 10.5 12 3l9 7.5" />
                   <path d="M5 9.5V21h14V9.5" />
                   <path d="M9 21v-6h6v6" />
                 </svg>
+                <span>Back to home</span>
               </button>
             ) : null}
           </div>

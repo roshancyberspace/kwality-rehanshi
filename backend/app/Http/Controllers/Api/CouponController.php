@@ -35,6 +35,10 @@ class CouponController extends CrudController
         $data = $this->normalizeScopeFields($this->validatedData($request));
         $item = Coupon::create($data);
 
+        if (($item->status ?? 'Active') === 'Active') {
+            app(\App\Support\PushNotificationService::class)->sendNewCoupon($item);
+        }
+
         $this->clearModelCache();
 
         return response()->json($item->fresh(), 201);

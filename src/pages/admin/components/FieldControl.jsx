@@ -2,14 +2,23 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 
 const CUSTOM_SELECT_VALUE = '__custom__'
 
-function looksLikeImageSource(previewUrl, value, fieldType) {
-  if (value instanceof File) return true
+function looksLikeVideoSource(previewUrl, value) {
+  if (value instanceof File) return String(value.type || '').startsWith('video/')
   if (typeof previewUrl !== 'string' || !previewUrl) return false
-  if (previewUrl.startsWith('blob:') || previewUrl.startsWith('data:')) return true
-  if (/^https?:\/\//i.test(previewUrl)) return true
-  if (previewUrl.startsWith('/') || previewUrl.includes('/')) return true
-  if (previewUrl.match(/\.(jpeg|jpg|gif|png|webp|svg|bmp)(?:\?.*)?$/i)) return true
-  return fieldType === 'image' && previewUrl.length > 8
+  if (previewUrl.match(/\.(mp4|webm|ogg|mov|m4v|avi|mkv)(?:\?.*)?$/i)) return true
+  if (/^(?:https?:\/\/)?(?:www\.)?(?:youtube\.com|youtu\.be|vimeo\.com)\//i.test(previewUrl)) return true
+  return false
+}
+
+function looksLikeImageSource(previewUrl, value, fieldType) {
+  if (value instanceof File) return String(value.type || '').startsWith('image/')
+  if (typeof previewUrl !== 'string' || !previewUrl) return false
+  if (previewUrl.startsWith('blob:') && !looksLikeVideoSource(previewUrl, value)) return true
+  if (previewUrl.startsWith('data:image')) return true
+  if (previewUrl.match(/\.(jpeg|jpg|gif|png|webp|svg|bmp|avif)(?:\?.*)?$/i)) return true
+  if (fieldType === 'image' && (previewUrl.startsWith('/') || previewUrl.includes('/') || previewUrl.length > 8)) return true
+  if (/^https?:\/\//i.test(previewUrl) && !previewUrl.match(/\.(mp4|webm|ogg|mov|m4v|avi|mkv)(?:\?.*)?$/i)) return true
+  return false
 }
 
 function normalizeSelectOptions(options = []) {
@@ -275,16 +284,154 @@ function ColorField({ commonClass, field, onChange, value }) {
   )
 }
 
+function getCleanFileName(previewUrl, value) {
+  if (value instanceof File) return value.name
+  if (typeof previewUrl !== 'string' || !previewUrl) return ''
+  try {
+    const urlObj = new URL(previewUrl, window.location.origin)
+    const filename = urlObj.pathname.split('/').filter(Boolean).pop()
+    if (filename) return decodeURIComponent(filename)
+  } catch {
+    const filename = previewUrl.split('?')[0].split('/').filter(Boolean).pop()
+    if (filename) return decodeURIComponent(filename)
+  }
+  return previewUrl
+}
+
+function MediaUploadField({ commonClass, field, onChange, value }) {
+  const isMediaType = field.type === 'media'
+  const safeValue = value ?? ''
+  const previewUrl = value instanceof File ? URL.createObjectURL(value) : value
+  const isVideo = looksLikeVideoSource(previewUrl, value)
+  const isImg = looksLikeImageSource(previewUrl, value, field.type)
+  const hasValue = Boolean(value)
+  const [isChanging, setIsChanging] = useState(false)
+  const [uploadMode, setUploadMode] = useState(() => (typeof value === 'string' && value.startsWith('http') ? 'url' : 'file'))
+
+  return (
+    <div className="block col-span-full">
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-bold text-slate-700">{field.label}</span>
+        {!hasValue || isChanging ? (
+          <button
+            type="button"
+            onClick={() => setUploadMode((prev) => (prev === 'file' ? 'url' : 'file'))}
+            className="text-xs font-semibold text-blue-600 hover:text-blue-800 transition cursor-pointer"
+          >
+            {uploadMode === 'file' ? '🔗 Paste URL' : '📁 Upload File'}
+          </button>
+        ) : null}
+      </div>
+
+      {hasValue && !isChanging ? (
+        <div className="mt-1.5 flex items-center justify-between gap-3 rounded-xl border border-slate-200/90 bg-slate-50/90 p-2 shadow-2xs hover:border-slate-300 transition-all">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="relative h-14 w-20 shrink-0 overflow-hidden rounded-lg bg-black border border-slate-200/80 shadow-2xs flex items-center justify-center">
+              {isVideo ? (
+                <>
+                  <video
+                    src={previewUrl}
+                    className="h-full w-full object-cover"
+                    muted
+                    playsInline
+                    preload="metadata"
+                  />
+                  <div className="absolute inset-0 bg-black/25 flex items-center justify-center pointer-events-none">
+                    <span className="grid h-6 w-6 place-items-center rounded-full bg-white/95 text-slate-900 shadow-xs text-[10px] font-bold pl-0.5">
+                      ▶
+                    </span>
+                  </div>
+                </>
+              ) : isImg ? (
+                <img
+                  src={previewUrl}
+                  alt="Preview"
+                  className="h-full w-full object-cover bg-white"
+                />
+              ) : (
+                <span className="text-xl">📄</span>
+              )}
+            </div>
+
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-bold text-slate-800 truncate" title={typeof safeValue === 'string' ? safeValue : ''}>
+                {getCleanFileName(previewUrl, value)}
+              </p>
+              <div className="mt-1 flex items-center gap-2">
+                <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-black uppercase tracking-wider ${
+                  isVideo ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'
+                }`}>
+                  {isVideo ? '🎬 Video' : '🖼️ Image'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setIsChanging(true)}
+                  className="text-xs font-semibold text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                >
+                  Change
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              onChange(field.name, '')
+              setIsChanging(false)
+            }}
+            className="h-8 w-8 shrink-0 grid place-items-center rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-600 hover:border-red-200 border border-transparent transition cursor-pointer"
+            title="Remove"
+          >
+            ✕
+          </button>
+        </div>
+      ) : (
+        <div className="mt-1.5 flex items-center gap-2">
+          <div className="flex-1 min-w-0">
+            {uploadMode === 'file' ? (
+              <input
+                accept={field.accept || (field.type === 'image' ? 'image/*' : isMediaType ? 'image/*,video/*' : '*/*')}
+                className={`${commonClass} !mt-0 file:mr-2.5 file:cursor-pointer file:rounded file:border-0 file:bg-blue-50 file:px-2.5 file:py-1 file:text-xs file:font-bold file:text-[#003F86] hover:file:bg-blue-100`}
+                onChange={(event) => {
+                  onChange(field.name, event.target.files?.[0] || '')
+                  setIsChanging(false)
+                }}
+                required={field.required && !value}
+                type="file"
+              />
+            ) : (
+              <input
+                className={`${commonClass} !mt-0`}
+                onChange={(event) => onChange(field.name, event.target.value)}
+                onBlur={() => { if (value) setIsChanging(false) }}
+                onKeyDown={(e) => { if (e.key === 'Enter') setIsChanging(false) }}
+                placeholder={field.placeholder || `Paste ${isMediaType ? 'image or video' : 'image'} URL`}
+                type="text"
+                value={typeof safeValue === 'string' ? safeValue : ''}
+              />
+            )}
+          </div>
+          {isChanging && hasValue ? (
+            <button
+              type="button"
+              onClick={() => setIsChanging(false)}
+              className="h-9 px-2.5 shrink-0 rounded-lg border border-slate-300 bg-white text-xs font-bold text-slate-600 hover:bg-slate-50 transition cursor-pointer"
+            >
+              Cancel
+            </button>
+          ) : null}
+        </div>
+      )}
+
+      {field.hint ? <span className="mt-1 block text-xs text-slate-400">{field.hint}</span> : null}
+    </div>
+  )
+}
+
 function FieldControl({ field, value, onChange }) {
   const safeValue = value ?? ''
   const commonClass = 'mt-1.5 w-full rounded-lg border border-slate-400 bg-white px-3 py-2 text-sm font-semibold outline-none focus:border-[#67B529] focus:ring-2 focus:ring-[#67B529]/20 read-only:cursor-not-allowed read-only:border-slate-300 read-only:bg-slate-100 read-only:text-slate-600 read-only:focus:border-slate-300 read-only:focus:ring-0'
-  const previewUrl = value instanceof File ? URL.createObjectURL(value) : value
-  const [uploadMode, setUploadMode] = useState(() => {
-    if (typeof value === 'string' && value.startsWith('http')) {
-      return 'url'
-    }
-    return 'file'
-  })
 
   if (field.type === 'richtext') {
     return <RichTextField field={field} onChange={onChange} value={safeValue} />
@@ -338,82 +485,14 @@ function FieldControl({ field, value, onChange }) {
     )
   }
 
-  if (field.type === 'file' || field.type === 'image') {
+  if (field.type === 'file' || field.type === 'image' || field.type === 'media') {
     return (
-      <div className="block col-span-full">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <span className="text-sm font-bold text-slate-700">{field.label}</span>
-          <div className="flex rounded-md bg-slate-200 p-0.5">
-            <button
-              type="button"
-              onClick={() => setUploadMode('file')}
-              className={`flex items-center gap-1.5 rounded px-2.5 py-0.5 text-xs font-bold transition-all ${
-                uploadMode === 'file'
-                  ? 'bg-white text-[#67B529] shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              📁 Upload File
-            </button>
-            <button
-              type="button"
-              onClick={() => setUploadMode('url')}
-              className={`flex items-center gap-1.5 rounded px-2.5 py-0.5 text-xs font-bold transition-all ${
-                uploadMode === 'url'
-                  ? 'bg-white text-[#67B529] shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              🔗 Paste Direct URL
-            </button>
-          </div>
-        </div>
-
-        {uploadMode === 'file' ? (
-          <input
-            accept={field.accept || (field.type === 'image' ? 'image/*' : '*/*')}
-            className={`${commonClass} !mt-1 file:mr-2.5 file:cursor-pointer file:rounded file:border-0 file:bg-[#EEF9E8] file:px-2.5 file:py-1 file:text-xs file:font-black file:text-[#67B529] hover:file:bg-[#dff5d5]`}
-            onChange={(event) => onChange(field.name, event.target.files?.[0] || '')}
-            required={field.required && !value}
-            type="file"
-          />
-        ) : (
-          <input
-            className={`${commonClass} !mt-1`}
-            onChange={(event) => onChange(field.name, event.target.value)}
-            placeholder={`Paste direct ${field.type === 'image' ? 'image' : 'file'} URL (e.g. https://...)`}
-            type="text"
-            value={typeof safeValue === 'string' ? safeValue : ''}
-          />
-        )}
-
-        {previewUrl && typeof previewUrl === 'string' && (
-          <div className="mt-1.5 flex flex-wrap items-center gap-2.5 overflow-hidden rounded-lg border border-slate-200 bg-slate-50 p-1.5 shadow-2xs">
-            {looksLikeImageSource(previewUrl, value, field.type) ? (
-              <div className="flex w-full items-center gap-2.5">
-                <img alt="Preview" className="h-12 w-20 shrink-0 rounded object-contain bg-white border border-slate-200" src={previewUrl} />
-                <div className="overflow-hidden text-left font-sans">
-                  <p className="text-xs font-bold text-slate-700 truncate max-w-sm">{value instanceof File ? value.name : value}</p>
-                  <span className="mt-0.5 inline-block rounded bg-[#EEF9E8] px-1.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-[#67B529]">Image Selected</span>
-                </div>
-              </div>
-            ) : field.type === 'image' ? (
-              <div className="flex w-full items-center gap-2.5">
-                <span className="grid h-12 w-12 shrink-0 place-items-center rounded border border-slate-200 bg-white text-2xl">{previewUrl}</span>
-                <div className="overflow-hidden text-left font-sans">
-                  <p className="text-xs font-bold text-slate-700 truncate max-w-sm">{previewUrl}</p>
-                  <span className="mt-0.5 inline-block rounded bg-[#EEF9E8] px-1.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-[#67B529]">Icon Selected</span>
-                </div>
-              </div>
-            ) : (
-              <a className="inline-flex items-center gap-1.5 py-1 text-xs font-black text-sky-700 underline hover:text-sky-900" href={previewUrl} rel="noreferrer" target="_blank">
-                📄 View / Download Selected File
-              </a>
-            )}
-          </div>
-        )}
-        {field.hint ? <span className="mt-1 block text-xs font-semibold text-slate-500">{field.hint}</span> : null}
-      </div>
+      <MediaUploadField
+        commonClass={commonClass}
+        field={field}
+        onChange={onChange}
+        value={value}
+      />
     )
   }
 

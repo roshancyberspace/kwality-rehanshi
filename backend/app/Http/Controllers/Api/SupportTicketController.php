@@ -138,6 +138,99 @@ class SupportTicketController extends CrudController
         ], 201);
     }
 
+    /**
+     * Public Contact Us inquiry submission.
+     * Creates a support ticket and sends emails to both customer (if email provided) and admin.
+     */
+    public function submitContactInquiry(Request $request)
+    {
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'phone' => ['required', 'string', 'max:50'],
+            'email' => ['nullable', 'email', 'max:255'],
+            'query_type' => ['required', 'string', 'max:100'],
+            'message' => ['required', 'string', 'max:5000'],
+        ]);
+
+        $ticketNo = $this->nextTicketNo();
+
+        $ticket = SupportTicket::create([
+            'ticket_no' => $ticketNo,
+            'name' => $data['name'],
+            'type' => $data['query_type'],
+            'subject' => 'Contact Inquiry: ' . $data['query_type'],
+            'priority' => 'Medium',
+            'status' => 'Open',
+            'metadata' => [
+                'source' => 'contact_us_page',
+                'phone' => $data['phone'],
+                'email' => $data['email'] ?? null,
+                'description' => $data['message'],
+                'query_type' => $data['query_type'],
+            ],
+        ]);
+
+        $fresh = $ticket->fresh();
+        $customerEmailSent = false;
+        $adminEmailSent = false;
+
+        // 1. Send confirmation email to Customer (if email provided)
+        if (!empty($data['email'])) {
+            try {
+                $this->passwordMailer->sendContactInquiryCustomerConfirmation(
+                    $data['email'],
+                    $data['name'],
+                    $fresh->ticket_no,
+                    $data['query_type'],
+                    $data['phone'],
+                    $data['message']
+                );
+                $customerEmailSent = true;
+            } catch (\Throwable $e) {
+                Log::warning('Contact inquiry customer email failed', [
+                    'ticket_no' => $fresh->ticket_no,
+                    'email' => $data['email'],
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        // 2. Send inquiry alert to Admin / Support team
+        try {
+            $adminEmail = \App\Models\Setting::where('group', 'contact')->where('key', 'email')->value('value')
+                ?: \App\Models\AdminUser::where('status', 'Active')->whereNotNull('email')->value('email')
+                ?: config('mail.from.address')
+                ?: 'support@rehanshi.com';
+
+            if ($adminEmail) {
+                $this->passwordMailer->sendContactInquiryAdminNotification(
+                    $adminEmail,
+                    $data['name'],
+                    $data['email'] ?? 'Not provided',
+                    $data['phone'],
+                    $fresh->ticket_no,
+                    $data['query_type'],
+                    $data['message']
+                );
+                $adminEmailSent = true;
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Contact inquiry admin email failed', [
+                'ticket_no' => $fresh->ticket_no,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Thank you! Your query has been submitted successfully (Ticket #' . $fresh->ticket_no . ').',
+            'ticket_no' => $fresh->ticket_no,
+            'ticket' => $fresh,
+            'customer_email_sent' => $customerEmailSent,
+            'admin_email_sent' => $adminEmailSent,
+        ], 201);
+    }
+
     private function nextTicketNo(): string
     {
         do {

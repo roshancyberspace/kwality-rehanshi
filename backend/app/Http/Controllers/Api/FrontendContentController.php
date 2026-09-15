@@ -147,9 +147,11 @@ class FrontendContentController extends Controller
                 ->orderBy('id')
                 ->get(),
             'settings' => Setting::query()
+                ->whereIn('group', ['branding', 'contact', 'legal', 'social_links', 'payment_methods', 'invoice'])
                 ->orderBy('group')
                 ->orderBy('key')
                 ->get()
+                ->map(fn (Setting $setting) => $setting->toPublicArray())
                 ->groupBy('group'),
             'pages' => Page::query()
                 ->where('status', 'Active')

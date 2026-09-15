@@ -2208,21 +2208,42 @@ function VendorDashboardPage({ appSettings = {}, authenticatedVendor, embedded =
         <section className="mt-5 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <p className="text-sm font-black uppercase text-sky-700">KYC documents</p>
-              <h2 className="mt-1 text-xl font-semibold text-slate-900">Uploaded files and verification</h2>
+              <p className="text-sm font-bold uppercase text-[#67B529]">KYC documents</p>
+              <div className="mt-1 flex items-center gap-3">
+                <h2 className="text-xl font-semibold text-slate-900">Uploaded files and verification</h2>
+                <button
+                  className="inline-flex items-center gap-1 rounded-full border border-[#67B529]/30 bg-[#EEF9E8] px-2.5 py-0.5 text-xs font-bold text-[#4F9A1E] transition hover:bg-[#67B529] hover:text-white"
+                  onClick={() => {
+                    setDocumentUpload({ file: null, index: '', label: '' })
+                    const selectEl = document.getElementById('vendor-doc-select')
+                    if (selectEl) {
+                      selectEl.focus()
+                      selectEl.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                    }
+                  }}
+                  title="Add more documents"
+                  type="button"
+                >
+                  <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" viewBox="0 0 24 24">
+                    <line x1="12" x2="12" y1="5" x2="19" />
+                    <line x1="5" x2="19" y1="12" y2="12" />
+                  </svg>
+                  <span>Add More</span>
+                </button>
+              </div>
             </div>
-            <span className="rounded-full bg-sky-50 px-3 py-1 text-xs font-black text-sky-700 ring-1 ring-sky-100">{submittedDocuments} submitted</span>
+            <span className="rounded-full bg-[#EEF9E8] px-3 py-1 text-xs font-bold text-[#4F9A1E] ring-1 ring-[#67B529]/30">{submittedDocuments} submitted</span>
           </div>
           <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {documents.map((document, index) => (
               <div className="rounded-lg border border-slate-200 p-3" key={`${document.label || 'Document'}-${index}`}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-black text-slate-800">{document.label || `Document ${index + 1}`}</p>
+                    <p className="truncate text-sm font-medium text-slate-800">{document.label || `Document ${index + 1}`}</p>
                     <p className="mt-1 text-xs font-semibold text-slate-500">{document.status || 'Pending'}</p>
                   </div>
                   {document.path && (
-                    <a className="shrink-0 rounded-md border border-slate-200 px-2.5 py-1.5 text-xs font-black text-slate-700 hover:bg-slate-50" href={publicAssetUrl(document.path)} rel="noreferrer" target="_blank">
+                    <a className="shrink-0 rounded-md border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50" href={publicAssetUrl(document.path)} rel="noreferrer" target="_blank">
                       View
                     </a>
                   )}
@@ -2233,8 +2254,8 @@ function VendorDashboardPage({ appSettings = {}, authenticatedVendor, embedded =
             {!documents.length && <p className="rounded-lg border border-dashed border-slate-300 p-4 text-sm font-semibold text-slate-500 md:col-span-2 xl:col-span-3">No documents uploaded yet.</p>}
           </div>
 
-          <form className="mt-5 grid gap-3 border-t border-slate-200 pt-4 md:max-w-xl" onSubmit={uploadVendorDocument}>
-            <select className="rounded-md border border-slate-200 px-3 py-2.5 text-sm font-semibold text-slate-700" onChange={(event) => setDocumentUpload((current) => ({ ...current, index: event.target.value }))} value={documentUpload.index}>
+          <form className="mt-5 grid gap-3 border-t border-slate-200 pt-4 md:max-w-xl" id="vendor-doc-upload-form" onSubmit={uploadVendorDocument}>
+            <select className="rounded-md border border-slate-200 px-3 py-2.5 text-sm font-semibold text-slate-700" id="vendor-doc-select" onChange={(event) => setDocumentUpload((current) => ({ ...current, index: event.target.value }))} value={documentUpload.index}>
               <option value="">Add new document</option>
               {documents.map((document, index) => (
                 <option key={`${document.label || 'Document'}-${index}`} value={index}>Replace {document.label || `Document ${index + 1}`}</option>
@@ -2244,7 +2265,7 @@ function VendorDashboardPage({ appSettings = {}, authenticatedVendor, embedded =
               <input className="rounded-md border border-slate-200 px-3 py-2.5 text-sm font-semibold outline-none focus:border-slate-800" onChange={(event) => setDocumentUpload((current) => ({ ...current, label: event.target.value }))} placeholder="Document label, e.g. Aadhaar, PAN, GST" value={documentUpload.label} />
             )}
             <input className="rounded-md border border-slate-200 px-3 py-2.5 text-sm font-semibold" onChange={(event) => setDocumentUpload((current) => ({ ...current, file: event.target.files?.[0] || null }))} type="file" />
-            <button className="rounded-md bg-sky-700 px-4 py-2.5 text-sm font-black text-white hover:bg-sky-800 disabled:opacity-60" disabled={isLoading} type="submit">
+            <button className="rounded-md bg-[#67B529] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#5ca827] disabled:opacity-60" disabled={isLoading} type="submit">
               Upload document
             </button>
           </form>

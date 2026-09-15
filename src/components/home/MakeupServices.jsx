@@ -3,9 +3,11 @@ import { selectSectionServices, serviceToCard } from './serviceSectionUtils'
 
 function MakeupServices({ content, onOpenServiceDetails, onShowServices, services }) {
   const items = selectSectionServices({
+    categorySlugs: ['makeup', 'bridal', 'beauty', 'styling', 'womens-salon-spa'],
     content,
-    fallbackKeywords: ['makeup', 'bridal', 'beauty', 'facial', 'spa'],
-    limit: 4,
+    excludeSlugs: ['ac-appliance', 'ac', 'cleaning', 'electrician', 'plumber', 'carpenter', 'painting'],
+    fallbackKeywords: ['makeup', 'bridal', 'hairstyling', 'party makeup', 'saree draping', 'beauty', 'facial', 'styling'],
+    limit: 8,
     services,
   }).map(serviceToCard)
 

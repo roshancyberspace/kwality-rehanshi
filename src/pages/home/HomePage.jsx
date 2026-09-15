@@ -102,9 +102,11 @@ function HomePage({
           <MostBookedServices content={content.most_booked?.[0]} services={services} onOpenServiceDetails={handleShowcaseItemClick} onShowServices={onShowServices} />
           
           {(() => {
-            const renderSection = (eyebrow, title, keywords) => {
+            const renderSection = (eyebrow, title, keywords, categorySlugs, excludeSlugs) => {
               const items = selectSectionServices({
+                categorySlugs,
                 content: {},
+                excludeSlugs,
                 fallbackKeywords: keywords,
                 limit: 8,
                 services,
@@ -129,10 +131,34 @@ function HomePage({
 
             return (
               <>
-                {renderSection("AC & Appliance Repair Services", "Top AC & Appliance Repair for you", ['ac', 'appliance', 'repair', 'washing machine', 'refrigerator', 'microwave', 'service & repair'])}
-                {renderSection("Cleaning Services", "Top Cleaning Services for you", ['cleaning', 'deep clean', 'sofa clean', 'bathroom clean', 'home clean'])}
-                {renderSection("Painting Services", "Top Interior Design Services for you", ['painting', 'painter', 'wall paint', 'waterproofing'])}
-                {renderSection("Electrician, Plumber & Carpenter Services", "Top Electrician, Plumber & Carpenter for you", ['electrician', 'plumber', 'carpenter', 'electrical', 'plumbing'])}
+                {renderSection(
+                  "AC & Appliance Repair Services",
+                  "Top AC & Appliance Repair for you",
+                  ['ac', 'appliance', 'refrigerator', 'washing machine', 'microwave', 'air conditioner', 'gas refill', 'foam jet', 'ac service', 'ac repair'],
+                  ['ac', 'appliance', 'refrigerator', 'washing-machine', 'microwave'],
+                  ['salon', 'spa', 'beauty', 'waxing', 'facial', 'makeup', 'cleaning', 'plumber', 'carpenter', 'painting']
+                )}
+                {renderSection(
+                  "Cleaning Services",
+                  "Top Cleaning Services for you",
+                  ['cleaning', 'deep clean', 'bathroom clean', 'sofa clean', 'kitchen clean', 'scrubbing', 'home clean', 'mopping', 'degreasing', 'sanitization'],
+                  ['cleaning', 'deep-clean', 'bathroom-cleaning', 'sofa-cleaning', 'home-cleaning', 'kitchen-cleaning'],
+                  ['salon', 'spa', 'beauty', 'waxing', 'facial', 'makeup', 'ac-appliance', 'ac', 'refrigerator', 'microwave', 'plumber', 'carpenter', 'painting']
+                )}
+                {renderSection(
+                  "Painting Services",
+                  "Top Interior Design Services for you",
+                  ['painting', 'painter', 'waterproofing', 'wall paint', 'interior design', 'wall decor', 'texture', 'dampness', 'terrace waterproofing'],
+                  ['painting', 'water-proofing', 'waterproofing', 'interior', 'wall-decor'],
+                  ['salon', 'spa', 'beauty', 'waxing', 'facial', 'makeup', 'ac-appliance', 'ac', 'cleaning', 'bathroom', 'kitchen']
+                )}
+                {renderSection(
+                  "Electrician, Plumber & Carpenter Services",
+                  "Top Electrician, Plumber & Carpenter for you",
+                  ['electrician', 'plumber', 'carpenter', 'switchboard', 'switchbox', 'wiring', 'geyser', 'drill', 'pipe leakage', 'tap repair', 'furniture', 'socket', 'fan repair', 'lock repair'],
+                  ['electrician', 'plumber', 'carpenter', 'electrical', 'plumbing'],
+                  ['salon', 'spa', 'beauty', 'waxing', 'facial', 'makeup', 'cleaning', 'painting', 'ac-appliance']
+                )}
               </>
             );
           })()}

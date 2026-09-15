@@ -287,6 +287,14 @@ class PartnerKycController extends Controller
             throw ValidationException::withMessages(['login' => 'Invalid vendor login details.']);
         }
 
+        if (in_array(strtolower($partner->status ?? ''), ['deleted', 'inactive_deleted'], true)) {
+            return response()->json([
+                'message' => 'This vendor account has been deleted. Please contact support or register with different details.',
+                'errors' => ['login' => ['This vendor account has been deleted.']],
+                'is_deleted' => true,
+            ], 422);
+        }
+
         if ($partner->kyc_status !== 'Approved' || $partner->status !== 'Active') {
             return response()->json([
                 'message' => 'Your vendor panel will unlock after super admin KYC approval.',
@@ -423,7 +431,10 @@ class PartnerKycController extends Controller
             'status' => 'Active',
         ]);
 
-        return response()->json(['message' => 'Partner KYC approved. Vendor panel login is now enabled.', 'partner' => $partner->fresh()]);
+        $fresh = $partner->fresh();
+        app(\App\Support\PushNotificationService::class)->sendKycApproved($fresh);
+
+        return response()->json(['message' => 'Partner KYC approved. Vendor panel login is now enabled.', 'partner' => $fresh]);
     }
 
     public function reject(Request $request, Partner $partner)

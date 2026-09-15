@@ -67,6 +67,12 @@ textarea {
   }
 }
 
+.swal2-container {
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  background-color: rgba(2, 6, 23, 0.45) !important;
+}
+
 @keyframes modalFadeIn {
   from {
     opacity: 0;
@@ -353,21 +359,25 @@ textarea {
 
 .staff-login-input {
   width: 100%;
-  min-height: 3rem;
-  border-radius: 0.9rem;
-  border: 1px solid #d7e2f0;
+  min-height: 2.5rem;
+  border-radius: 0.75rem;
+  border: 1.5px solid #94a3b8;
   background: #fff;
-  padding: 0.85rem 1rem 0.85rem 2.6rem;
+  padding: 0.55rem 0.85rem 0.55rem 2.35rem;
   color: var(--brand-ink);
-  font-size: 0.875rem;
-  font-weight: 700;
+  font-size: 0.85rem;
+  font-weight: 600;
   outline: none;
   transition: border-color 160ms ease, box-shadow 160ms ease;
 }
 
+.staff-login-input:hover {
+  border-color: #64748b;
+}
+
 .staff-login-input::placeholder {
   color: #94a3b8;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .staff-login-input:focus {
@@ -483,4 +493,32 @@ textarea {
 .custom-thin-scrollbar::-webkit-scrollbar-thumb:hover {
   background-color: #94a3b8;
 }
+
+/* Hide scrollbar while preserving smooth scroll functionality */
+.no-scrollbar::-webkit-scrollbar,
+.hide-scrollbar::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+.no-scrollbar,
+.hide-scrollbar {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
+}
+
+/* Floating animation for service card icons */
+@keyframes floatIcon {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-5px) rotate(1.5deg);
+  }
+}
+
+.animate-float-icon {
+  animation: floatIcon 3.5s ease-in-out infinite;
+}
+
 

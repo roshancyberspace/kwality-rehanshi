@@ -3,16 +3,16 @@ import { buildBackendUrl } from '../../../config/urls'
 
 function countCard(label, value, tone = 'slate') {
   const tones = {
-    slate: 'bg-slate-50 text-slate-800',
-    green: 'bg-[#EEF9E8] text-[#2E7D32]',
-    rose: 'bg-rose-50 text-rose-700',
-    amber: 'bg-amber-50 text-amber-800',
+    slate: 'bg-slate-50 text-slate-800 border-slate-200',
+    green: 'bg-[#EEF9E8] text-[#2E7D32] border-[#2E7D32]/20',
+    rose: 'bg-rose-50 text-rose-700 border-rose-200',
+    amber: 'bg-amber-50 text-amber-800 border-amber-200',
   }
 
   return (
-    <div className={`rounded-xl px-4 py-3 ${tones[tone]}`}>
-      <p className="text-[11px] font-bold uppercase tracking-wide opacity-70">{label}</p>
-      <p className="mt-1 text-2xl font-black">{value ?? 0}</p>
+    <div className={`rounded-xl border px-3.5 py-2.5 ${tones[tone]}`}>
+      <p className="text-[10.5px] font-bold uppercase tracking-wider opacity-75">{label}</p>
+      <p className="mt-0.5 text-xl font-black">{value ?? 0}</p>
     </div>
   )
 }
@@ -26,62 +26,101 @@ function NotificationReportModal({ isResending, onClose, onResend, report }) {
   const deliveries = report.deliveries || []
 
   return (
-    <Modal onClose={onClose} title="Notification send report">
-      <div className="grid gap-4">
-        <div>
+    <Modal maxWidth="max-w-2xl" onClose={onClose} title="Notification send report">
+      <div className="flex flex-col gap-3.5">
+        {/* Header Info */}
+        <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-3.5">
           <p className="text-sm font-black text-[#003F86]">{notification.title}</p>
-          <p className="mt-1 text-sm text-slate-600">{notification.message}</p>
+          <p className="mt-1 text-xs text-slate-600 leading-relaxed">{notification.message}</p>
+          
           {notification.image ? (
-            <img
-              alt=""
-              className="mt-3 max-h-40 rounded-lg object-cover"
-              src={/^https?:\/\//i.test(notification.image) ? notification.image : buildBackendUrl(notification.image)}
-            />
+            <div className="mt-2.5">
+              <img
+                alt="Notification media"
+                className="max-h-20 w-auto max-w-[200px] rounded-md border border-slate-200 bg-white object-contain p-1 shadow-2xs"
+                src={/^https?:\/\//i.test(notification.image) ? notification.image : buildBackendUrl(notification.image)}
+              />
+            </div>
           ) : null}
-          <p className="mt-2 text-xs font-semibold text-slate-500">
-            {notification.channel} · {notification.audience}
-            {notification.city ? ` · ${notification.city}` : ''}
-          </p>
+
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] font-semibold text-slate-500">
+            <span className="rounded-md bg-white border border-slate-200 px-2 py-0.5">
+              {notification.channel}
+            </span>
+            <span>·</span>
+            <span>{notification.audience}</span>
+            {notification.city && (
+              <>
+                <span>·</span>
+                <span>{notification.city}</span>
+              </>
+            )}
+            {notification.metadata?.screen && (
+              <>
+                <span>·</span>
+                <span className="rounded-md bg-blue-50 text-blue-700 border border-blue-200/60 px-2 py-0.5">
+                  Route: {notification.metadata.screen}
+                  {notification.metadata.action_type ? ` (${notification.metadata.action_type})` : ''}
+                </span>
+              </>
+            )}
+          </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {/* Stats Count Grid */}
+        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
           {countCard('Targeted', counts.targeted)}
           {countCard('Sent', counts.sent, 'green')}
           {countCard('Failed', counts.failed, 'rose')}
           {countCard('Skipped', counts.skipped, 'amber')}
         </div>
 
-        <div className="max-h-72 overflow-auto rounded-xl border border-slate-200">
-          <table className="min-w-full text-left text-xs">
-            <thead className="sticky top-0 bg-slate-50 font-black text-slate-500">
-              <tr>
-                <th className="px-3 py-2">Recipient</th>
-                <th className="px-3 py-2">Contact</th>
-                <th className="px-3 py-2">Status</th>
-                <th className="px-3 py-2">Error</th>
-              </tr>
-            </thead>
-            <tbody>
-              {deliveries.map((row) => (
-                <tr className="border-t border-slate-100" key={row.id}>
-                  <td className="px-3 py-2 font-semibold text-slate-800">{row.recipient_name || `#${row.recipient_id}`}</td>
-                  <td className="px-3 py-2 text-slate-600">{row.contact || '—'}</td>
-                  <td className="px-3 py-2 font-bold capitalize">{row.status}</td>
-                  <td className="px-3 py-2 text-rose-600">{row.error || ''}</td>
-                </tr>
-              ))}
-              {!deliveries.length && (
+        {/* Deliveries Table with Scroll */}
+        <div>
+          <p className="mb-1.5 text-xs font-bold text-slate-700">Delivery Recipients ({deliveries.length})</p>
+          <div className="max-h-52 overflow-y-auto no-scrollbar rounded-xl border border-slate-200 bg-white shadow-2xs">
+            <table className="min-w-full text-left text-xs">
+              <thead className="sticky top-0 bg-slate-50 font-black text-slate-600 shadow-2xs">
                 <tr>
-                  <td className="px-3 py-6 text-center text-slate-500" colSpan={4}>
-                    No delivery rows yet. Save with status Sent to deliver.
-                  </td>
+                  <th className="px-3 py-2">Recipient</th>
+                  <th className="px-3 py-2">Contact</th>
+                  <th className="px-3 py-2">Status</th>
+                  <th className="px-3 py-2">Error / Notes</th>
                 </tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {deliveries.map((row) => (
+                  <tr className="hover:bg-slate-50/60 transition-colors" key={row.id}>
+                    <td className="px-3 py-2 font-semibold text-slate-800">{row.recipient_name || `#${row.recipient_id}`}</td>
+                    <td className="px-3 py-2 text-slate-600">{row.contact || '—'}</td>
+                    <td className="px-3 py-2">
+                      <span className={`inline-flex rounded-full px-2 py-0.5 text-[10.5px] font-bold capitalize ${
+                        row.status === 'Sent' || row.status === 'sent'
+                          ? 'bg-[#EEF9E8] text-[#2E7D32]'
+                          : row.status === 'Failed' || row.status === 'failed'
+                          ? 'bg-rose-50 text-rose-700'
+                          : 'bg-amber-50 text-amber-800'
+                      }`}>
+                        {row.status}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2 text-rose-600">{row.error || '—'}</td>
+                  </tr>
+                ))}
+                {!deliveries.length && (
+                  <tr>
+                    <td className="px-3 py-6 text-center text-slate-500" colSpan={4}>
+                      No delivery rows yet. Save with status Sent to deliver.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
 
-        <div className="flex justify-end gap-2">
+        {/* Footer Buttons */}
+        <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
           <ActionButton onClick={onClose} type="button">Close</ActionButton>
           <ActionButton
             disabled={!remaining || isResending}

@@ -26,6 +26,14 @@ class AdminNotificationController extends CrudController
         'customer_ids.*' => ['integer'],
         'partner_ids' => ['nullable', 'array'],
         'partner_ids.*' => ['integer'],
+        'screen' => ['nullable', 'string', 'max:100'],
+        'action_type' => ['nullable', 'string', 'max:100'],
+        'booking_id' => ['nullable'],
+        'package_id' => ['nullable'],
+        'coupon_code' => ['nullable', 'string', 'max:100'],
+        'tab' => ['nullable', 'string', 'max:100'],
+        'url' => ['nullable', 'string', 'max:500'],
+        'deep_link_data' => ['nullable'],
         'metadata' => ['nullable', 'array'],
     ];
 
@@ -47,6 +55,30 @@ class AdminNotificationController extends CrudController
         }
         $metadata['customer_ids'] = $customerIds;
         $metadata['partner_ids'] = $partnerIds;
+
+        $navKeys = ['screen', 'action_type', 'booking_id', 'package_id', 'coupon_code', 'tab', 'url'];
+        foreach ($navKeys as $k) {
+            $val = trim((string) ($data[$k] ?? $request->input($k) ?? ''));
+            if ($val !== '') {
+                $metadata[$k] = $val;
+            }
+            unset($data[$k]);
+        }
+
+        $deepLinkData = $request->input('deep_link_data');
+        if (is_string($deepLinkData) && trim($deepLinkData) !== '') {
+            $decoded = json_decode($deepLinkData, true);
+            if (is_array($decoded)) {
+                $metadata['deep_link_data'] = $decoded;
+            }
+        } elseif (is_array($deepLinkData) && ! empty($deepLinkData)) {
+            $metadata['deep_link_data'] = $deepLinkData;
+        }
+
+        $metadata['screen'] = $metadata['screen'] ?? 'Home';
+        $metadata['action_type'] = $metadata['action_type'] ?? 'general';
+        $metadata['click_action'] = 'FLUTTER_NOTIFICATION_CLICK';
+
         $data['metadata'] = $metadata;
 
         if (empty($data['status'])) {
@@ -131,10 +163,19 @@ class AdminNotificationController extends CrudController
     private function present(AdminNotification $item): array
     {
         $report = data_get($item->metadata, 'delivery_report', []);
+        $metadata = is_array($item->metadata) ? $item->metadata : [];
 
         return [
             ...$item->toArray(),
-            'city' => data_get($item->metadata, 'city'),
+            'city' => $metadata['city'] ?? null,
+            'screen' => $metadata['screen'] ?? 'Home',
+            'action_type' => $metadata['action_type'] ?? 'general',
+            'booking_id' => $metadata['booking_id'] ?? null,
+            'package_id' => $metadata['package_id'] ?? null,
+            'coupon_code' => $metadata['coupon_code'] ?? null,
+            'tab' => $metadata['tab'] ?? null,
+            'url' => $metadata['url'] ?? null,
+            'deep_link_data' => ! empty($metadata['deep_link_data']) ? json_encode($metadata['deep_link_data'], JSON_PRETTY_PRINT) : null,
             'targeted_count' => (int) ($report['targeted'] ?? 0),
             'sent_count' => (int) ($report['sent'] ?? 0),
             'failed_count' => (int) ($report['failed'] ?? 0),

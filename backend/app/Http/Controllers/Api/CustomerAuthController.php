@@ -6,7 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\CustomerProfile;
 use App\Support\CustomerPasswordMailer;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -95,6 +97,156 @@ class CustomerAuthController extends Controller
         ]);
     }
 
+    public function sendSignupOtp(Request $request)
+    {
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255'],
+            'phone' => ['required', 'string', 'max:50'],
+        ]);
+
+        $email = strtolower(trim($data['email']));
+        $phone = trim($data['phone']);
+        $name = trim($data['name']);
+
+        $errors = $this->availabilityErrors($email, $phone);
+        if ($errors !== []) {
+            return response()->json([
+                'message' => reset($errors)[0] ?? 'Account details already registered.',
+                'errors' => $errors,
+            ], 422);
+        }
+
+        $cacheKey = 'customer_signup_otp_' . md5($email);
+        $existing = Cache::get($cacheKey);
+
+        if (is_array($existing) && ! empty($existing['last_sent_at'])) {
+            $elapsed = \Illuminate\Support\Carbon::parse($existing['last_sent_at'])->diffInSeconds(now());
+            if ($elapsed < 45) {
+                $wait = 45 - $elapsed;
+
+                return response()->json([
+                    'message' => "Please wait {$wait}s before requesting another OTP.",
+                    'errors' => ['otp' => ["Please wait {$wait}s before requesting another OTP."]],
+                    'retry_after' => $wait,
+                ], 429);
+            }
+        }
+
+        $otp = (string) random_int(100000, 999999);
+
+        Cache::put($cacheKey, [
+            'otp_hash' => Hash::make($otp),
+            'expires_at' => now()->addMinutes(10)->toIso8601String(),
+            'email' => $email,
+            'phone' => $phone,
+            'name' => $name,
+            'attempts' => 0,
+            'last_sent_at' => now()->toIso8601String(),
+        ], now()->addMinutes(10));
+
+        $sentViaEmail = false;
+        try {
+            $this->passwordMailer->sendSignupOtp($email, $name, $otp);
+            $sentViaEmail = true;
+        } catch (\Throwable $e) {
+            Log::error('Customer signup OTP mail failed', [
+                'email' => $email,
+                'error' => $e->getMessage(),
+            ]);
+
+            if (! config('app.debug')) {
+                return response()->json([
+                    'message' => 'Unable to send OTP email right now. Please try again.',
+                    'errors' => ['email' => ['Unable to send OTP email right now. Please try again.']],
+                ], 422);
+            }
+        }
+
+        Log::info('Customer signup OTP generated', [
+            'email' => $email,
+            'phone' => $phone,
+            'otp' => $otp,
+        ]);
+
+        $response = [
+            'message' => $sentViaEmail
+                ? 'OTP sent to your email address.'
+                : 'OTP generated for registration.',
+            'channel' => 'email',
+            'masked_destination' => $this->maskEmail($email),
+            'resend_after' => 45,
+        ];
+
+        return response()->json($response);
+    }
+
+    public function verifySignupOtp(Request $request)
+    {
+        $data = $request->validate([
+            'email' => ['required', 'email', 'max:255'],
+            'otp' => ['required', 'digits:6'],
+        ]);
+
+        $email = strtolower(trim($data['email']));
+        $cacheKey = 'customer_signup_otp_' . md5($email);
+        $payload = Cache::get($cacheKey);
+
+        if (! is_array($payload)) {
+            return response()->json([
+                'message' => 'OTP expired or not found. Please request a new OTP.',
+                'errors' => ['otp' => ['OTP expired or not found. Please request a new OTP.']],
+            ], 422);
+        }
+
+        if (now()->greaterThan($payload['expires_at'] ?? now()->subSecond())) {
+            Cache::forget($cacheKey);
+
+            return response()->json([
+                'message' => 'OTP has expired. Please request a new OTP.',
+                'errors' => ['otp' => ['OTP has expired. Please request a new OTP.']],
+            ], 422);
+        }
+
+        $attempts = (int) ($payload['attempts'] ?? 0);
+        if ($attempts >= 5) {
+            Cache::forget($cacheKey);
+
+            return response()->json([
+                'message' => 'Too many invalid attempts. Please request a new OTP.',
+                'errors' => ['otp' => ['Too many invalid attempts. Please request a new OTP.']],
+            ], 422);
+        }
+
+        if (! Hash::check($data['otp'], (string) ($payload['otp_hash'] ?? ''))) {
+            $payload['attempts'] = $attempts + 1;
+            Cache::put($cacheKey, $payload, now()->addMinutes(10));
+
+            return response()->json([
+                'message' => 'Invalid OTP. Please try again.',
+                'errors' => ['otp' => ['Invalid OTP. Please try again.']],
+            ], 422);
+        }
+
+        Cache::forget($cacheKey);
+
+        $signupToken = Str::random(64);
+        $verifiedKey = 'customer_signup_verified_' . $signupToken;
+
+        Cache::put($verifiedKey, [
+            'email' => $email,
+            'phone' => $payload['phone'] ?? null,
+            'name' => $payload['name'] ?? null,
+            'verified_at' => now()->toIso8601String(),
+        ], now()->addMinutes(20));
+
+        return response()->json([
+            'message' => 'Email verified successfully.',
+            'signup_token' => $signupToken,
+            'email' => $email,
+        ]);
+    }
+
     public function register(Request $request)
     {
         $data = $request->validate([
@@ -102,21 +254,39 @@ class CustomerAuthController extends Controller
             'email' => ['nullable', 'email', 'max:255'],
             'phone' => ['required', 'string', 'max:50'],
             'password' => ['required', 'string', 'min:8', 'max:100'],
+            'signup_token' => ['nullable', 'string', 'max:100'],
         ]);
 
-        $errors = $this->availabilityErrors($data['email'] ?? null, $data['phone']);
+        $email = ! empty($data['email']) ? strtolower(trim($data['email'])) : null;
+        $phone = trim($data['phone']);
+
+        if (! empty($data['signup_token'])) {
+            $verifiedKey = 'customer_signup_verified_' . $data['signup_token'];
+            $verified = Cache::get($verifiedKey);
+
+            if (! is_array($verified) || (isset($verified['email']) && strtolower($verified['email']) !== $email)) {
+                return response()->json([
+                    'message' => 'Signup session expired or invalid. Please verify OTP again.',
+                    'errors' => ['otp' => ['Signup session expired or invalid. Please verify OTP again.']],
+                ], 422);
+            }
+            Cache::forget($verifiedKey);
+        }
+
+        $errors = $this->availabilityErrors($email, $phone);
         if ($errors !== []) {
             throw ValidationException::withMessages($errors);
         }
 
         $customer = CustomerProfile::create([
-            'phone' => $data['phone'],
+            'phone' => $phone,
             'name' => $data['name'],
-            'email' => $data['email'] ?? null,
+            'email' => $email,
             'status' => 'Active',
             'password' => Hash::make($data['password']),
             'metadata' => [
                 'registration_source' => 'customer_signup',
+                'email_verified_at' => now()->toIso8601String(),
             ],
         ]);
 
@@ -144,7 +314,15 @@ class CustomerAuthController extends Controller
             ], 422);
         }
 
-        $customer = $this->findCustomerByIdentifier($identifier);
+        $customer = $this->findCustomerByIdentifier($identifier, true);
+
+        if ($customer && in_array(strtolower($customer->status ?? ''), ['deleted', 'inactive_deleted'], true)) {
+            return response()->json([
+                'message' => 'This account has been deleted. Please contact support or use a different mobile number/email.',
+                'errors' => ['login' => ['This account has been deleted. Please contact support or use a different mobile number/email.']],
+                'is_deleted' => true,
+            ], 422);
+        }
 
         $legacyPasswordHash = $customer?->metadata['password_hash'] ?? null;
         $legacyPassword = $customer?->metadata['password'] ?? null;
@@ -187,7 +365,15 @@ class CustomerAuthController extends Controller
         ]);
 
         $identifier = trim($data['login']);
-        $customer = $this->findCustomerByIdentifier($identifier);
+        $customer = $this->findCustomerByIdentifier($identifier, true);
+
+        if ($customer && in_array(strtolower($customer->status ?? ''), ['deleted', 'inactive_deleted'], true)) {
+            return response()->json([
+                'message' => 'This account has been deleted. Please contact support or use a different mobile number/email.',
+                'errors' => ['login' => ['This account has been deleted. Please contact support or use a different mobile number/email.']],
+                'is_deleted' => true,
+            ], 422);
+        }
 
         if (! $customer) {
             return response()->json([
@@ -234,10 +420,6 @@ class CustomerAuthController extends Controller
                 ? $this->maskEmail($deliveryEmail)
                 : $this->maskPhone($customer->phone ?: $identifier),
         ];
-
-        if (config('app.debug')) {
-            $response['debug_otp'] = $otp;
-        }
 
         return response()->json($response);
     }
@@ -358,7 +540,7 @@ class CustomerAuthController extends Controller
             ->first();
     }
 
-    private function findCustomerByIdentifier(string $identifier): ?CustomerProfile
+    private function findCustomerByIdentifier(string $identifier, bool $includeDeleted = false): ?CustomerProfile
     {
         $identifier = trim($identifier);
         if ($identifier === '') {
@@ -366,6 +548,9 @@ class CustomerAuthController extends Controller
         }
 
         $query = CustomerProfile::query()->where('status', '!=', 'Blocked');
+        if (! $includeDeleted) {
+            $query->whereNotIn('status', ['Deleted', 'Inactive_deleted']);
+        }
 
         if ($this->isEmailIdentifier($identifier)) {
             return $query->whereRaw('LOWER(email) = ?', [strtolower($identifier)])->first();

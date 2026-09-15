@@ -445,6 +445,14 @@ class VendorJobController extends CrudController
         $booking->refresh();
 
         if (in_array($job->status, ['Completed', 'Rejected'], true)) {
+            if ($job->status === 'Completed') {
+                if ($job->partner_id) {
+                    Partner::whereKey($job->partner_id)->update(['availability' => 'Available']);
+                }
+                if ($booking->partner_id) {
+                    Partner::whereKey($booking->partner_id)->update(['availability' => 'Available']);
+                }
+            }
             app(BookingAutoAssignmentManager::class)->releasePartnerIfIdle((int) $job->partner_id);
         }
 
@@ -478,7 +486,25 @@ class VendorJobController extends CrudController
             ]);
         }
 
-        if (! $pendingExtrasAdded) {
+        // Push Notifications
+        $pushService = app(\App\Support\PushNotificationService::class);
+        $partnerModel = $job->partner_id ? Partner::find($job->partner_id) : null;
+
+        if (in_array($nextStatus, ['Started'], true) && $previousStatus !== 'Started') {
+            $pushService->sendWorkStarted($booking);
+            if ($partnerModel) {
+                $pushService->sendVendorWorkStarted($partnerModel, $booking, $job);
+            }
+        } elseif ($nextStatus === 'Completed' && $previousStatus !== 'Completed') {
+            $pushService->sendBookingCompleted($booking);
+            if ($partnerModel) {
+                $pushService->sendVendorBookingCompleted($partnerModel, $booking, $job);
+            }
+        }
+
+        if ($pendingExtrasAdded) {
+            $pushService->sendExtraItemsAdded($booking, $metadata['pending_vendor_extra_items'] ?? []);
+        } else {
             app(BookingCustomerMailer::class)->sendStatusUpdate($booking->fresh(), $previousStatus);
         }
     }

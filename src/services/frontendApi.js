@@ -32,6 +32,8 @@ const toNumber = (value) => {
 
 const normalizePackage = (item) => ({
   ...item,
+  bannerMedia: item.banner_media || item.bannerMedia || '',
+  banner_media: item.banner_media || item.bannerMedia || '',
   detailSections: item.detail_sections || [],
   originalPrice: toNumber(item.original_price),
   optionCount: item.option_count,
@@ -302,9 +304,30 @@ export const frontendApi = {
 
     return normalizeCustomerSession(customer)
   },
-  customerSignup: async ({ email, name, password, phone }) => {
+  sendCustomerSignupOtp: async ({ email, name, phone }) => requestJson('/customers/register/send-otp', {
+    body: JSON.stringify({
+      email: String(email || '').trim(),
+      name: String(name || '').trim(),
+      phone: String(phone || '').trim(),
+    }),
+    method: 'POST',
+  }),
+  verifyCustomerSignupOtp: async ({ email, otp }) => requestJson('/customers/register/verify-otp', {
+    body: JSON.stringify({
+      email: String(email || '').trim(),
+      otp: String(otp || '').trim(),
+    }),
+    method: 'POST',
+  }),
+  customerSignup: async ({ email, name, password, phone, signupToken, signup_token }) => {
     const customer = await requestJson('/customers/register', {
-      body: JSON.stringify({ email, name, password, phone }),
+      body: JSON.stringify({
+        email: String(email || '').trim(),
+        name: String(name || '').trim(),
+        password,
+        phone: String(phone || '').trim(),
+        signup_token: signupToken || signup_token || undefined,
+      }),
       method: 'POST',
     })
 
@@ -534,6 +557,12 @@ export const frontendApi = {
 
     return requestJson('/customers/me/support-tickets', {
       body,
+      method: 'POST',
+    })
+  },
+  submitContactInquiry: async (payload) => {
+    return requestJson('/contact-inquiries', {
+      body: JSON.stringify(payload),
       method: 'POST',
     })
   },

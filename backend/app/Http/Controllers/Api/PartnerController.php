@@ -325,15 +325,21 @@ class PartnerController extends CrudController
 
     public function updateStatus(Request $request, Partner $partner)
     {
+        $previousStatus = $partner->status;
         $data = $request->validate([
             'status' => ['required', 'string', Rule::in(['Active', 'Inactive', 'Pending', 'Approved', 'Blocked'])],
         ]);
 
         $partner->update(['status' => $data['status']]);
 
+        $fresh = $partner->fresh();
+        if (in_array($data['status'], ['Active', 'Approved'], true) && ! in_array($previousStatus, ['Active', 'Approved'], true)) {
+            app(\App\Support\PushNotificationService::class)->sendKycApproved($fresh);
+        }
+
         return response()->json([
             'message' => 'Partner status updated successfully.',
-            'partner' => $partner->fresh(),
+            'partner' => $fresh,
         ]);
     }
 

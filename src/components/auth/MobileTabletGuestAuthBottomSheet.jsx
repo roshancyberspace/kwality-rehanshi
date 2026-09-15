@@ -291,7 +291,7 @@ export default function MobileTabletGuestAuthBottomSheet({
         setIdentifier(value)
         setStep('otp')
         setResendIn(response.resend_after || RESEND_SECONDS)
-        setOtp(response.debug_otp ? String(response.debug_otp) : '')
+        setOtp('')
         notify(response.message || 'OTP sent')
       } catch (error) {
         setErrors({ login: error.errors?.login?.[0] || error.message })
@@ -308,7 +308,7 @@ export default function MobileTabletGuestAuthBottomSheet({
         const response = await frontendApi.guestCartSendOtp({ login: login.trim() })
         setOtpMeta(response)
         setResendIn(response.resend_after || RESEND_SECONDS)
-        if (response.debug_otp) setOtp(String(response.debug_otp))
+        setOtp('')
         notify(response.message || 'OTP resent')
       } catch (error) {
         setErrors({ otp: error.errors?.login?.[0] || error.message })

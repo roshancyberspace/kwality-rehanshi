@@ -5,8 +5,10 @@ import { buildBackendUrl } from '../../../config/urls'
 import GlobalSearchBar from './GlobalSearchBar'
 
 const iconPaths = {
+  award: 'M12 15a6 6 0 1 0 0-12 6 6 0 0 0 0 12Zm0 0v7l-3-2-3 2v-7m6 0 3-2 3 2v-7',
   bell: 'M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0',
   box: 'M21 8.5 12 13 3 8.5M12 22V13M3 8.5 12 4l9 4.5V18l-9 4-9-4Z',
+  branch: 'M6 3v12a3 3 0 1 0 3 3V9a3 3 0 1 0-3-6Zm0 0a3 3 0 1 0 0 6 3 3 0 0 0 0-6Zm12 6a3 3 0 1 0 0 6 3 3 0 0 0 0-6Zm-6 3h3',
   calendar: 'M8 2v4M16 2v4M3 10h18M5 5h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z',
   card: 'M3 7h18v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2ZM3 10h18',
   cash: 'M3 7h18v10H3ZM7 12h.01M17 12h.01M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z',
@@ -19,11 +21,16 @@ const iconPaths = {
   headset: 'M4 13v-1a8 8 0 0 1 16 0v1M4 13h3v5H4ZM17 13h3v5h-3ZM17 18c0 2-2 3-5 3',
   home: 'M3 11 12 4l9 7M5 10v10h5v-6h4v6h5V10',
   image: 'M4 5h16v14H4ZM7 16l4-4 3 3 2-2 3 3M8 9h.01',
+  layers: 'M12 2 2 7l10 5 10-5-10-5ZM2 17l10 5 10-5M2 12l10 5 10-5',
   ledger: 'M6 3h12v18H6ZM9 7h6M9 11h6M9 15h4',
   lock: 'M7 10V8a5 5 0 0 1 10 0v2M6 10h12v11H6ZM12 15v2',
   pin: 'M12 21s7-5.3 7-11a7 7 0 1 0-14 0c0 5.7 7 11 7 11ZM12 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z',
+  quote: 'M3 21c3 0 7-1 7-8V5c0-1.25-.75-2-2-2H4c-1.25 0-2 .75-2 2v6c0 1.25.75 2 2 2 0 4-1.5 6-3 8Zm14 0c3 0 7-1 7-8V5c0-1.25-.75-2-2-2h-4c-1.25 0-2 .75-2 2v6c0 1.25.75 2 2 2 0 4-1.5 6-3 8Z',
+  ratelist: 'M9 14 15 8M9.5 8.5h.01M14.5 13.5h.01M4 5h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z',
   receipt: 'M6 3h12v18l-3-2-3 2-3-2-3 2ZM9 8h6M9 12h6M9 16h4',
+  sections: 'M4 4h16v4H4ZM4 10h16v10H4ZM8 14h8M8 17h5',
   shield: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z',
+  smartphone: 'M7 2h10a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Zm5 16h.01',
   star: 'm12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3l-5.6 2.9 1.1-6.2L3 9.6l6.2-.9Z',
   tag: 'M20 13 13 20 4 11V4h7ZM7.5 7.5h.01',
   toolbox: 'M9 6V4h6v2M4 8h16v11H4ZM4 12h16M10 12v2h4v-2',

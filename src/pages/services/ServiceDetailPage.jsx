@@ -9,6 +9,11 @@ import { buildBackendUrl } from '../../config/urls'
 
 const packageImageUrl = (path) => buildBackendUrl(path || '')
 
+const isVideoMedia = (url = '') => {
+  if (typeof url !== 'string' || !url) return false
+  return Boolean(url.match(/\.(mp4|webm|ogg|mov|m4v|avi|mkv)(?:\?.*)?$/i) || /youtube\.com|youtu\.be|vimeo\.com/i.test(url))
+}
+
 const groupLabels = {
   annual: 'Annual plan',
   bleach: 'Bleach',
@@ -491,7 +496,7 @@ function ServiceDetailPage({
 
   return (
     <main className="min-h-screen bg-[#F6FBFF] text-[#003F86]">
-      <div className="hidden lg:block">
+      <div className="hidden lg:block sticky top-0 z-40 bg-white">
         <Navbar
           appSettings={appSettings}
           isLoggedIn={isLoggedIn}
@@ -657,8 +662,11 @@ function ServiceDetailPage({
 
       <section className="hidden lg:block border-b border-blue-100 bg-white">
         <div className="mx-auto max-w-7xl px-5 py-4 lg:px-8">
-          <button className="mb-3 text-xs font-semibold text-blue-700 hover:text-[#003F86]" onClick={onShowServices} type="button">
-            Back to all services
+          <button className="mb-3 inline-flex items-center gap-1.5 text-xs font-semibold text-blue-700 hover:text-[#003F86] transition-colors group cursor-pointer" onClick={onShowServices} type="button">
+            <svg className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-0.5" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" viewBox="0 0 24 24">
+              <path d="M19 12H5M12 19l-7-7 7-7" />
+            </svg>
+            <span>Back to all services</span>
           </button>
           <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
             <div>
@@ -675,7 +683,7 @@ function ServiceDetailPage({
               
               <div className="mt-2 flex flex-wrap items-center gap-3 text-xs font-semibold text-blue-900">
                 <button
-                  className="flex items-center gap-1.5 rounded-md text-left transition hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  className="flex items-center gap-1.5 rounded-md text-left transition hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-200 cursor-pointer"
                   onClick={() => setReviewsTarget({ type: 'service', item: service })}
                   type="button"
                 >
@@ -690,17 +698,17 @@ function ServiceDetailPage({
         </div>
       </section>
 
-      <section className="mx-auto grid max-w-7xl gap-6 px-4 sm:px-5 py-2 lg:py-8 lg:grid-cols-[310px_minmax(0,1fr)_320px] lg:px-8">
-        <aside className="hidden lg:block h-fit rounded-lg border border-blue-100 bg-white p-5 shadow-sm lg:sticky lg:top-28">
-          <div className="flex items-center gap-4">
-            <p className="shrink-0 text-sm font-semibold text-blue-800">Select a service</p>
+      <section className="mx-auto grid max-w-7xl gap-6 px-4 sm:px-5 py-2 lg:pt-3 lg:pb-8 lg:grid-cols-[300px_minmax(0,1fr)_320px] lg:px-8">
+        <aside className="hidden lg:block h-fit rounded-xl border border-blue-100 bg-white p-4 shadow-sm lg:sticky lg:top-[92px]">
+          <div className="flex items-center gap-3">
+            <p className="shrink-0 text-sm font-bold text-blue-900">Select a service</p>
             <div className="h-px flex-1 bg-[#003F86]/10" />
           </div>
 
-          <div className="mt-8 grid grid-cols-3 items-start gap-x-5 gap-y-4">
+          <div className="mt-3.5 grid grid-cols-3 items-start gap-x-4 gap-y-3">
             {groups.map((group) => (
               <button
-                className="group grid min-h-[132px] grid-rows-[61px_1fr] justify-items-center text-center focus:outline-none cursor-pointer transition duration-200 hover:-translate-y-0.5"
+                className="group grid min-h-[120px] grid-rows-[56px_1fr] justify-items-center text-center focus:outline-none cursor-pointer transition duration-200 hover:-translate-y-0.5"
                 key={group.id}
                 onClick={() => {
                   setActiveGroup(group.id)
@@ -709,7 +717,7 @@ function ServiceDetailPage({
                 type="button"
               >
                 <span
-                  className={`mx-auto grid h-[61px] w-[61px] place-items-center overflow-hidden rounded-xl border transition-all duration-200 ${
+                  className={`mx-auto grid h-[56px] w-[56px] place-items-center overflow-hidden rounded-xl border transition-all duration-200 ${
                     displayActiveGroup === group.id ? 'border-[#003F86] shadow-[0_0_0_2px_rgba(0,84,166,0.22)]' : 'border-transparent group-hover:border-blue-200'
                   }`}
                 >
@@ -719,8 +727,8 @@ function ServiceDetailPage({
                     <img className="h-full w-full object-cover rounded-[10px] p-0.5 transition duration-300 group-hover:scale-110" src={service?.image} alt="" />
                   )}
                 </span>
-                <span className="mt-3 block min-h-[60px] w-full text-sm font-medium capitalize leading-5">
-                  <span className="relative inline-block pb-1 transition-colors duration-200 group-hover:text-[#003F86]">
+                <span className="mt-2 block min-h-[50px] w-full text-xs font-semibold capitalize leading-4">
+                  <span className="relative inline-block pb-0.5 transition-colors duration-200 group-hover:text-[#003F86]">
                     {formatDisplayName(group.name)}
                     <span className="absolute bottom-0 left-1/2 h-[2px] w-0 -translate-x-1/2 rounded-full bg-[#003F86] transition-all duration-300 ease-out group-hover:w-full" />
                   </span>
@@ -733,7 +741,7 @@ function ServiceDetailPage({
         <div className="grid gap-3 sm:gap-5 pb-48 sm:pb-52 lg:pb-0">
           {groups.map((group) => (
             <section
-              className="overflow-hidden rounded-xl sm:rounded-lg border border-neutral-200/80 sm:border-blue-100 bg-white shadow-xs sm:shadow-sm scroll-mt-28"
+              className="overflow-hidden rounded-xl sm:rounded-lg border border-neutral-200/80 sm:border-blue-100 bg-white shadow-xs sm:shadow-sm scroll-mt-24"
               id={`section-${group.id}`}
               key={group.id}
               onMouseEnter={() => setActiveGroup(group.id)}
@@ -743,96 +751,127 @@ function ServiceDetailPage({
               </div>
 
               <div className="divide-y divide-neutral-200/60 sm:divide-black/10">
-                {group.packages.map((item) => (
-                  <article className="group flex items-start justify-between gap-3 sm:gap-5 px-3.5 py-3 sm:px-5 sm:py-4" key={`${group.id}-${item.name}`}>
-                    <div className="flex-1 min-w-0 pr-1 sm:pr-2">
-                      <h3 className="text-[13px] sm:text-[15px] font-bold leading-snug text-[#003F86]">{item.name}</h3>
+                {group.packages.map((item) => {
+                  const bannerMedia = item.banner_media || item.bannerMedia
+                  const isVideo = isVideoMedia(bannerMedia)
 
-                      <button
-                        className="mt-1 flex items-center gap-1.5 rounded-md text-left text-[11px] sm:text-xs text-blue-800 transition hover:text-blue-700 focus:outline-none"
-                        onClick={() => setReviewsTarget({ type: 'package', item })}
-                        type="button"
-                      >
-                        <span className="grid h-3.5 w-3.5 sm:h-4 sm:w-4 place-items-center rounded-full bg-blue-700 text-[9px] sm:text-[10px] font-bold leading-none text-white">
-                          ★
-                        </span>
-                        <span className="rating-dotted-underline font-semibold">{item.rating} ({item.jobs || 'New service'})</span>
-                      </button>
-
-                      <div className="mt-1 flex flex-wrap items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs text-blue-800">
-                        <span className="font-extrabold text-neutral-900">Rs. {item.price}</span>
-                        {(item.originalPrice || item.original_price) && (
-                          <span className="text-neutral-400 line-through font-normal">Rs. {item.originalPrice || item.original_price}</span>
-                        )}
-                        <span className="text-neutral-300">•</span>
-                        <span className="text-neutral-600">{item.duration}</span>
-                      </div>
-
-                      
-
-                      {item.description ? (
-                        <p className="mt-1.5 sm:mt-2 text-[11px] sm:text-xs leading-relaxed text-neutral-500 line-clamp-2">
-                          {item.description}
-                        </p>
+                  return (
+                    <div className="flex flex-col" key={`${group.id}-${item.name}`}>
+                      {bannerMedia ? (
+                        <div className="px-3.5 pt-3 sm:px-5 sm:pt-4">
+                          {isVideo ? (
+                            <div className="w-full overflow-hidden rounded-xl bg-black aspect-video sm:aspect-[21/9] max-h-60 relative shadow-xs border border-slate-300">
+                              <video
+                                autoPlay
+                                className="h-full w-full object-cover"
+                                controls
+                                loop
+                                muted
+                                playsInline
+                                preload="auto"
+                                src={packageImageUrl(bannerMedia)}
+                              />
+                            </div>
+                          ) : (
+                            <div className="w-full overflow-hidden rounded-xl bg-slate-100 max-h-60 relative shadow-xs border border-slate-200/80">
+                              <img
+                                alt={`${item.name} banner`}
+                                className="w-full max-h-60 object-cover"
+                                src={packageImageUrl(bannerMedia)}
+                              />
+                            </div>
+                          )}
+                        </div>
                       ) : null}
 
-                      <button
-                        className="mt-1.5 sm:mt-2 text-[11px] sm:text-xs font-extrabold text-blue-700 hover:text-blue-800 focus:outline-none inline-block"
-                        onClick={() => setSelectedDetails(item)}
-                        type="button"
-                      >
-                        View details
-                      </button>
-                    </div>
+                      <article className="group flex items-start justify-between gap-3.5 sm:gap-5 px-4 py-3.5 sm:px-5 sm:py-4">
+                        <div className="flex-1 min-w-0 pr-1 sm:pr-2">
+                          <h3 className="text-[16.5px] sm:text-[18px] font-bold leading-snug text-[#003F86]">{item.name}</h3>
 
-                    <div className="flex flex-col items-center shrink-0 w-[94px] sm:w-32 md:w-36 pt-0.5">
-                      <div className="relative h-[94px] w-[94px] sm:h-32 sm:w-32 md:h-36 md:w-36 overflow-hidden rounded-xl bg-slate-100 shadow-xs sm:shadow-sm border border-slate-200/80">
-                        {item.offer && (
-                          <div className="absolute left-1 right-1 sm:left-2 sm:right-2 top-0 z-10 rounded-b-xs sm:rounded-b-md bg-[#167634] px-1 sm:px-2 py-0.5 text-center text-[9px] sm:text-[11px] font-extrabold text-white shadow-xs truncate">
-                            {item.offer}
+                          <button
+                            className="mt-0.5 flex items-center gap-1 rounded-md text-left text-[9.5px] sm:text-[11px] text-blue-800 transition hover:text-blue-700 focus:outline-none"
+                            onClick={() => setReviewsTarget({ type: 'package', item })}
+                            type="button"
+                          >
+                            <span className="grid h-2.5 w-2.5 sm:h-3 sm:w-3 place-items-center rounded-full bg-blue-700 text-[6.5px] sm:text-[8px] font-bold leading-none text-white">
+                              ★
+                            </span>
+                            <span className="rating-dotted-underline font-normal text-neutral-600 sm:font-medium">{item.rating} ({item.jobs || 'New service'})</span>
+                          </button>
+
+                          <div className="mt-1.5 flex flex-wrap items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs text-neutral-600">
+                            <span className="text-[15px] sm:text-[16px] font-extrabold text-neutral-900">Rs. {item.price}</span>
+                            {(item.originalPrice || item.original_price) && (
+                              <span className="text-[11px] sm:text-xs text-neutral-400 line-through font-normal">Rs. {item.originalPrice || item.original_price}</span>
+                            )}
+                            <span className="text-neutral-300">•</span>
+                            <span>{item.duration}</span>
                           </div>
-                        )}
-                        <img
-                          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                          src={packageImageUrl(item.image || service.image)}
-                          alt={item.name}
-                        />
-                      </div>
-                      <QuantityStepper
-                        className="relative z-10 -mt-3 sm:-mt-5 h-7 sm:h-8 min-w-[76px] sm:min-w-20 text-xs sm:text-sm shadow-md"
-                        item={{ ...item, serviceName: service.name, groupName: formatDisplayName(group.name), originalPrice: item.originalPrice || item.original_price }}
-                        onAdd={onAddToCart}
-                        onUpdateQuantity={onUpdateQuantity}
-                        quantity={getPackageQuantity(item)}
-                      />
-                      {item.optionCount && <p className="mt-1 text-[10px] sm:text-xs font-semibold text-blue-700 text-center leading-tight">{item.optionCount}</p>}
+
+                          {item.description ? (
+                            <p className="mt-1.5 sm:mt-2 text-[12.5px] sm:text-[13px] leading-relaxed text-neutral-500 line-clamp-2">
+                              {item.description}
+                            </p>
+                          ) : null}
+
+                          <button
+                            className="mt-1.5 sm:mt-2 text-xs sm:text-[13px] font-extrabold text-blue-700 hover:text-blue-800 focus:outline-none inline-block"
+                            onClick={() => setSelectedDetails(item)}
+                            type="button"
+                          >
+                            View details
+                          </button>
+                        </div>
+
+                        <div className="flex flex-col items-center shrink-0 w-[94px] sm:w-32 md:w-36 pt-0.5">
+                          <div className="relative h-[94px] w-[94px] sm:h-32 sm:w-32 md:h-36 md:w-36 overflow-hidden rounded-xl bg-slate-100 shadow-xs sm:shadow-sm border border-slate-200/80">
+                            {item.offer && (
+                              <div className="absolute left-1 right-1 sm:left-2 sm:right-2 top-0 z-10 rounded-b-xs sm:rounded-b-md bg-[#167634] px-1 sm:px-2 py-0.5 text-center text-[9px] sm:text-[11px] font-extrabold text-white shadow-xs truncate">
+                                {item.offer}
+                              </div>
+                            )}
+                            <img
+                              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                              src={packageImageUrl(item.image || service.image)}
+                              alt={item.name}
+                            />
+                          </div>
+                          <QuantityStepper
+                            className="relative z-10 -mt-3 sm:-mt-5 h-7 sm:h-8 min-w-[76px] sm:min-w-20 text-xs sm:text-sm shadow-md"
+                            item={{ ...item, serviceName: service.name, groupName: formatDisplayName(group.name), originalPrice: item.originalPrice || item.original_price }}
+                            onAdd={onAddToCart}
+                            onUpdateQuantity={onUpdateQuantity}
+                            quantity={getPackageQuantity(item)}
+                          />
+                          {item.optionCount && <p className="mt-1 text-[10px] sm:text-xs font-semibold text-blue-700 text-center leading-tight">{item.optionCount}</p>}
+                        </div>
+                      </article>
                     </div>
-                  </article>
-                ))}
+                  )
+                })}
               </div>
             </section>
           ))}
         </div>
 
-        <aside className="hidden lg:block h-fit lg:sticky lg:top-28">
-          
-          <div className="hidden lg:block rounded-lg border border-blue-100 bg-white p-4 shadow-sm">
-            <h2 className="text-lg font-bold text-[#003F86]">Cart</h2>
+        <aside className="hidden lg:block h-fit lg:sticky lg:top-[92px] space-y-3.5">
+          <div className="rounded-xl border border-blue-100 bg-white p-4 shadow-sm">
+            <h2 className="text-base font-bold text-[#003F86]">Cart</h2>
             {displayCart.length === 0 ? (
-              <div className="mt-4 rounded-lg bg-[#F6FBFF] p-6 text-center">
-                <div className="mx-auto grid place-items-center rounded-full bg-white">
-                 <svg aria-hidden="true" className="h-12 w-12" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24"><circle cx="9" cy="20" r="1.5"></circle><circle cx="18" cy="20" r="1.5"></circle><path d="M3 4h2l2.2 10.4a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 1.9-1.4L21 7H6"></path></svg>
+              <div className="mt-3 rounded-lg bg-[#F6FBFF] p-4 text-center">
+                <div className="mx-auto grid h-10 w-10 place-items-center rounded-full bg-white text-[#003F86]">
+                 <svg aria-hidden="true" className="h-6 w-6" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24"><circle cx="9" cy="20" r="1.5"></circle><circle cx="18" cy="20" r="1.5"></circle><path d="M3 4h2l2.2 10.4a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 1.9-1.4L21 7H6"></path></svg>
                 </div>
-                <p className="mt-3 text-xs leading-5 text-blue-700">No items in your cart</p>
+                <p className="mt-2 text-xs font-semibold text-blue-700">No items in your cart</p>
               </div>
             ) : (
-              <div className="mt-3 grid gap-3">
+              <div className="mt-3 grid gap-2.5">
                 {displayCart.map((item) => {
                   const qty = Number(item.quantity || 0)
                   const lineTotal = getPackageAmount(item.price) * qty
 
                   return (
-                    <div className="flex items-start justify-between gap-3 text-sm text-[#003F86]" key={getCartItemKey(item)}>
+                    <div className="flex items-start justify-between gap-3 text-xs text-[#003F86]" key={getCartItemKey(item)}>
                       <p className="min-w-0 font-semibold leading-snug">
                         {qty} x {item.name}
                       </p>
@@ -842,8 +881,8 @@ function ServiceDetailPage({
                     </div>
                   )
                 })}
-                <div className="border-t border-blue-100 pt-3">
-                  <div className="flex justify-between text-sm font-bold text-[#003F86]">
+                <div className="border-t border-blue-100 pt-2.5">
+                  <div className="flex justify-between text-xs font-bold text-[#003F86]">
                     <span>Total</span>
                     <span>Rs. {Number(cartTotal).toLocaleString('en-IN')}</span>
                   </div>
@@ -861,14 +900,20 @@ function ServiceDetailPage({
             )}
           </div>
 
-          <div className="mt-5 rounded-lg border border-blue-100 bg-white p-7 shadow-sm">
-            <div className="flex items-start justify-between gap-5">
+          <div className="rounded-xl border border-blue-100 bg-white p-4 shadow-sm">
+            <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <h3 className="text-2xl font-bold leading-tight">{promiseContent?.title || 'KwalityCarePromise'}</h3>
-                <div className="mt-6 grid gap-3 text-base text-[#003F86]">
+                <div className="flex items-center gap-2">
+                  <svg className="h-5 w-5 text-[#16A34A] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                    <path d="m9 12 2 2 4-4" />
+                  </svg>
+                  <h3 className="text-[15px] font-bold leading-tight text-[#0F172A]">{promiseContent?.title || 'Rehanshi Promise'}</h3>
+                </div>
+                <div className="mt-3.5 grid gap-2.5">
                   {promiseItems.map((item) => (
-                    <p className="flex items-center gap-2 whitespace-nowrap" key={item}>
-                      <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[#EEF9E8] text-xs font-black text-[#67B529]">
+                    <p className="flex items-center gap-2.5 whitespace-nowrap text-[13px] font-medium text-slate-800" key={item}>
+                      <span className="grid h-4 w-4 shrink-0 place-items-center rounded-full bg-[#16A34A] text-[9px] font-bold text-white">
                         ✓
                       </span>
                       <span>{item}</span>
@@ -876,14 +921,36 @@ function ServiceDetailPage({
                   ))}
                 </div>
               </div>
-              <div className="grid h-20 w-20 shrink-0 place-items-center rounded-full border border-[#67B529]/35 bg-[#EEF9E8] text-center shadow-inner">
-                <span className="text-[11px] font-black uppercase leading-4 text-[#2F6412]">
+              <div className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-[#E8F8EE] text-center">
+                <span className="text-[9px] font-black uppercase leading-3 text-[#16A34A]">
                   Verified
                   <span className="block">Quality</span>
                 </span>
               </div>
             </div>
           </div>
+
+          <a
+            href="/contact"
+            className="flex items-center justify-between gap-3 rounded-xl border border-blue-100 bg-white p-3.5 shadow-sm hover:border-blue-200 hover:shadow-md transition-all group cursor-pointer text-left"
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#1877F2] text-white shadow-xs">
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 18v-6a9 9 0 0 1 18 0v6" />
+                  <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z" />
+                  <path d="M14 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2" />
+                </svg>
+              </div>
+              <div className="min-w-0">
+                <h4 className="text-[14px] font-bold text-slate-900 group-hover:text-[#003F86] transition-colors leading-tight">Need help?</h4>
+                <p className="text-[12px] text-slate-500 font-medium mt-0.5 truncate">Contact our support team</p>
+              </div>
+            </div>
+            <svg className="h-4 w-4 shrink-0 text-slate-400 group-hover:text-[#003F86] group-hover:translate-x-0.5 transition-all" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </a>
         </aside>
       </section>
 

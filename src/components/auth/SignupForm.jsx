@@ -1,18 +1,39 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { frontendApi } from '../../services/frontendApi'
 import { notify } from '../../utils/feedback'
 
 const firstError = (value) => (Array.isArray(value) ? value[0] : value) || ''
 
-function SignupForm({ onLoginSuccess, onShowLogin }) {
+function SignupForm({ onLoginSuccess, onShowLogin, onStepChange }) {
   const [step, setStep] = useState(1)
   const [, setError] = useState('')
   const [fieldErrors, setFieldErrors] = useState({})
   const [form, setForm] = useState({ email: '', name: '', password: '', confirmPassword: '', phone: '', otp: '' })
+  const [signupToken, setSignupToken] = useState('')
+  const [resendIn, setResendIn] = useState(0)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const availabilityTimer = useRef(null)
+
+  const changeStep = (nextStep) => {
+    setStep(nextStep)
+    onStepChange?.(nextStep)
+  }
+
+  useEffect(() => {
+    if (resendIn <= 0) return
+    const timer = window.setInterval(() => {
+      setResendIn((current) => {
+        if (current <= 1) {
+          window.clearInterval(timer)
+          return 0
+        }
+        return current - 1
+      })
+    }, 1000)
+    return () => window.clearInterval(timer)
+  }, [resendIn])
 
   const updateForm = (field, value) => {
     setError('')
@@ -45,24 +66,6 @@ function SignupForm({ onLoginSuccess, onShowLogin }) {
     }
   }
 
-  const checkAccountAvailability = async () => {
-    const result = await frontendApi.checkCustomerAvailability({
-      email: form.email.trim(),
-      phone: form.phone.replace(/\D/g, ''),
-    })
-
-    const nextErrors = {}
-    if (result?.errors?.email) nextErrors.email = firstError(result.errors.email)
-    if (result?.errors?.phone) nextErrors.phone = firstError(result.errors.phone)
-
-    if (Object.keys(nextErrors).length) {
-      setFieldErrors((current) => ({ ...current, ...nextErrors }))
-      return false
-    }
-
-    return true
-  }
-
   const validateStep1 = () => {
     const errors = {}
     if (!form.name.trim()) errors.name = 'Name is required'
@@ -80,30 +83,72 @@ function SignupForm({ onLoginSuccess, onShowLogin }) {
   const handleNextStep1 = async () => {
     if (!validateStep1()) return
     setIsSubmitting(true)
+    setError('')
+    setFieldErrors({})
     try {
-      const available = await checkAccountAvailability()
-      if (!available) return
-
-      await new Promise((resolve) => setTimeout(resolve, 800))
-      notify('OTP sent to your email address', { tone: 'success' })
-      setStep(2)
+      const response = await frontendApi.sendCustomerSignupOtp({
+        email: form.email.trim(),
+        name: form.name.trim(),
+        phone: form.phone.replace(/\D/g, ''),
+      })
+      notify(response?.message || 'OTP sent to your email address', { tone: 'success' })
+      setResendIn(Number(response?.resend_after) || 45)
+      changeStep(2)
     } catch (requestError) {
-      notify(requestError.message || 'Unable to verify account details.', { tone: 'error' })
+      const errors = requestError.errors || {}
+      setFieldErrors({
+        email: errors.email?.[0] || '',
+        name: errors.name?.[0] || '',
+        phone: errors.phone?.[0] || '',
+      })
+      notify(requestError.message || 'Unable to send OTP. Please check your details.', { tone: 'error' })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleResendOtp = async () => {
+    if (resendIn > 0 || isSubmitting) return
+    setIsSubmitting(true)
+    setError('')
+    try {
+      const response = await frontendApi.sendCustomerSignupOtp({
+        email: form.email.trim(),
+        name: form.name.trim(),
+        phone: form.phone.replace(/\D/g, ''),
+      })
+      notify(response?.message || 'New OTP sent to your email address', { tone: 'success' })
+      setResendIn(Number(response?.resend_after) || 45)
+    } catch (requestError) {
+      notify(requestError.message || 'Unable to resend OTP. Please try again.', { tone: 'error' })
     } finally {
       setIsSubmitting(false)
     }
   }
 
   const handleNextStep2 = async () => {
-    if (!form.otp || form.otp.length < 4) {
-      setFieldErrors({ otp: 'Please enter a valid OTP' })
+    const otpClean = String(form.otp || '').trim().replace(/\D/g, '')
+    if (otpClean.length !== 6) {
+      setFieldErrors({ otp: 'Please enter the 6-digit OTP' })
       return
     }
     setIsSubmitting(true)
+    setError('')
+    setFieldErrors({})
     try {
-      await new Promise((resolve) => setTimeout(resolve, 800))
-      notify('Email verified successfully', { tone: 'success' })
-      setStep(3)
+      const response = await frontendApi.verifyCustomerSignupOtp({
+        email: form.email.trim(),
+        otp: otpClean,
+      })
+      setSignupToken(response?.signup_token || '')
+      notify(response?.message || 'Email verified successfully', { tone: 'success' })
+      changeStep(3)
+    } catch (requestError) {
+      const errors = requestError.errors || {}
+      setFieldErrors({
+        otp: errors.otp?.[0] || requestError.message || 'Invalid or expired OTP',
+      })
+      notify(requestError.message || 'Invalid OTP. Please try again.', { tone: 'error' })
     } finally {
       setIsSubmitting(false)
     }
@@ -127,18 +172,13 @@ function SignupForm({ onLoginSuccess, onShowLogin }) {
     setFieldErrors({})
 
     try {
-      const available = await checkAccountAvailability()
-      if (!available) {
-        setStep(1)
-        return
-      }
-
       await onLoginSuccess?.({
         mode: 'signup',
-        email: form.email,
-        name: form.name,
+        email: form.email.trim(),
+        name: form.name.trim(),
         password: form.password,
         phone: form.phone.replace(/\D/g, ''),
+        signupToken,
       })
     } catch (requestError) {
       const errors = requestError.errors || {}
@@ -147,10 +187,12 @@ function SignupForm({ onLoginSuccess, onShowLogin }) {
         name: errors.name?.[0] || '',
         password: errors.password?.[0] || (!Object.keys(errors).length ? requestError.message : ''),
         phone: errors.phone?.[0] || '',
+        otp: errors.otp?.[0] || '',
       })
       setError(requestError.message)
       notify(requestError.message, { tone: 'error' })
-      if (errors.email || errors.phone || errors.name) setStep(1)
+      if (errors.otp) changeStep(2)
+      else if (errors.email || errors.phone || errors.name) changeStep(1)
     } finally {
       setIsSubmitting(false)
     }
@@ -158,144 +200,187 @@ function SignupForm({ onLoginSuccess, onShowLogin }) {
 
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between text-sm font-medium text-blue-700">
-        <span>Create your account</span>
-        <span className="font-bold">Step {step} of 3</span>
+      {/* Progress Stepper Bar */}
+      <div className="mb-3">
+        <div className="flex items-center justify-between text-xs font-bold text-slate-500">
+          <span className={`transition-colors ${step >= 1 ? 'text-[#003F86] font-black' : 'text-slate-400'}`}>1. Basic Info</span>
+          <span className={`transition-colors ${step >= 2 ? 'text-[#003F86] font-black' : 'text-slate-400'}`}>2. Verify Email</span>
+          <span className={`transition-colors ${step >= 3 ? 'text-[#003F86] font-black' : 'text-slate-400'}`}>3. Password</span>
+        </div>
+        <div className="mt-1.5 flex h-1.5 w-full gap-1.5 overflow-hidden rounded-full bg-slate-100">
+          <div className={`h-full flex-1 rounded-full transition-all duration-300 ${step >= 1 ? 'bg-[#003F86]' : 'bg-slate-200'}`} />
+          <div className={`h-full flex-1 rounded-full transition-all duration-300 ${step >= 2 ? 'bg-[#003F86]' : 'bg-slate-200'}`} />
+          <div className={`h-full flex-1 rounded-full transition-all duration-300 ${step >= 3 ? 'bg-[#003F86]' : 'bg-slate-200'}`} />
+        </div>
       </div>
 
-      <div className="mb-6 flex h-1.5 w-full overflow-hidden rounded-full bg-blue-100">
-        <div
-          className="h-full bg-[#003F86] transition-all duration-300"
-          style={{ width: `${(step / 3) * 100}%` }}
-        />
-      </div>
-
-      <form className="mt-4 grid gap-4" onSubmit={step === 3 ? submitSignup : (e) => e.preventDefault()}>
+      <form className="grid gap-3" onSubmit={step === 3 ? submitSignup : (e) => e.preventDefault()}>
         {step === 1 && (
-          <div className="grid gap-3">
-            <label className="block">
-              <span className="text-sm font-bold text-blue-900">Full name</span>
+          <div className="space-y-2.5">
+            <div>
+              <label className="text-xs font-semibold text-slate-700">Full Name</label>
               <input
-                className={`mt-1.5 h-10 w-full rounded-xl border bg-[#F6FBFF] px-4 text-base outline-none transition placeholder:text-blue-300 focus:border-[#003F86] focus:bg-white focus:shadow-sm ${fieldErrors.name ? 'border-rose-500' : 'border-blue-200'}`}
+                className={`mt-1 h-10 w-full rounded-xl border bg-slate-50/50 px-3 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#003F86] focus:bg-white focus:ring-2 focus:ring-[#003F86]/10 ${fieldErrors.name ? 'border-rose-500 bg-rose-50/20' : 'border-slate-200'}`}
                 onChange={(event) => updateForm('name', event.target.value)}
-                placeholder="Enter your name"
+                placeholder="Enter your full name"
                 type="text"
                 value={form.name}
               />
-              {fieldErrors.name && <p className="mt-1.5 text-xs font-bold text-rose-600">{fieldErrors.name}</p>}
-            </label>
+              {fieldErrors.name && <p className="mt-1 text-xs font-bold text-rose-600">{fieldErrors.name}</p>}
+            </div>
 
-            <label className="block">
-              <span className="text-sm font-bold text-blue-900">Email address</span>
+            <div>
+              <label className="text-xs font-semibold text-slate-700">Email Address</label>
               <input
-                className={`mt-1.5 h-10 w-full rounded-xl border bg-[#F6FBFF] px-4 text-base outline-none transition placeholder:text-blue-300 focus:border-[#003F86] focus:bg-white focus:shadow-sm ${fieldErrors.email ? 'border-rose-500' : 'border-blue-200'}`}
+                className={`mt-1 h-10 w-full rounded-xl border bg-slate-50/50 px-3 text-xs font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#003F86] focus:bg-white focus:ring-2 focus:ring-[#003F86]/10 ${fieldErrors.email ? 'border-rose-500 bg-rose-50/20' : 'border-slate-200'}`}
                 onBlur={() => checkAvailabilityField('email', form.email)}
                 onChange={(event) => updateForm('email', event.target.value)}
-                placeholder="Enter email address"
+                placeholder="name@example.com"
                 type="email"
                 value={form.email}
               />
-              {fieldErrors.email && <p className="mt-1.5 text-xs font-bold text-rose-600">{fieldErrors.email}</p>}
-            </label>
+              {fieldErrors.email && <p className="mt-1 text-xs font-bold text-rose-600">{fieldErrors.email}</p>}
+            </div>
 
-            <label className="block">
-              <span className="text-sm font-bold text-blue-900">Mobile number</span>
-              <div className={`mt-1.5 flex h-10 overflow-hidden rounded-xl border bg-[#F6FBFF] transition focus-within:border-[#003F86] focus-within:bg-white focus-within:shadow-sm ${fieldErrors.phone ? 'border-rose-500' : 'border-blue-200'}`}>
-                <span className="grid w-14 place-items-center border-r border-blue-100 text-sm font-bold text-blue-700">
-                  +91
-                </span>
+            <div>
+              <label className="text-xs font-semibold text-slate-700">Mobile Number</label>
+              <div className={`mt-1 flex h-10 items-center overflow-hidden rounded-xl border bg-slate-50/50 transition focus-within:border-[#003F86] focus-within:bg-white focus-within:ring-2 focus-within:ring-[#003F86]/10 ${fieldErrors.phone ? 'border-rose-500 bg-rose-50/20' : 'border-slate-200'}`}>
+                <div className="flex h-full items-center gap-1 border-r border-slate-200 bg-slate-100/70 px-2.5 text-xs font-black text-slate-800">
+                  <span>🇮🇳</span>
+                  <span>+91</span>
+                </div>
                 <input
-                  className="w-full bg-transparent px-4 text-base outline-none placeholder:text-blue-300"
+                  className="h-full w-full bg-transparent px-3 text-xs font-medium text-slate-900 outline-none placeholder:text-slate-400"
                   maxLength={10}
                   onBlur={() => checkAvailabilityField('phone', form.phone)}
                   onChange={(event) => updateForm('phone', event.target.value.replace(/\D/g, '').slice(0, 10))}
-                  placeholder="98765 43210"
+                  placeholder="9876543210"
                   type="tel"
                   value={form.phone}
                 />
               </div>
-              {fieldErrors.phone && <p className="mt-1.5 text-xs font-bold text-rose-600">{fieldErrors.phone}</p>}
-            </label>
+              {fieldErrors.phone && <p className="mt-1 text-xs font-bold text-rose-600">{fieldErrors.phone}</p>}
+            </div>
 
             <button
-              className="mt-2 h-10 w-full rounded-xl bg-[#003F86] px-5 font-bold text-white shadow-[0_12px_24px_rgba(0,84,166,0.16)] transition hover:-translate-y-0.5 hover:bg-[#0054A6] disabled:translate-y-0 disabled:cursor-not-allowed disabled:bg-blue-100 disabled:shadow-none"
+              className="mt-1 flex h-9.5 w-full items-center justify-center gap-1.5 rounded-xl bg-[#003F86] px-4 text-xs font-bold tracking-wide text-white shadow-sm transition hover:bg-[#0054A6] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
               disabled={isSubmitting || Boolean(fieldErrors.email || fieldErrors.phone)}
               onClick={handleNextStep1}
               type="button"
             >
-              {isSubmitting ? 'Checking...' : 'Continue'}
+              {isSubmitting ? 'Checking Details...' : 'Continue to Verify Email →'}
             </button>
           </div>
         )}
 
         {step === 2 && (
-          <div className="grid gap-3">
-            <p className="text-sm text-blue-800">
-              We&apos;ve sent an OTP to <span className="font-bold">{form.email}</span>. Please enter it below to verify your email.
-            </p>
-            <label className="block mt-2">
-              <span className="text-sm font-bold text-blue-900">Email OTP</span>
-              <input
-                className={`mt-1.5 h-10 w-full rounded-xl border bg-[#F6FBFF] px-4 text-base tracking-widest outline-none transition placeholder:text-blue-300 focus:border-[#003F86] focus:bg-white focus:shadow-sm ${fieldErrors.otp ? 'border-rose-500' : 'border-blue-200'}`}
-                maxLength={6}
-                onChange={(event) => updateForm('otp', event.target.value)}
-                placeholder="Enter 6-digit OTP"
-                type="text"
-                value={form.otp}
-              />
-              {fieldErrors.otp && <p className="mt-1.5 text-xs font-bold text-rose-600">{fieldErrors.otp}</p>}
-            </label>
-
-            <div className="mt-2 flex gap-3">
+          <div className="space-y-2.5">
+            {/* Destination Info Card */}
+            <div className="flex items-center justify-between rounded-xl bg-slate-50 p-2 px-3 ring-1 ring-slate-200/70">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-blue-50 text-[#003F86]">
+                  <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <div className="min-w-0 text-left">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Code sent to</p>
+                  <p className="truncate text-xs font-bold text-slate-800">{form.email}</p>
+                </div>
+              </div>
               <button
-                className="h-10 w-1/3 rounded-xl border border-blue-200 bg-white px-5 font-bold text-blue-800 transition hover:bg-blue-50"
+                className="shrink-0 rounded-lg bg-white px-2.5 py-1 text-[11px] font-bold text-[#003F86] shadow-xs ring-1 ring-slate-200 transition hover:bg-slate-50 hover:text-[#0054A6]"
+                onClick={() => changeStep(1)}
+                type="button"
+              >
+                Change
+              </button>
+            </div>
+
+            <div>
+              <label className="block">
+                <span className="text-xs font-semibold text-slate-700">Enter 6-digit Code</span>
+                <input
+                  autoComplete="one-time-code"
+                  autoFocus
+                  className={`mt-1 h-10 w-full rounded-xl border bg-slate-50/50 px-3 text-center font-mono text-lg font-black tracking-[0.35em] text-slate-900 outline-none transition placeholder:text-xs placeholder:tracking-normal placeholder:font-sans placeholder:text-slate-400 focus:border-[#003F86] focus:bg-white focus:ring-2 focus:ring-[#003F86]/10 ${fieldErrors.otp ? 'border-rose-500 bg-rose-50/20' : 'border-slate-200'}`}
+                  inputMode="numeric"
+                  maxLength={6}
+                  onChange={(event) => updateForm('otp', event.target.value.replace(/\D/g, '').slice(0, 6))}
+                  placeholder="• • • • • •"
+                  type="text"
+                  value={form.otp}
+                />
+                {fieldErrors.otp && <p className="mt-1 text-xs font-bold text-rose-600">{fieldErrors.otp}</p>}
+              </label>
+
+              <div className="mt-1 flex items-center justify-between text-[11px]">
+                <span className="font-medium text-slate-500">Didn&apos;t receive code?</span>
+                {resendIn > 0 ? (
+                  <span className="font-semibold text-slate-400">Resend in {resendIn}s</span>
+                ) : (
+                  <button
+                    className="font-bold text-[#003F86] hover:underline"
+                    disabled={isSubmitting}
+                    onClick={handleResendOtp}
+                    type="button"
+                  >
+                    Resend OTP
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-0.5">
+              <button
+                className="h-9.5 w-1/3 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 transition hover:bg-slate-50"
                 disabled={isSubmitting}
-                onClick={() => setStep(1)}
+                onClick={() => changeStep(1)}
                 type="button"
               >
                 Back
               </button>
               <button
-                className="h-10 flex-1 rounded-xl bg-[#003F86] px-5 font-bold text-white shadow-[0_12px_24px_rgba(0,84,166,0.16)] transition hover:-translate-y-0.5 hover:bg-[#0054A6] disabled:translate-y-0 disabled:cursor-not-allowed disabled:bg-blue-100 disabled:shadow-none"
-                disabled={isSubmitting}
+                className="flex h-9.5 flex-1 items-center justify-center gap-1.5 rounded-xl bg-[#003F86] px-4 text-xs font-bold text-white shadow-sm transition hover:bg-[#0054A6] disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={isSubmitting || String(form.otp || '').trim().length !== 6}
                 onClick={handleNextStep2}
                 type="button"
               >
-                {isSubmitting ? 'Verifying...' : 'Verify OTP'}
+                {isSubmitting ? 'Verifying...' : 'Verify OTP →'}
               </button>
             </div>
           </div>
         )}
 
         {step === 3 && (
-          <div className="grid gap-3">
-            <label className="block">
-              <span className="text-sm font-bold text-blue-900">Password</span>
-              <div className={`mt-1.5 flex h-10 overflow-hidden rounded-xl border bg-[#F6FBFF] transition focus-within:border-[#003F86] focus-within:bg-white focus-within:shadow-sm ${fieldErrors.password ? 'border-rose-500' : 'border-blue-200'}`}>
+          <div className="space-y-2.5">
+            <div>
+              <label className="text-xs font-semibold text-slate-700">Create Password</label>
+              <div className={`mt-1 flex h-10 items-center overflow-hidden rounded-xl border bg-slate-50/50 transition focus-within:border-[#003F86] focus-within:bg-white focus-within:ring-2 focus-within:ring-[#003F86]/10 ${fieldErrors.password ? 'border-rose-500 bg-rose-50/20' : 'border-slate-200'}`}>
                 <input
-                  className="w-full bg-transparent px-4 text-base outline-none placeholder:text-blue-300"
+                  className="h-full w-full bg-transparent px-3 text-xs font-medium text-slate-900 outline-none placeholder:text-slate-400"
                   minLength={8}
                   onChange={(event) => updateForm('password', event.target.value)}
-                  placeholder="Minimum 8 characters"
+                  placeholder="At least 8 characters"
                   type={showPassword ? 'text' : 'password'}
                   value={form.password}
                 />
                 <button
-                  className="px-4 text-sm font-bold text-blue-800 hover:text-[#003F86]"
+                  className="flex h-full items-center px-3 text-xs font-bold text-slate-500 hover:text-[#003F86]"
                   onClick={() => setShowPassword((value) => !value)}
                   type="button"
                 >
                   {showPassword ? 'Hide' : 'Show'}
                 </button>
               </div>
-              {fieldErrors.password && <p className="mt-1.5 text-xs font-bold text-rose-600">{fieldErrors.password}</p>}
-            </label>
+              {fieldErrors.password && <p className="mt-1 text-xs font-bold text-rose-600">{fieldErrors.password}</p>}
+            </div>
 
-            <label className="block">
-              <span className="text-sm font-bold text-blue-900">Confirm Password</span>
-              <div className={`mt-1.5 flex h-10 overflow-hidden rounded-xl border bg-[#F6FBFF] transition focus-within:border-[#003F86] focus-within:bg-white focus-within:shadow-sm ${fieldErrors.confirmPassword ? 'border-rose-500' : 'border-blue-200'}`}>
+            <div>
+              <label className="text-xs font-semibold text-slate-700">Confirm Password</label>
+              <div className={`mt-1 flex h-10 items-center overflow-hidden rounded-xl border bg-slate-50/50 transition focus-within:border-[#003F86] focus-within:bg-white focus-within:ring-2 focus-within:ring-[#003F86]/10 ${fieldErrors.confirmPassword ? 'border-rose-500 bg-rose-50/20' : 'border-slate-200'}`}>
                 <input
-                  className="w-full bg-transparent px-4 text-base outline-none placeholder:text-blue-300"
+                  className="h-full w-full bg-transparent px-3 text-xs font-medium text-slate-900 outline-none placeholder:text-slate-400"
                   minLength={8}
                   onChange={(event) => updateForm('confirmPassword', event.target.value)}
                   placeholder="Re-enter password"
@@ -303,43 +388,43 @@ function SignupForm({ onLoginSuccess, onShowLogin }) {
                   value={form.confirmPassword}
                 />
                 <button
-                  className="px-4 text-sm font-bold text-blue-800 hover:text-[#003F86]"
+                  className="flex h-full items-center px-3 text-xs font-bold text-slate-500 hover:text-[#003F86]"
                   onClick={() => setShowConfirmPassword((value) => !value)}
                   type="button"
                 >
                   {showConfirmPassword ? 'Hide' : 'Show'}
                 </button>
               </div>
-              {fieldErrors.confirmPassword && <p className="mt-1.5 text-xs font-bold text-rose-600">{fieldErrors.confirmPassword}</p>}
-            </label>
+              {fieldErrors.confirmPassword && <p className="mt-1 text-xs font-bold text-rose-600">{fieldErrors.confirmPassword}</p>}
+            </div>
 
-            <div className="mt-2 flex gap-3">
+            <div className="flex gap-2 pt-0.5">
               <button
-                className="h-10 w-1/3 rounded-xl border border-blue-200 bg-white px-5 font-bold text-blue-800 transition hover:bg-blue-50"
+                className="h-9.5 w-1/3 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 transition hover:bg-slate-50"
                 disabled={isSubmitting}
-                onClick={() => setStep(2)}
+                onClick={() => changeStep(2)}
                 type="button"
               >
                 Back
               </button>
               <button
-                className="h-10 flex-1 rounded-xl bg-[#003F86] px-5 font-bold text-white shadow-[0_12px_24px_rgba(0,84,166,0.16)] transition hover:-translate-y-0.5 hover:bg-[#0054A6] disabled:translate-y-0 disabled:cursor-not-allowed disabled:bg-blue-100 disabled:shadow-none"
+                className="flex h-9.5 flex-1 items-center justify-center gap-1.5 rounded-xl bg-[#003F86] px-4 text-xs font-bold text-white shadow-sm transition hover:bg-[#0054A6] disabled:cursor-not-allowed disabled:opacity-60"
                 disabled={isSubmitting}
                 type="submit"
               >
-                {isSubmitting ? 'Creating...' : 'Create account'}
+                {isSubmitting ? 'Creating Account...' : 'Complete & Log In'}
               </button>
             </div>
           </div>
         )}
       </form>
 
-      <p className="mt-6 text-center text-sm text-blue-700">
+      <div className="mt-3.5 text-center text-xs font-medium text-slate-600">
         Already have an account?{' '}
-        <button className="font-bold text-[#003F86]" onClick={onShowLogin} type="button">
-          Login
+        <button className="font-bold text-[#003F86] hover:underline" onClick={onShowLogin} type="button">
+          Login here →
         </button>
-      </p>
+      </div>
     </div>
   )
 }

@@ -37,6 +37,7 @@ use App\Http\Controllers\Api\RateItemController;
 use App\Http\Controllers\Api\VendorJobController;
 use App\Http\Controllers\Api\VendorWalletController;
 use App\Http\Controllers\Api\WalletTransactionController;
+use App\Http\Controllers\Api\AccountDeletionController;
 use App\Http\Controllers\Api\LoginLogController;
 use App\Http\Controllers\Api\PageController;
 use Illuminate\Support\Facades\Route;
@@ -74,6 +75,8 @@ Route::prefix('v1')->group(function () {
     Route::apiResource('service-package-sections', ServicePackageSectionController::class);
     Route::apiResource('rate-items', RateItemController::class);
     Route::post('customers/register', [CustomerAuthController::class, 'register']);
+    Route::post('customers/register/send-otp', [CustomerAuthController::class, 'sendSignupOtp']);
+    Route::post('customers/register/verify-otp', [CustomerAuthController::class, 'verifySignupOtp']);
     Route::post('customers/check-availability', [CustomerAuthController::class, 'checkAvailability']);
     Route::post('customers/login', [CustomerAuthController::class, 'login']);
     Route::post('customers/login/send-otp', [CustomerAuthController::class, 'sendLoginOtp']);
@@ -100,6 +103,8 @@ Route::prefix('v1')->group(function () {
     Route::post('partners/login', [PartnerKycController::class, 'login']);
     Route::post('partners/session', [PartnerKycController::class, 'session']);
     Route::post('partners/logout', [PartnerKycController::class, 'logout']);
+    Route::post('account-deletion/send-otp', [AccountDeletionController::class, 'sendOtp']);
+    Route::post('account-deletion/confirm', [AccountDeletionController::class, 'confirmDeletion']);
     Route::post('mobile/customers/device-token', [MobileNotificationController::class, 'registerCustomerDevice']);
     Route::delete('mobile/customers/device-token', [MobileNotificationController::class, 'unregisterCustomerDevice']);
     Route::get('mobile/customers/notifications', [MobileNotificationController::class, 'customerNotifications']);
@@ -145,6 +150,7 @@ Route::prefix('v1')->group(function () {
     Route::post('coupons/validate', [CouponController::class, 'validateCode']);
     Route::apiResource('coupons', CouponController::class);
     Route::apiResource('reviews', ReviewController::class);
+    Route::post('contact-inquiries', [SupportTicketController::class, 'submitContactInquiry']);
     Route::apiResource('support-tickets', SupportTicketController::class);
     Route::apiResource('locations', ServiceLocationController::class);
     Route::post('media/upload', [AppContentController::class, 'uploadMedia']);

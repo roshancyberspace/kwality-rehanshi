@@ -303,7 +303,7 @@ function Navbar({
       ) : null}
 
       <nav className={`${hasMobileHero && mobileBannerSlides?.length ? 'hidden lg:block' : ''} sticky top-0 z-20 ${mobileNavTitle ? 'bg-white border-b border-blue-100 shadow-sm' : 'bg-[#15171C]'} lg:bg-white lg:border-b lg:border-blue-100 lg:shadow-md`}>
-        <div className={`mx-auto flex max-w-7xl flex-col gap-3 px-4 pt-3 lg:flex-row lg:items-center lg:justify-between lg:px-6 lg:py-2 lg:gap-2 ${!mobileNavTitle && (mobileBanner || mobileBannerSlides?.length) ? 'pb-2 lg:pb-2' : 'pb-3'}`}>
+        <div className={`mx-auto flex max-w-7xl flex-col gap-3 px-4 pt-3 lg:flex-row lg:items-center lg:justify-between lg:px-6 lg:py-2 lg:gap-3 ${!mobileNavTitle && (mobileBanner || mobileBannerSlides?.length) ? 'pb-2 lg:pb-2' : 'pb-3 lg:pb-2'}`}>
           
           {/* MOBILE TOP ROW */}
           <div className="flex items-center justify-between lg:hidden min-h-[32px]">
@@ -364,24 +364,24 @@ function Navbar({
           {/* DESKTOP LOGO */}
           <div className="hidden lg:flex items-center justify-between gap-3 lg:contents">
             <button className="hidden min-w-0 items-center gap-3 text-left lg:flex shrink-0" onClick={onBackHome} type="button">
-              <img src="/logo2.png" alt="logo" className="w-[224px] object-contain" />
+              <img src="/logo2.png" alt="logo" className="w-[200px] h-auto object-contain" />
             </button>
           </div>
 
           {/* SEARCH & DESKTOP LOCATION */}
-          <div className={`${mobileNavTitle ? 'hidden lg:grid' : 'grid'} w-full grid-cols-1 gap-2 lg:max-w-3xl lg:grid-cols-[280px_1fr] lg:gap-3`}>
+          <div className={`${mobileNavTitle ? 'hidden lg:grid' : 'grid'} w-full grid-cols-1 gap-2 lg:max-w-3xl lg:grid-cols-[260px_1fr] lg:gap-2.5`}>
             <button
-              className="hidden min-w-0 items-center justify-center gap-2 rounded-md border border-blue-900 bg-white px-2.5 py-2 text-left shadow-sm hover:border-green-900 lg:order-1 lg:flex lg:justify-between lg:px-4 lg:py-2.5"
+              className="hidden min-w-0 items-center justify-center gap-2 rounded-md border border-blue-900 bg-white px-2.5 py-2 text-left shadow-sm hover:border-green-900 lg:order-1 lg:flex lg:justify-between lg:px-3.5 lg:py-2"
               onClick={() => setIsLocationModalOpen(true)}
               type="button"
             >
               <span className="hidden min-w-0 lg:block">
-                <span className="block truncate text-sm font-semibold">{locationLabel}</span>
+                <span className="block truncate text-xs sm:text-[13px] font-semibold">{locationLabel}</span>
               </span>
-              <span className="hidden shrink-0 text-xs font-bold lg:block lg:text-sm">
+              <span className="hidden shrink-0 text-xs font-bold lg:block">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
-                  className="w-5 h-5 text-blue-900"
+                  className="w-4 h-4 text-blue-900"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -399,19 +399,19 @@ function Navbar({
 
             <div className="relative min-w-0 lg:order-2">
               <form
-                className="flex min-w-0 items-center gap-2 rounded-xl bg-white px-3 py-2.5 shadow-sm lg:border lg:border-blue-900 lg:rounded-md lg:px-4 focus-within:ring-2 focus-within:ring-[#003F86] lg:focus-within:border-[#67B529] lg:focus-within:ring-0"
+                className="flex min-w-0 items-center gap-2 rounded-xl bg-white px-3 py-2.5 shadow-sm lg:border lg:border-blue-900 lg:rounded-md lg:px-3.5 lg:py-1.5 focus-within:ring-2 focus-within:ring-[#003F86] lg:focus-within:border-[#67B529] lg:focus-within:ring-0"
                 onSubmit={submitSearch}
               >
                 <button
                   aria-label="Search services"
-                  className="grid h-5 w-5 shrink-0 place-items-center text-slate-400 lg:h-7 lg:w-7 lg:text-blue-700 lg:hover:bg-blue-50 lg:rounded-md"
+                  className="grid h-5 w-5 shrink-0 place-items-center text-slate-400 lg:h-6 lg:w-6 lg:text-blue-700 lg:hover:bg-blue-50 lg:rounded-md"
                   type="submit"
                 >
                   <svg className="w-4 h-4 lg:w-4 lg:h-4 lg:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <circle cx="11" cy="11" r="8"></circle>
                     <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                   </svg>
-                  <span className="hidden lg:block relative h-4 w-4 rounded-full border-2 border-current after:absolute after:-bottom-1 after:-right-1 after:h-2 after:w-0.5 after:rotate-[-45deg] after:rounded-full after:bg-current" />
+                  <span className="hidden lg:block relative h-3.5 w-3.5 rounded-full border-2 border-current after:absolute after:-bottom-1 after:-right-1 after:h-1.5 after:w-0.5 after:rotate-[-45deg] after:rounded-full after:bg-current" />
                 </button>
                 <input
                   className="w-full bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400 lg:placeholder:text-blue-700 font-medium lg:font-normal"
@@ -423,7 +423,7 @@ function Navbar({
                 {searchQuery && (
                   <button
                     aria-label="Clear search"
-                    className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-slate-200 text-xs font-bold text-slate-600 lg:h-7 lg:w-7 lg:bg-blue-700 lg:text-white"
+                    className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-slate-200 text-xs font-bold text-slate-600 lg:h-6 lg:w-6 lg:bg-blue-700 lg:text-white"
                     onClick={clearSearch}
                     type="button"
                   >
@@ -440,17 +440,17 @@ function Navbar({
             {onOpenCart && (
               <button
                 aria-label="Open cart"
-                className="relative hidden h-10 w-10 place-items-center rounded-full border border-blue-200 bg-white text-[#003F86] shadow-sm transition hover:border-[#67B529] hover:bg-blue-50 lg:grid"
+                className="relative hidden h-9.5 w-9.5 place-items-center rounded-full border border-blue-200 bg-white text-[#003F86] shadow-sm transition hover:border-[#67B529] hover:bg-blue-50 lg:grid"
                 onClick={onOpenCart}
                 type="button"
               >
-                <svg aria-hidden="true" className="h-5 w-5" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
+                <svg aria-hidden="true" className="h-4.5 w-4.5" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
                   <circle cx="9" cy="20" r="1.5" />
                   <circle cx="18" cy="20" r="1.5" />
                   <path d="M3 4h2l2.2 10.4a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 1.9-1.4L21 7H6" />
                 </svg>
                 {cartCount > 0 && (
-                  <span className="absolute -right-2 -top-2 grid h-5 min-w-5 place-items-center rounded-full bg-[#67B529] px-1 text-[11px] font-black leading-none text-white ring-2 ring-white">
+                  <span className="absolute -right-1.5 -top-1.5 grid h-4.5 min-w-4.5 place-items-center rounded-full bg-[#67B529] px-1 text-[10px] font-black leading-none text-white ring-2 ring-white">
                     {cartCount > 99 ? '99+' : cartCount}
                   </span>
                 )}
@@ -460,7 +460,7 @@ function Navbar({
               <div className="flex items-center gap-2">
                 <button
                   aria-label="Open profile"
-                  className="grid h-10 w-10 place-items-center overflow-hidden rounded-full border border-blue-200 bg-blue-50 text-sm font-black text-[#003F86] shadow-sm ring-2 ring-white transition hover:border-[#67B529] hover:bg-blue-100"
+                  className="grid h-9.5 w-9.5 place-items-center overflow-hidden rounded-full border border-blue-200 bg-blue-50 text-xs font-black text-[#003F86] shadow-sm ring-2 ring-white transition hover:border-[#67B529] hover:bg-blue-100"
                   onClick={onOpenProfile}
                   type="button"
                 >
@@ -471,7 +471,7 @@ function Navbar({
                   )}
                 </button>
                 <button
-                  className="hidden lg:block rounded-md border border-blue-900 bg-blue-900 px-2 py-2 text-xs font-bold text-white transition hover:border-[#67B529] hover:bg-[#67B529] sm:px-3 sm:text-sm"
+                  className="hidden lg:block rounded-md border border-blue-900 bg-blue-900 px-3 py-1.5 text-xs font-bold text-white transition hover:border-[#67B529] hover:bg-[#67B529]"
                   onClick={onLogout}
                   type="button"
                 >
@@ -481,7 +481,7 @@ function Navbar({
             )}
             {!isLoggedIn && (
               <button
-                className="rounded-md bg-blue-900 px-3 py-2 text-white hover:bg-[#67B529] lg:px-4"
+                className="rounded-md bg-blue-900 px-3.5 py-1.5 text-white hover:bg-[#67B529] text-xs lg:text-sm font-semibold"
                 onClick={openLogin}
                 type="button"
               >

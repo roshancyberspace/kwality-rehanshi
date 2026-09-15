@@ -167,6 +167,7 @@ class BookingController extends CrudController
         if (app(BookingAutoAssignmentManager::class)->autoApprove() && $booking->status === 'Accepted') {
             $mailer->sendStatusUpdate($booking, 'Pending Approval');
         }
+        app(\App\Support\PushNotificationService::class)->sendBookingConfirmed($booking);
         app(BookingAutoAssignmentManager::class)->scheduleIfEnabled($booking);
 
         return response()->json($this->presentBooking($booking), 201);
@@ -184,6 +185,7 @@ class BookingController extends CrudController
             $booking->update($data);
 
             if (($data['status'] ?? $booking->status) === 'Completed' && $booking->partner_id) {
+                Partner::whereKey($booking->partner_id)->update(['availability' => 'Available']);
                 app(BookingAutoAssignmentManager::class)->releasePartnerIfIdle((int) $booking->partner_id);
             }
 
@@ -251,6 +253,7 @@ class BookingController extends CrudController
         });
 
         app(BookingCustomerMailer::class)->sendStatusUpdate($record, $previousStatus);
+        app(\App\Support\PushNotificationService::class)->sendBookingConfirmed($record);
         app(BookingAutoAssignmentManager::class)->scheduleIfEnabled($record);
 
         return response()->json($record);
@@ -313,6 +316,7 @@ class BookingController extends CrudController
         });
 
         app(BookingCustomerMailer::class)->sendStatusUpdate($record, $previousStatus);
+        app(\App\Support\PushNotificationService::class)->sendBookingCancelled($record, $data['reason']);
 
         return response()->json($record);
     }
@@ -393,6 +397,7 @@ class BookingController extends CrudController
         });
 
         app(BookingCustomerMailer::class)->sendStatusUpdate($record, $previousStatus);
+        app(\App\Support\PushNotificationService::class)->sendBookingCancelled($record, $data['reason']);
         app(BookingAutoAssignmentManager::class)->processDueBookings();
 
         return response()->json($record);
@@ -404,8 +409,9 @@ class BookingController extends CrudController
             'partner_id' => ['required', Rule::exists('partners', 'id')],
         ]);
 
+        $partner = Partner::findOrFail($data['partner_id']);
         $record = app(BookingAutoAssignmentManager::class)
-            ->assignPartner($booking, Partner::findOrFail($data['partner_id']));
+            ->assignPartner($booking, $partner);
 
         return response()->json($record);
     }

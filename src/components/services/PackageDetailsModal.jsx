@@ -141,11 +141,13 @@ function RatingStars({ rating = 5, sizeClass = 'text-base' }) {
 }
 
 const getBannerImage = (item, sections) => {
-  const summarySection = sections.find((section) => section.section_key === 'summary')
+  const summarySection = sections.find((section) => section.image)
   const sectionWithImage = sections.find((section) => section.image)
 
   return summarySection?.image
     || sectionWithImage?.image
+    || item.banner_media
+    || item.bannerMedia
     || item.metadata?.banner_image
     || item.metadata?.bannerImage
     || item.image

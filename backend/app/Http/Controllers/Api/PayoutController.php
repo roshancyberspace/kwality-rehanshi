@@ -131,7 +131,15 @@ class PayoutController extends CrudController
 
             $payout->update($data);
 
-            return $payout->fresh();
+            $fresh = $payout->fresh();
+            if (($data['status'] ?? null) === 'Paid' && $previousStatus !== 'Paid') {
+                $partner = $fresh->partner_id ? Partner::find($fresh->partner_id) : Partner::where('name', $fresh->partner_name)->first();
+                if ($partner) {
+                    app(\App\Support\PushNotificationService::class)->sendPayoutCleared($partner, $fresh);
+                }
+            }
+
+            return $fresh;
         });
 
         return response()->json($record);

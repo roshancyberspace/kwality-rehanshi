@@ -303,8 +303,8 @@ export const makeColumns = (config, { actionLoadingId, appSettings = {}, canChan
           {canChangeUserPasswords && canShowPasswordAction(config.endpoint) && config.endpoint !== '/partners' && (
             <ActionIconButton isLoading={actionLoadingId === 'action'} label="Change password" onClick={() => onChangeUserPassword(config, row)}>
               <svg aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" viewBox="0 0 24 24">
-                <path d="M15 7a4 4 0 1 1-1.2-2.85L21 11.35V15h-3.65v3.65H13.7l-2.85-2.85" />
-                <path d="M7.5 7.5h.01" />
+                <rect width="16" height="11" x="4" y="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
               </svg>
             </ActionIconButton>
           )}

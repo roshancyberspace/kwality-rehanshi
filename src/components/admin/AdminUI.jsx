@@ -3,6 +3,8 @@ import { forwardRef, useEffect, useLayoutEffect, useMemo, useRef, useState } fro
 const badgeStyles = {
   Active: 'bg-[#EEF9E8] text-[#67B529] ring-[#67B529]/30',
   Blocked: 'bg-rose-50 text-rose-700 ring-rose-200',
+  Deleted: 'bg-rose-50 text-rose-700 ring-rose-200',
+  deleted: 'bg-rose-50 text-rose-700 ring-rose-200',
   Pending: 'bg-amber-50 text-amber-800 ring-amber-200',
   Completed: 'bg-[#EEF9E8] text-[#67B529] ring-[#67B529]/30',
   Cancelled: 'bg-rose-50 text-rose-700 ring-rose-200',
@@ -20,8 +22,13 @@ const badgeStyles = {
 }
 
 export function StatusBadge({ children }) {
+  const key = String(children || '').trim()
+  const matchedStyle = badgeStyles[key] ||
+    badgeStyles[key.charAt(0).toUpperCase() + key.slice(1).toLowerCase()] ||
+    (key.toLowerCase().includes('delete') ? 'bg-rose-50 text-rose-700 ring-rose-200' : 'bg-slate-100 text-slate-700 ring-slate-200')
+
   return (
-    <span className={`inline-flex h-5 max-w-full items-center truncate rounded-full px-2 text-[11px] font-bold ring-1 ring-inset ${badgeStyles[children] || 'bg-slate-100 text-slate-700 ring-slate-200'}`}>
+    <span className={`inline-flex h-5 max-w-full items-center truncate rounded-full px-2 text-[11px] font-bold ring-1 ring-inset ${matchedStyle}`}>
       {children}
     </span>
   )
@@ -203,6 +210,7 @@ export function DataTable({
   emptyText = 'Try adjusting your filters or search term.',
   emptyTitle = 'No records found',
   fitToWidth = false,
+  getRowClassName,
   onPageChange,
   pageSize = 10,
   pagination,
@@ -379,21 +387,31 @@ export function DataTable({
           </tr>
         </thead>
         <tbody>
-          {visibleRows.map((row, index) => (
-            <tr className="group hover:bg-slate-50" key={row.id || row.code || row.name || index}>
-              {tableColumns.map((column) => (
-                <td className={`${bodyCellClass} ${getColumnClass(column)}`} key={column.key}>
-                  {column.key === 's_no' ? (
-                    <span className="font-extrabold text-slate-500">{(firstItem || 1) + index}</span>
-                  ) : column.render ? (
-                    column.render(row)
-                  ) : (
-                    row[column.key]
-                  )}
-                </td>
-              ))}
-            </tr>
-          ))}
+          {visibleRows.map((row, index) => {
+            const isDeleted = String(row?.status || '').toLowerCase() === 'deleted' ||
+                              String(row?.account_status || '').toLowerCase() === 'deleted' ||
+                              Boolean(row?.deleted_at && !['0000-00-00', 'null', ''].includes(String(row?.deleted_at).toLowerCase()))
+            const defaultRowClass = isDeleted
+              ? 'bg-rose-50/70 hover:bg-rose-100/70'
+              : 'group hover:bg-slate-50'
+            const rowClass = getRowClassName ? `${defaultRowClass} ${getRowClassName(row, index)}` : defaultRowClass
+
+            return (
+              <tr className={rowClass} key={row.id || row.code || row.name || index}>
+                {tableColumns.map((column) => (
+                  <td className={`${bodyCellClass} ${getColumnClass(column)}`} key={column.key}>
+                    {column.key === 's_no' ? (
+                      <span className="font-extrabold text-slate-500">{(firstItem || 1) + index}</span>
+                    ) : column.render ? (
+                      column.render(row)
+                    ) : (
+                      row[column.key]
+                    )}
+                  </td>
+                ))}
+              </tr>
+            )
+          })}
         </tbody>
       </table>
       </div>
@@ -464,7 +482,7 @@ export function FormInput({ label, placeholder, type = 'text' }) {
   )
 }
 
-export function Modal({ children, onClose, title, noPadding = false }) {
+export function Modal({ children, onClose, title, noPadding = false, maxWidth = 'max-w-xl' }) {
   const [isClosing, setIsClosing] = useState(false)
   const closeSmoothly = () => {
     setIsClosing(true)
@@ -472,17 +490,17 @@ export function Modal({ children, onClose, title, noPadding = false }) {
   }
 
   return (
-    <div className={`fixed inset-0 z-50 grid place-items-center bg-slate-950/40 p-4 ${isClosing ? 'animate-modal-fade-out' : 'animate-modal-fade'}`}>
-      <div className={`w-full max-w-xl overflow-hidden rounded-xl bg-white shadow-2xl ${isClosing ? 'animate-modal-slide-out' : 'animate-modal-slide'}`}>
-        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-3.5">
-          <h2 className="text-lg font-black text-slate-800">{title}</h2>
-          <button className="grid h-8 w-8 place-items-center rounded-full text-slate-500 transition duration-200 hover:bg-rose-50 hover:text-rose-700" onClick={closeSmoothly} title="Close" type="button">
+    <div className={`fixed inset-0 z-50 grid place-items-center overflow-y-auto no-scrollbar bg-slate-950/50 backdrop-blur-md p-3 sm:p-4 ${isClosing ? 'animate-modal-fade-out' : 'animate-modal-fade'}`}>
+      <div className={`w-full ${maxWidth} my-auto flex max-h-[90vh] flex-col overflow-hidden rounded-xl bg-white shadow-2xl ${isClosing ? 'animate-modal-slide-out' : 'animate-modal-slide'}`}>
+        <div className="flex shrink-0 items-center justify-between border-b border-slate-200 px-5 py-3.5 bg-white">
+          <h2 className="text-base sm:text-lg font-black text-slate-800 truncate pr-2">{title}</h2>
+          <button className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-slate-500 transition duration-200 hover:bg-rose-50 hover:text-rose-700" onClick={closeSmoothly} title="Close" type="button">
             <svg aria-hidden="true" className="h-5 w-5" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" viewBox="0 0 24 24">
               <path d="M18 6 6 18M6 6l12 12" />
             </svg>
           </button>
         </div>
-        <div className={noPadding ? 'overflow-hidden' : 'p-5'}>{children}</div>
+        <div className={`flex-1 overflow-y-auto no-scrollbar ${noPadding ? 'overflow-hidden' : 'p-4 sm:p-5'}`}>{children}</div>
       </div>
     </div>
   )

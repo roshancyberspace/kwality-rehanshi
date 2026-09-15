@@ -15,6 +15,7 @@ class ServicePackageController extends CrudController
         'sub_service_id' => ['nullable', 'exists:sub_services,id'],
         'category_key' => ['nullable', 'string', 'max:100'],
         'name' => ['required', 'string', 'max:255'],
+        'banner_media' => ['nullable', 'string'],
         'image' => ['nullable', 'string'],
         'price' => ['required', 'numeric'],
         'original_price' => ['nullable', 'numeric'],
@@ -42,5 +43,19 @@ class ServicePackageController extends CrudController
                 ->with(['service', 'subService'])
                 ->findOrFail($id)
         );
+    }
+
+    public function store(\Illuminate\Http\Request $request)
+    {
+        $data = $this->validatedData($request);
+        $item = ServicePackage::create($data);
+
+        if (($item->status ?? 'Active') === 'Active') {
+            app(\App\Support\PushNotificationService::class)->sendNewServicePackage($item);
+        }
+
+        $this->clearModelCache();
+
+        return response()->json($item, 201);
     }
 }

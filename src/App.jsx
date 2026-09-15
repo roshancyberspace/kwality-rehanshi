@@ -23,6 +23,7 @@ import StaffLoginPage from './pages/staff/StaffLoginPage'
 import PrivacyPolicyPage from './pages/legal/PrivacyPolicyPage'
 import TermsAndConditionPage from './pages/legal/TermsAndConditionPage'
 import ItemRateListPage from './pages/services/ItemRateListPage'
+import VendorAccountDeletionPage from './pages/legal/VendorAccountDeletionPage'
 
 const CheckoutPage = lazy(() => import('./pages/checkout/CheckoutPage'))
 const AdminDashboardPage = lazy(() => import('./pages/admin/AdminDashboardPage'))
@@ -49,6 +50,7 @@ const routes = {
   privacyPolicy: '/privacy-policy',
   termsAndCondition: '/terms-and-condition',
   rateList: '/rate-list',
+  vendorAccountDeletion: '/vendor-account-deletion',
 }
 
 const packageGroupLabels = {
@@ -984,6 +986,21 @@ function App() {
     return (
       <>
         <ItemRateListPage
+          {...commonProps}
+          onBackHome={() => navigate(routes.home)}
+          onOpenCart={() => navigate(routes.cart)}
+          onOpenProfile={() => navigate(routes.profile)}
+        />
+        <Toast message={toast} />
+        {mobileBottomNav}
+      </>
+    )
+  }
+
+  if (path === routes.vendorAccountDeletion || path === '/vendor-account-deletion' || path === '/account-deletion') {
+    return (
+      <>
+        <VendorAccountDeletionPage
           {...commonProps}
           onBackHome={() => navigate(routes.home)}
           onOpenCart={() => navigate(routes.cart)}

@@ -1648,10 +1648,13 @@ function BookingDetailsModal({ onClose, onInvoice, record }) {
     ['City', metadata.service_address?.city],
     ['Location', formatModalLocation(metadata.service_location || metadata.customer_location || metadata.service_address?.location)],
   ].filter(([, value]) => value)
+  const partnerIdVal = record.partner_id || metadata.assigned_partner?.id || metadata.partner_id
+  const partnerCode = partnerIdVal ? `VEN-${String(partnerIdVal).padStart(5, '0')}` : null
   const partnerDetails = [
     ['Service', record.service_name || record.service],
     ['Professional', record.professional_name || record.partner_name || metadata.partner_name || metadata.assigned_partner?.name],
-    ['Partner ID', record.partner_id || metadata.assigned_partner?.id],
+    ['Vendor Code', partnerCode],
+    ['Partner ID', partnerIdVal],
     ['Status', record.status],
     ['Schedule', schedule],
     ['Priority', record.priority],
@@ -1692,7 +1695,7 @@ function BookingDetailsModal({ onClose, onInvoice, record }) {
   ]
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/45 p-4">
+    <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/50 backdrop-blur-md p-4 animate-modal-fade">
       <section className="max-h-[92vh] w-full max-w-5xl overflow-hidden rounded-lg bg-white shadow-2xl">
         <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4">
           <div>
