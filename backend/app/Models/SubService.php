@@ -36,6 +36,6 @@ class SubService extends Model
 
     public function getServiceNameAttribute(): ?string
     {
-        return $this->service?->name;
+        return $this->relationLoaded('service') ? $this->service?->name : null;
     }
 }

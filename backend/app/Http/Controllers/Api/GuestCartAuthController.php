@@ -103,11 +103,14 @@ class GuestCartAuthController extends Controller
 
         Cache::put($cacheKey, $payload, now()->addMinutes(self::OTP_TTL_MINUTES));
 
-        $deliveryEmail = $channel === 'email'
-            ? $identifier
-            : ($customer?->email ?: null);
+        $sentViaSms = false;
+        if ($channel === 'phone' || ! empty($customer?->phone)) {
+            $smsPhone = $channel === 'phone' ? $identifier : $customer->phone;
+            $sentViaSms = app(\App\Support\SmsService::class)->sendOtp($smsPhone, $otp);
+        }
 
         $sentViaEmail = false;
+        $deliveryEmail = $channel === 'email' ? $identifier : ($customer?->email ?: null);
         if ($deliveryEmail) {
             try {
                 $this->passwordMailer->sendGuestCartOtp(
@@ -116,24 +119,26 @@ class GuestCartAuthController extends Controller
                     $otp
                 );
                 $sentViaEmail = true;
-            } catch (\Throwable) {
-                return response()->json([
-                    'message' => 'Unable to send OTP right now. Please try again.',
-                    'errors' => ['login' => ['Unable to send OTP right now. Please try again.']],
-                ], 422);
+            } catch (\Throwable $e) {
+                Log::warning('Guest cart OTP mail failed: ' . $e->getMessage());
             }
-        } elseif (config('app.debug')) {
-            Log::debug('Guest cart OTP (phone, debug only)', [
-                'identifier' => $this->maskPhone($identifier),
-            ]);
+        }
+
+        if (! $sentViaSms && ! $sentViaEmail) {
+            return response()->json([
+                'message' => 'Unable to send OTP verification code right now. Please try again.',
+                'errors' => ['login' => ['Unable to send OTP right now. Please try again.']],
+            ], 422);
         }
 
         $response = [
-            'message' => $sentViaEmail
-                ? 'OTP sent successfully.'
-                : 'OTP generated for your mobile number.',
+            'message' => $channel === 'phone'
+                ? ($sentViaSms ? 'OTP sent successfully to your mobile number.' : 'OTP sent to your registered email.')
+                : ($sentViaEmail ? 'OTP sent successfully to your email.' : 'OTP sent to your registered mobile number.'),
             'exists' => (bool) $customer,
             'channel' => $channel,
+            'sent_sms' => $sentViaSms,
+            'sent_email' => $sentViaEmail,
             'masked_destination' => $channel === 'email'
                 ? $this->maskEmail($identifier)
                 : $this->maskPhone($identifier),
@@ -305,8 +310,13 @@ class GuestCartAuthController extends Controller
                 'registration_source' => 'guest_cart_otp',
                 'otp_verified_identifier' => $primary,
                 'otp_verified_channel' => $channel,
+                'is_phone_verified' => $channel === 'phone',
+                'phone_verified_at' => $channel === 'phone' ? now()->toIso8601String() : null,
+                'is_email_verified' => $channel === 'email',
+                'email_verified_at' => $channel === 'email' ? now()->toIso8601String() : null,
             ],
         ]);
+
 
         Cache::forget($this->verifiedCacheKey($data['verification_token']));
 

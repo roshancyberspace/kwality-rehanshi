@@ -13,6 +13,11 @@ class TickAutoAssignment
 {
     public function handle(Request $request, Closure $next): Response
     {
+        return $next($request);
+    }
+
+    public function terminate(Request $request, Response $response): void
+    {
         try {
             app(BookingAutoAssignmentManager::class)->tick();
         } catch (Throwable $exception) {
@@ -20,7 +25,5 @@ class TickAutoAssignment
                 'error' => $exception->getMessage(),
             ]);
         }
-
-        return $next($request);
     }
 }

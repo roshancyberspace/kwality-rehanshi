@@ -312,13 +312,15 @@ export const frontendApi = {
     }),
     method: 'POST',
   }),
-  verifyCustomerSignupOtp: async ({ email, otp }) => requestJson('/customers/register/verify-otp', {
+  verifyCustomerSignupOtp: async ({ email, phone, otp }) => requestJson('/customers/register/verify-otp', {
     body: JSON.stringify({
-      email: String(email || '').trim(),
+      email: email ? String(email).trim() : undefined,
+      phone: phone ? String(phone).trim() : undefined,
       otp: String(otp || '').trim(),
     }),
     method: 'POST',
   }),
+
   customerSignup: async ({ email, name, password, phone, signupToken, signup_token }) => {
     const customer = await requestJson('/customers/register', {
       body: JSON.stringify({

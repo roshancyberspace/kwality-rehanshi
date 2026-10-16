@@ -42,16 +42,28 @@ class ServicePackageSection extends Model
 
     public function getPackageNameAttribute(): ?string
     {
-        return $this->servicePackage?->name;
+        return $this->relationLoaded('servicePackage') ? $this->servicePackage?->name : null;
     }
 
     public function getServiceNameLabelAttribute(): ?string
     {
-        return $this->service?->name ?: $this->servicePackage?->service?->name;
+        if ($this->relationLoaded('service') && $this->service) {
+            return $this->service->name;
+        }
+
+        if ($this->relationLoaded('servicePackage') && $this->servicePackage?->relationLoaded('service')) {
+            return $this->servicePackage->service?->name;
+        }
+
+        return null;
     }
 
     public function getSubServiceNameAttribute(): ?string
     {
-        return $this->servicePackage?->subService?->name;
+        if ($this->relationLoaded('servicePackage') && $this->servicePackage?->relationLoaded('subService')) {
+            return $this->servicePackage->subService?->name;
+        }
+
+        return null;
     }
 }

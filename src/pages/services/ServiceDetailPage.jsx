@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Footer from '../../components/layout/Footer'
 import Navbar from '../../components/layout/Navbar'
 import PackageDetailsModal from '../../components/services/PackageDetailsModal'
@@ -12,6 +12,22 @@ const packageImageUrl = (path) => buildBackendUrl(path || '')
 const isVideoMedia = (url = '') => {
   if (typeof url !== 'string' || !url) return false
   return Boolean(url.match(/\.(mp4|webm|ogg|mov|m4v|avi|mkv)(?:\?.*)?$/i) || /youtube\.com|youtu\.be|vimeo\.com/i.test(url))
+}
+
+const highlightMatch = (text, query) => {
+  if (!query || !text) return text
+  const index = text.toLowerCase().indexOf(query.toLowerCase())
+  if (index === -1) return text
+  const before = text.slice(0, index)
+  const match = text.slice(index, index + query.length)
+  const after = text.slice(index + query.length)
+  return (
+    <>
+      {before}
+      <span className="font-extrabold text-[#003F86]">{match}</span>
+      {after}
+    </>
+  )
 }
 
 const groupLabels = {
@@ -333,6 +349,73 @@ function ServiceDetailPage({
   const [activeCouponIdx, setActiveCouponIdx] = useState(0)
   const displayActiveGroup = groups.some((group) => group.id === activeGroup) ? activeGroup : groups[0]?.id
 
+  // Mobile In-Header Search States
+  const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false)
+  const [mobileSearchQuery, setMobileSearchQuery] = useState('')
+  const [highlightedPackageId, setHighlightedPackageId] = useState(null)
+  const mobileSearchInputRef = useRef(null)
+
+  const openMobileSearch = () => {
+    setIsMobileSearchOpen(true)
+    window.setTimeout(() => {
+      mobileSearchInputRef.current?.focus()
+    }, 60)
+  }
+
+  const closeMobileSearch = () => {
+    setIsMobileSearchOpen(false)
+    setMobileSearchQuery('')
+  }
+
+  const matchingLocalPackages = useMemo(() => {
+    const q = mobileSearchQuery.trim().toLowerCase()
+    if (!q) return []
+    return packages.filter((pkg) =>
+      [pkg.name, pkg.description, ...(pkg.included || []), ...(pkg.highlights || [])]
+        .join(' ')
+        .toLowerCase()
+        .includes(q)
+    )
+  }, [packages, mobileSearchQuery])
+
+  const matchingGlobalSuggestions = useMemo(() => {
+    const q = mobileSearchQuery.trim().toLowerCase()
+    if (!q) return []
+    const localNames = new Set(matchingLocalPackages.map((p) => (p.name || '').toLowerCase()))
+    return (searchSuggestions || [])
+      .filter((item) => {
+        if (!item?.name) return false
+        if (localNames.has(item.name.toLowerCase())) return false
+        return (item.searchText || item.name).toLowerCase().includes(q)
+      })
+      .slice(0, 8)
+  }, [searchSuggestions, mobileSearchQuery, matchingLocalPackages])
+
+  const handleSelectLocalPackage = (item) => {
+    closeMobileSearch()
+    const targetGroup = groups.find((g) => g.packages.some((p) => (p.id || p.name) === (item.id || item.name)))
+    if (targetGroup) {
+      setActiveGroup(targetGroup.id)
+    }
+    const domId = `package-${String(item.id || item.name).toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
+    setHighlightedPackageId(item.id || item.name)
+    window.setTimeout(() => {
+      const el = document.getElementById(domId)
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }
+    }, 120)
+    window.setTimeout(() => {
+      setHighlightedPackageId(null)
+    }, 2800)
+  }
+
+  const handleSelectGlobalSuggestion = (suggestion) => {
+    closeMobileSearch()
+    onSearchSuggestionSelect?.(suggestion)
+  }
+
+
   useEffect(() => {
     const handleScroll = () => {
       if (window.scrollY > 80) {
@@ -516,53 +599,323 @@ function ServiceDetailPage({
       </div>
 
       {/* Mobile Urban Company Style Header & Hero Section */}
-      <header className="sticky top-0 z-40 bg-white border-b border-neutral-100 px-4 py-3 flex items-center justify-between gap-2 lg:hidden shadow-xs">
-        <div className="flex items-center gap-2.5 min-w-0 flex-1 pr-1">
+      {isMobileSearchOpen ? (
+        <header className="sticky top-0 z-50 bg-white border-b border-slate-200 px-3 py-2.5 flex items-center gap-2 lg:hidden shadow-xs">
           <button
             type="button"
-            onClick={onShowServices}
-            aria-label="Back"
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-neutral-200/80 bg-white text-neutral-800 shadow-xs hover:bg-neutral-50 active:scale-95 transition duration-200"
+            onClick={closeMobileSearch}
+            aria-label="Back from search"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-neutral-800 hover:bg-neutral-100 active:scale-90 transition duration-150"
           >
             <svg className="h-5 w-5 stroke-[2.2]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
           </button>
-          <span
-            className={`text-base font-extrabold text-neutral-900 truncate transition-all duration-300 transform ${
-              isHeaderScrolled ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-3 pointer-events-none absolute left-14 w-0 overflow-hidden'
-            }`}
-          >
-            {activeSubService ? activeSubService.name : getServiceTitle(service)}
-          </span>
-        </div>
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-          <button
-            type="button"
-            onClick={onGlobalSearch}
-            aria-label="Search"
-            className="flex h-11 w-11 items-center justify-center rounded-full border border-neutral-200/80 bg-white text-neutral-800 shadow-xs hover:bg-neutral-50 active:scale-95 transition duration-200"
-          >
-            <svg className="h-5 w-5 stroke-[2.2]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="relative flex-1 flex items-center min-w-0">
+            <svg className="absolute left-3.5 h-4 w-4 text-slate-400 stroke-[2.2] pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              if (navigator.share) {
-                navigator.share({ title: service?.name, url: window.location.href }).catch(() => {})
-              }
-            }}
-            aria-label="Share"
-            className="flex h-11 w-11 items-center justify-center rounded-full border border-neutral-200/80 bg-white text-neutral-800 shadow-xs hover:bg-neutral-50 active:scale-95 transition duration-200"
-          >
-            <svg className="h-5 w-5 stroke-[2.2]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-            </svg>
-          </button>
+            <input
+              ref={mobileSearchInputRef}
+              type="text"
+              value={mobileSearchQuery}
+              onChange={(e) => setMobileSearchQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  if (matchingLocalPackages.length > 0) {
+                    handleSelectLocalPackage(matchingLocalPackages[0])
+                  } else if (matchingGlobalSuggestions.length > 0) {
+                    handleSelectGlobalSuggestion(matchingGlobalSuggestions[0])
+                  } else if (mobileSearchQuery.trim()) {
+                    onGlobalSearch?.(mobileSearchQuery.trim())
+                    closeMobileSearch()
+                  }
+                } else if (e.key === 'Escape') {
+                  closeMobileSearch()
+                }
+              }}
+              placeholder={`Search in ${activeSubService ? activeSubService.name : (service?.name || 'services')}...`}
+              className="h-10 w-full rounded-full border border-slate-200 bg-slate-50/80 pl-10 pr-9 text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:border-[#003F86] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#003F86]/10 transition"
+              autoFocus
+            />
+            {mobileSearchQuery && (
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileSearchQuery('')
+                  mobileSearchInputRef.current?.focus()
+                }}
+                className="absolute right-3 flex h-5 w-5 items-center justify-center rounded-full bg-slate-200 text-slate-600 hover:bg-slate-300 text-[11px] font-black"
+                aria-label="Clear search"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+        </header>
+      ) : (
+        <header className="sticky top-0 z-40 bg-white border-b border-neutral-100 px-3.5 py-2.5 flex items-center justify-between gap-2 lg:hidden shadow-xs">
+          <div className="flex items-center gap-2 min-w-0 flex-1 pr-1">
+            <button
+              type="button"
+              onClick={onShowServices}
+              aria-label="Back"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-neutral-800 hover:bg-neutral-100 active:scale-90 transition duration-150"
+            >
+              <svg className="h-5 w-5 stroke-[2.2]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <span
+              className={`text-sm sm:text-base font-bold text-neutral-900 tracking-tight truncate leading-snug transition-all duration-300 transform ${
+                isHeaderScrolled ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-2 pointer-events-none absolute left-12 w-0 overflow-hidden'
+              }`}
+            >
+              {activeSubService ? activeSubService.name : getServiceTitle(service)}
+            </span>
+          </div>
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={openMobileSearch}
+              aria-label="Search"
+              className="flex h-9 w-9 items-center justify-center rounded-full text-neutral-800 hover:bg-neutral-100 active:scale-90 transition duration-150"
+            >
+              <svg className="h-5 w-5 stroke-[2.2]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (navigator.share) {
+                  navigator.share({ title: service?.name, url: window.location.href }).catch(() => {})
+                }
+              }}
+              aria-label="Share"
+              className="flex h-9 w-9 items-center justify-center rounded-full text-neutral-800 hover:bg-neutral-100 active:scale-90 transition duration-150"
+            >
+              <svg className="h-5 w-5 stroke-[2.2]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+              </svg>
+            </button>
+          </div>
+        </header>
+      )}
+
+      {/* Mobile Search Overlay Panel */}
+      {isMobileSearchOpen && (
+        <div className="fixed inset-x-0 top-[61px] bottom-0 z-50 bg-white overflow-y-auto lg:hidden flex flex-col pb-24 shadow-2xl">
+          {!mobileSearchQuery.trim() ? (
+            <div>
+              {/* Quick Jump Pills for Groups */}
+              {groups.length > 0 && (
+                <div className="p-3.5 border-b border-slate-100 bg-slate-50/70">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">
+                    Sections in this service
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {groups.map((group) => (
+                      <button
+                        key={group.id}
+                        type="button"
+                        onClick={() => {
+                          closeMobileSearch()
+                          setActiveGroup(group.id)
+                          document.getElementById(`section-${group.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                        }}
+                        className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-bold text-slate-700 shadow-2xs hover:border-[#003F86] hover:text-[#003F86] active:scale-95 transition"
+                      >
+                        <span>{formatDisplayName(group.name)}</span>
+                        <span className="text-[10px] text-slate-400 font-medium">({group.packages.length})</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* All Packages in This Service */}
+              <div className="px-3.5 pt-3 pb-1 border-b border-slate-100 bg-white">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  Packages in this service ({packages.length})
+                </p>
+              </div>
+              <div className="divide-y divide-slate-100">
+                {packages.map((item) => (
+                  <div
+                    key={item.id || item.name}
+                    onClick={() => handleSelectLocalPackage(item)}
+                    className="flex items-center justify-between gap-3 p-3.5 hover:bg-slate-50 active:bg-blue-50/40 transition cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div className="h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-slate-100 border border-slate-200/80">
+                        <img
+                          className="h-full w-full object-cover"
+                          src={packageImageUrl(item.image || service?.image)}
+                          alt={item.name}
+                        />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-bold text-slate-900 leading-snug line-clamp-1">{item.name}</p>
+                        <div className="mt-1 flex items-center gap-2 text-xs text-slate-600">
+                          <span className="font-extrabold text-neutral-900">Rs. {item.price}</span>
+                          {item.rating && (
+                            <span className="inline-flex items-center gap-0.5 text-blue-700 font-bold text-[11px]">
+                              <span>★</span> {item.rating}
+                            </span>
+                          )}
+                          {item.duration && (
+                            <span className="text-slate-400">• {item.duration}</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleSelectLocalPackage(item)
+                      }}
+                      className="shrink-0 rounded-lg bg-blue-50 px-2.5 py-1 text-[11px] font-bold text-[#003F86] hover:bg-[#003F86] hover:text-white transition"
+                    >
+                      View →
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div>
+              {/* Local Matches */}
+              {matchingLocalPackages.length > 0 && (
+                <div>
+                  <div className="px-3.5 py-2 bg-blue-50/70 border-b border-blue-100 flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-[#003F86] uppercase tracking-wider">
+                      In this service ({matchingLocalPackages.length})
+                    </span>
+                  </div>
+                  <div className="divide-y divide-slate-100">
+                    {matchingLocalPackages.map((item) => (
+                      <div
+                        key={item.id || item.name}
+                        onClick={() => handleSelectLocalPackage(item)}
+                        className="flex items-center justify-between gap-3 p-3.5 hover:bg-slate-50 active:bg-blue-50/40 transition cursor-pointer"
+                      >
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <div className="h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-slate-100 border border-slate-200/80">
+                            <img
+                              className="h-full w-full object-cover"
+                              src={packageImageUrl(item.image || service?.image)}
+                              alt={item.name}
+                            />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-bold text-slate-900 leading-snug line-clamp-1">
+                              {highlightMatch(item.name, mobileSearchQuery)}
+                            </p>
+                            <div className="mt-1 flex items-center gap-2 text-xs text-slate-600">
+                              <span className="font-extrabold text-neutral-900">Rs. {item.price}</span>
+                              {item.rating && (
+                                <span className="inline-flex items-center gap-0.5 text-blue-700 font-bold text-[11px]">
+                                  <span>★</span> {item.rating}
+                                </span>
+                              )}
+                              {item.duration && (
+                                <span className="text-slate-400">• {item.duration}</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleSelectLocalPackage(item)
+                          }}
+                          className="shrink-0 rounded-lg bg-blue-50 px-2.5 py-1 text-[11px] font-bold text-[#003F86] hover:bg-[#003F86] hover:text-white transition"
+                        >
+                          View →
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Global Matches */}
+              {matchingGlobalSuggestions.length > 0 && (
+                <div>
+                  <div className="px-3.5 py-2 bg-slate-100/80 border-b border-slate-200 flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+                      In other services ({matchingGlobalSuggestions.length})
+                    </span>
+                  </div>
+                  <div className="divide-y divide-slate-100">
+                    {matchingGlobalSuggestions.map((suggestion, idx) => (
+                      <div
+                        key={`${suggestion.name}-${idx}`}
+                        onClick={() => handleSelectGlobalSuggestion(suggestion)}
+                        className="flex items-center justify-between gap-3 p-3.5 hover:bg-slate-50 active:bg-blue-50/40 transition cursor-pointer"
+                      >
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <div className="h-11 w-11 shrink-0 overflow-hidden rounded-xl bg-slate-100 border border-slate-200/80">
+                            <img className="h-full w-full object-cover" src={suggestion.image} alt="" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-bold text-slate-800 leading-snug line-clamp-1">
+                              {highlightMatch(suggestion.name, mobileSearchQuery)}
+                            </p>
+                            <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500">
+                              {suggestion.serviceName && (
+                                <span className="rounded bg-slate-100 px-1.5 py-0.2 text-[10px] font-bold text-slate-600">
+                                  {suggestion.serviceName}
+                                </span>
+                              )}
+                              {suggestion.price && (
+                                <span className="font-bold text-slate-800">{suggestion.price}</span>
+                              )}
+                              {suggestion.rating && (
+                                <span>★ {suggestion.rating}</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <svg className="h-4 w-4 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" />
+                        </svg>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* No matches */}
+              {matchingLocalPackages.length === 0 && matchingGlobalSuggestions.length === 0 && (
+                <div className="px-6 py-12 text-center">
+                  <div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-slate-100 text-slate-400 mb-3">
+                    <svg className="h-6 w-6 stroke-[2]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  </div>
+                  <p className="text-sm font-bold text-slate-800">No results found for &ldquo;{mobileSearchQuery}&rdquo;</p>
+                  <p className="mt-1 text-xs text-slate-500">Try a different keyword or explore all services</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      closeMobileSearch()
+                      onShowServices?.()
+                    }}
+                    className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-[#003F86] px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-[#0054A6] transition"
+                  >
+                    Browse all services
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
-      </header>
+      )}
 
       <section className="bg-white px-5 pt-4 pb-2 lg:hidden">
         <div className="flex flex-col">
@@ -573,7 +926,7 @@ function ServiceDetailPage({
               <span className="text-[#003F86]">{activeSubService.name}</span>
             </div>
           )}
-          <h1 className="text-3xl font-extrabold text-neutral-900 tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-neutral-900 tracking-tight leading-tight">
             {activeSubService ? activeSubService.name : getServiceTitle(service)}
           </h1>
           <div className="mt-1.5 flex items-center gap-1.5 text-sm font-semibold text-neutral-700">
@@ -754,9 +1107,17 @@ function ServiceDetailPage({
                 {group.packages.map((item) => {
                   const bannerMedia = item.banner_media || item.bannerMedia
                   const isVideo = isVideoMedia(bannerMedia)
+                  const domId = `package-${String(item.id || item.name).toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
+                  const isHighlighted = highlightedPackageId === (item.id || item.name)
 
                   return (
-                    <div className="flex flex-col" key={`${group.id}-${item.name}`}>
+                    <div
+                      id={domId}
+                      className={`flex flex-col transition-all duration-500 scroll-mt-28 ${
+                        isHighlighted ? 'bg-blue-50/80 ring-2 ring-[#003F86] rounded-xl shadow-md' : ''
+                      }`}
+                      key={`${group.id}-${item.name}`}
+                    >
                       {bannerMedia ? (
                         <div className="px-3.5 pt-3 sm:px-5 sm:pt-4">
                           {isVideo ? (

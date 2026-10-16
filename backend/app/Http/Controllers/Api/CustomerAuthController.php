@@ -109,6 +109,14 @@ class CustomerAuthController extends Controller
         $phone = trim($data['phone']);
         $name = trim($data['name']);
 
+        $digits = preg_replace('/\D+/', '', $phone);
+        if (strlen($digits) < 10) {
+            return response()->json([
+                'message' => 'Please enter a valid 10-digit mobile number.',
+                'errors' => ['phone' => ['Please enter a valid 10-digit mobile number.']],
+            ], 422);
+        }
+
         $errors = $this->availabilityErrors($email, $phone);
         if ($errors !== []) {
             return response()->json([
@@ -117,8 +125,10 @@ class CustomerAuthController extends Controller
             ], 422);
         }
 
-        $cacheKey = 'customer_signup_otp_' . md5($email);
-        $existing = Cache::get($cacheKey);
+        $last10Phone = strlen($digits) >= 10 ? substr($digits, -10) : $digits;
+        $emailCacheKey = 'customer_signup_otp_' . md5($email);
+        $phoneCacheKey = 'customer_signup_otp_phone_' . $last10Phone;
+        $existing = Cache::get($emailCacheKey) ?: Cache::get($phoneCacheKey);
 
         if (is_array($existing) && ! empty($existing['last_sent_at'])) {
             $elapsed = \Illuminate\Support\Carbon::parse($existing['last_sent_at'])->diffInSeconds(now());
@@ -135,7 +145,7 @@ class CustomerAuthController extends Controller
 
         $otp = (string) random_int(100000, 999999);
 
-        Cache::put($cacheKey, [
+        $payload = [
             'otp_hash' => Hash::make($otp),
             'expires_at' => now()->addMinutes(10)->toIso8601String(),
             'email' => $email,
@@ -143,54 +153,85 @@ class CustomerAuthController extends Controller
             'name' => $name,
             'attempts' => 0,
             'last_sent_at' => now()->toIso8601String(),
-        ], now()->addMinutes(10));
+        ];
 
+        Cache::put($emailCacheKey, $payload, now()->addMinutes(10));
+        Cache::put($phoneCacheKey, $payload, now()->addMinutes(10));
+
+        // Send OTP via SMS
+        $sentViaSms = app(\App\Support\SmsService::class)->sendOtp($phone, $otp);
+
+        // Attempt sending OTP via Email (optional fallback/secondary)
         $sentViaEmail = false;
         try {
             $this->passwordMailer->sendSignupOtp($email, $name, $otp);
             $sentViaEmail = true;
         } catch (\Throwable $e) {
-            Log::error('Customer signup OTP mail failed', [
+            Log::warning('Customer signup OTP mail failed', [
                 'email' => $email,
                 'error' => $e->getMessage(),
             ]);
-
-            if (! config('app.debug')) {
-                return response()->json([
-                    'message' => 'Unable to send OTP email right now. Please try again.',
-                    'errors' => ['email' => ['Unable to send OTP email right now. Please try again.']],
-                ], 422);
-            }
         }
 
-        Log::info('Customer signup OTP generated', [
+        Log::info('Customer signup OTP dispatched', [
             'email' => $email,
             'phone' => $phone,
-            'otp' => $otp,
+            'sent_via_sms' => $sentViaSms,
+            'sent_via_email' => $sentViaEmail,
         ]);
 
-        $response = [
-            'message' => $sentViaEmail
-                ? 'OTP sent to your email address.'
-                : 'OTP generated for registration.',
-            'channel' => 'email',
-            'masked_destination' => $this->maskEmail($email),
-            'resend_after' => 45,
-        ];
+        if (! $sentViaSms && ! $sentViaEmail) {
+            return response()->json([
+                'message' => 'Unable to send OTP verification code right now. Please check your mobile number and try again.',
+                'errors' => ['phone' => ['Unable to send SMS to this mobile number. Please check the number and try again.']],
+            ], 422);
+        }
 
-        return response()->json($response);
+        $destinations = [];
+        if ($sentViaSms) {
+            $destinations[] = 'mobile number (' . $this->maskPhone($phone) . ')';
+        }
+        if ($sentViaEmail) {
+            $destinations[] = 'email (' . $this->maskEmail($email) . ')';
+        }
+
+        return response()->json([
+            'message' => 'OTP sent successfully to your ' . implode(' and ', $destinations) . '.',
+            'channel' => $sentViaSms ? 'phone' : 'email',
+            'sent_sms' => $sentViaSms,
+            'sent_email' => $sentViaEmail,
+            'masked_phone' => $this->maskPhone($phone),
+            'masked_email' => $this->maskEmail($email),
+            'masked_destination' => $sentViaSms ? $this->maskPhone($phone) : $this->maskEmail($email),
+            'resend_after' => 45,
+        ]);
     }
 
     public function verifySignupOtp(Request $request)
     {
         $data = $request->validate([
-            'email' => ['required', 'email', 'max:255'],
+            'email' => ['nullable', 'email', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:50'],
             'otp' => ['required', 'digits:6'],
         ]);
 
-        $email = strtolower(trim($data['email']));
-        $cacheKey = 'customer_signup_otp_' . md5($email);
-        $payload = Cache::get($cacheKey);
+        $email = ! empty($data['email']) ? strtolower(trim($data['email'])) : null;
+        $phone = ! empty($data['phone']) ? trim($data['phone']) : null;
+
+        if (! $email && ! $phone) {
+            return response()->json([
+                'message' => 'Email or mobile number is required to verify OTP.',
+                'errors' => ['otp' => ['Email or mobile number is required to verify OTP.']],
+            ], 422);
+        }
+
+        $emailCacheKey = $email ? 'customer_signup_otp_' . md5($email) : null;
+        $digits = $phone ? preg_replace('/\D+/', '', $phone) : null;
+        $last10 = $digits && strlen($digits) >= 10 ? substr($digits, -10) : $digits;
+        $phoneCacheKey = $last10 ? 'customer_signup_otp_phone_' . $last10 : null;
+
+        $payload = ($emailCacheKey ? Cache::get($emailCacheKey) : null)
+            ?: ($phoneCacheKey ? Cache::get($phoneCacheKey) : null);
 
         if (! is_array($payload)) {
             return response()->json([
@@ -200,7 +241,8 @@ class CustomerAuthController extends Controller
         }
 
         if (now()->greaterThan($payload['expires_at'] ?? now()->subSecond())) {
-            Cache::forget($cacheKey);
+            if ($emailCacheKey) Cache::forget($emailCacheKey);
+            if ($phoneCacheKey) Cache::forget($phoneCacheKey);
 
             return response()->json([
                 'message' => 'OTP has expired. Please request a new OTP.',
@@ -210,7 +252,8 @@ class CustomerAuthController extends Controller
 
         $attempts = (int) ($payload['attempts'] ?? 0);
         if ($attempts >= 5) {
-            Cache::forget($cacheKey);
+            if ($emailCacheKey) Cache::forget($emailCacheKey);
+            if ($phoneCacheKey) Cache::forget($phoneCacheKey);
 
             return response()->json([
                 'message' => 'Too many invalid attempts. Please request a new OTP.',
@@ -220,7 +263,8 @@ class CustomerAuthController extends Controller
 
         if (! Hash::check($data['otp'], (string) ($payload['otp_hash'] ?? ''))) {
             $payload['attempts'] = $attempts + 1;
-            Cache::put($cacheKey, $payload, now()->addMinutes(10));
+            if ($emailCacheKey) Cache::put($emailCacheKey, $payload, now()->addMinutes(10));
+            if ($phoneCacheKey) Cache::put($phoneCacheKey, $payload, now()->addMinutes(10));
 
             return response()->json([
                 'message' => 'Invalid OTP. Please try again.',
@@ -228,24 +272,35 @@ class CustomerAuthController extends Controller
             ], 422);
         }
 
-        Cache::forget($cacheKey);
+        if ($emailCacheKey) Cache::forget($emailCacheKey);
+        if ($phoneCacheKey) Cache::forget($phoneCacheKey);
 
         $signupToken = Str::random(64);
         $verifiedKey = 'customer_signup_verified_' . $signupToken;
 
+        $verifiedEmail = $payload['email'] ?? $email;
+        $verifiedPhone = $payload['phone'] ?? $phone;
+
         Cache::put($verifiedKey, [
-            'email' => $email,
-            'phone' => $payload['phone'] ?? null,
+            'email' => $verifiedEmail,
+            'phone' => $verifiedPhone,
             'name' => $payload['name'] ?? null,
+            'is_phone_verified' => true,
+            'phone_verified_at' => now()->toIso8601String(),
+            'is_email_verified' => ! empty($verifiedEmail),
+            'email_verified_at' => ! empty($verifiedEmail) ? now()->toIso8601String() : null,
             'verified_at' => now()->toIso8601String(),
         ], now()->addMinutes(20));
 
         return response()->json([
-            'message' => 'Email verified successfully.',
+            'message' => 'Mobile number and email verified successfully.',
             'signup_token' => $signupToken,
-            'email' => $email,
+            'email' => $verifiedEmail,
+            'phone' => $verifiedPhone,
+            'is_phone_verified' => true,
         ]);
     }
+
 
     public function register(Request $request)
     {
@@ -264,7 +319,12 @@ class CustomerAuthController extends Controller
             $verifiedKey = 'customer_signup_verified_' . $data['signup_token'];
             $verified = Cache::get($verifiedKey);
 
-            if (! is_array($verified) || (isset($verified['email']) && strtolower($verified['email']) !== $email)) {
+            $emailMismatch = is_array($verified) && ! empty($email) && ! empty($verified['email']) && strtolower($verified['email']) !== $email;
+            $phoneDigits = preg_replace('/\D+/', '', $phone);
+            $vPhoneDigits = is_array($verified) && ! empty($verified['phone']) ? preg_replace('/\D+/', '', $verified['phone']) : '';
+            $phoneMismatch = is_array($verified) && $vPhoneDigits !== '' && substr($phoneDigits, -10) !== substr($vPhoneDigits, -10);
+
+            if (! is_array($verified) || $emailMismatch || $phoneMismatch) {
                 return response()->json([
                     'message' => 'Signup session expired or invalid. Please verify OTP again.',
                     'errors' => ['otp' => ['Signup session expired or invalid. Please verify OTP again.']],
@@ -286,9 +346,13 @@ class CustomerAuthController extends Controller
             'password' => Hash::make($data['password']),
             'metadata' => [
                 'registration_source' => 'customer_signup',
-                'email_verified_at' => now()->toIso8601String(),
+                'is_phone_verified' => true,
+                'phone_verified_at' => ($verified['phone_verified_at'] ?? now()->toIso8601String()),
+                'is_email_verified' => ! empty($email),
+                'email_verified_at' => ! empty($email) ? ($verified['email_verified_at'] ?? now()->toIso8601String()) : null,
             ],
         ]);
+
 
         $this->syncDevice($customer, $this->devicePayload($request));
 
@@ -382,9 +446,23 @@ class CustomerAuthController extends Controller
             ], 422);
         }
 
+        // Resend cooldown check (45 seconds)
+        $existingOtp = $customer->metadata['login_otp'] ?? null;
+        if (is_array($existingOtp) && ! empty($existingOtp['last_sent_at'])) {
+            $elapsed = \Illuminate\Support\Carbon::parse($existingOtp['last_sent_at'])->diffInSeconds(now());
+            if ($elapsed < 45) {
+                $wait = 45 - $elapsed;
+
+                return response()->json([
+                    'message' => "Please wait {$wait}s before requesting another OTP.",
+                    'errors' => ['login' => ["Please wait {$wait}s before requesting another OTP."]],
+                    'retry_after' => $wait,
+                ], 429);
+            }
+        }
+
         $otp = (string) random_int(100000, 999999);
         $channel = $this->isEmailIdentifier($identifier) ? 'email' : 'phone';
-        $deliveryEmail = $customer->email ?: ($channel === 'email' ? $identifier : null);
 
         $metadata = $customer->metadata ?? [];
         $metadata['login_otp'] = [
@@ -392,36 +470,79 @@ class CustomerAuthController extends Controller
             'expires_at' => now()->addMinutes(10)->toIso8601String(),
             'channel' => $channel,
             'identifier' => $identifier,
+            'attempts' => 0,
+            'last_sent_at' => now()->toIso8601String(),
         ];
         $customer->forceFill(['metadata' => $metadata])->save();
+
+        $smsPhone = $customer->phone ?: ($channel === 'phone' ? $identifier : null);
+        $deliveryEmail = $customer->email ?: ($channel === 'email' ? $identifier : null);
+
+        $sentViaSms = false;
+        if ($smsPhone) {
+            $sentViaSms = app(\App\Support\SmsService::class)->sendOtp($smsPhone, $otp);
+        }
 
         $sentViaEmail = false;
         if ($deliveryEmail) {
             try {
                 $this->passwordMailer->sendLoginOtp($deliveryEmail, $customer->name, $otp);
                 $sentViaEmail = true;
-            } catch (\Throwable) {
-                return response()->json(['message' => 'Unable to send OTP right now. Please try again.'], 422);
+            } catch (\Throwable $e) {
+                Log::warning('Customer login OTP mail failed', [
+                    'email' => $deliveryEmail,
+                    'error' => $e->getMessage(),
+                ]);
             }
-        } else {
-            \Illuminate\Support\Facades\Log::info('Customer login OTP (phone only, no email on file)', [
-                'customer_id' => $customer->id,
-                'phone' => $customer->phone,
-                'otp' => $otp,
+        }
+
+        Log::info('Customer login OTP dispatched', [
+            'customer_id' => $customer->id,
+            'channel' => $channel,
+            'phone' => $smsPhone,
+            'email' => $deliveryEmail,
+            'sent_via_sms' => $sentViaSms,
+            'sent_via_email' => $sentViaEmail,
+        ]);
+
+        if (! $sentViaSms && ! $sentViaEmail) {
+            return response()->json([
+                'message' => 'Unable to send OTP verification code right now. Please try password login or check your details.',
+                'errors' => ['login' => ['Unable to send OTP. Please try password login or contact support.']],
+            ], 422);
+        }
+
+        if ($channel === 'phone') {
+            $maskedPhone = $this->maskPhone($smsPhone ?: $identifier);
+            $message = $sentViaSms
+                ? ($sentViaEmail ? "OTP sent to your mobile number ({$maskedPhone}) and registered email." : "OTP sent to your mobile number ({$maskedPhone}).")
+                : "OTP sent to your registered email address.";
+
+            return response()->json([
+                'message' => $message,
+                'channel' => 'phone',
+                'sent_sms' => $sentViaSms,
+                'sent_email' => $sentViaEmail,
+                'masked_destination' => $maskedPhone,
+                'masked_phone' => $maskedPhone,
+                'resend_after' => 45,
             ]);
         }
 
-        $response = [
-            'message' => $sentViaEmail
-                ? 'OTP sent to your registered email.'
-                : 'OTP generated for your mobile number. Check SMS/app notifications, or use password login if OTP is unavailable.',
-            'channel' => $sentViaEmail ? 'email' : 'phone',
-            'masked_destination' => $sentViaEmail
-                ? $this->maskEmail($deliveryEmail)
-                : $this->maskPhone($customer->phone ?: $identifier),
-        ];
+        $maskedEmail = $this->maskEmail($deliveryEmail ?: $identifier);
+        $message = $sentViaEmail
+            ? ($sentViaSms ? "OTP sent to your email ({$maskedEmail}) and registered mobile number." : "OTP sent to your email ({$maskedEmail}).")
+            : "OTP sent to your registered mobile number.";
 
-        return response()->json($response);
+        return response()->json([
+            'message' => $message,
+            'channel' => 'email',
+            'sent_sms' => $sentViaSms,
+            'sent_email' => $sentViaEmail,
+            'masked_destination' => $maskedEmail,
+            'masked_email' => $maskedEmail,
+            'resend_after' => 45,
+        ]);
     }
 
     public function verifyLoginOtp(Request $request)
@@ -431,7 +552,8 @@ class CustomerAuthController extends Controller
             'otp' => ['required', 'digits:6'],
         ]);
 
-        $customer = $this->findCustomerByIdentifier(trim($data['login']));
+        $identifier = trim($data['login']);
+        $customer = $this->findCustomerByIdentifier($identifier);
         $loginOtp = $customer?->metadata['login_otp'] ?? null;
 
         if (! $customer || ! $this->isValidLoginOtp($loginOtp, $data['otp'])) {
@@ -443,6 +565,10 @@ class CustomerAuthController extends Controller
 
         $metadata = $customer->metadata ?? [];
         unset($metadata['login_otp']);
+        if (! empty($customer->phone)) {
+            $metadata['is_phone_verified'] = true;
+            $metadata['phone_verified_at'] = now()->toIso8601String();
+        }
         $customer->forceFill(['metadata' => $metadata])->save();
 
         $token = $customer->createToken('auth_token')->plainTextToken;
@@ -451,6 +577,7 @@ class CustomerAuthController extends Controller
 
         return response()->json($this->publicCustomer($customer->fresh(), $token));
     }
+
 
     private function recordCustomerLoginLog(CustomerProfile $customer, Request $request): void
     {
@@ -670,13 +797,25 @@ class CustomerAuthController extends Controller
 
         $customer->forceFill(['metadata' => $metadata])->save();
 
+        $sentViaEmail = false;
         try {
             $this->passwordMailer->sendOtp($customer->email, $customer->name, $otp);
-        } catch (\Throwable) {
-            return response()->json(['message' => 'Unable to send OTP email right now. Please check mail settings and try again.'], 422);
+            $sentViaEmail = true;
+        } catch (\Throwable $e) {
+            Log::warning('Customer password reset OTP mail failed: ' . $e->getMessage());
         }
 
-        return response()->json(['message' => 'OTP sent to your registered email.']);
+        $sentViaSms = app(\App\Support\SmsService::class)->sendOtp($customer->phone, $otp);
+
+        if (! $sentViaSms && ! $sentViaEmail) {
+            return response()->json(['message' => 'Unable to send OTP verification code right now. Please check your contact details and try again.'], 422);
+        }
+
+        return response()->json([
+            'message' => $sentViaSms
+                ? ($sentViaEmail ? 'OTP sent to your registered email and mobile number.' : 'OTP sent to your registered mobile number.')
+                : 'OTP sent to your registered email.',
+        ]);
     }
 
     public function verifyPasswordOtp(Request $request)

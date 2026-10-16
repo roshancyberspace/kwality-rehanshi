@@ -116,13 +116,11 @@ class AccountDeletionController extends Controller
         Cache::put($cacheKey, $payload, now()->addMinutes(10));
         Cache::put($generalCacheKey, $payload, now()->addMinutes(10));
 
-        // For local development / automated fallback, save into metadata as well
-        $metadata = $account->metadata ?? [];
-        $metadata['deletion_otp'] = [
-            'code' => $otp,
-            'expires_at' => now()->addMinutes(10)->toISOString(),
-        ];
-        $account->forceFill(['metadata' => $metadata])->save();
+        // Send SMS OTP if phone available
+        if (! empty($account->phone)) {
+            app(\App\Support\SmsService::class)->sendOtp($account->phone, $otp);
+        }
+
 
         return response()->json([
             'success' => true,

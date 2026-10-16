@@ -163,6 +163,9 @@ class BookingController extends CrudController
 
         $mailer = app(BookingCustomerMailer::class);
         $mailer->sendBookingConfirmation($booking);
+        if ($serviceOtp = data_get($booking->metadata, 'service_otp')) {
+            app(\App\Support\SmsService::class)->sendOtp($booking->customer_phone, (string) $serviceOtp);
+        }
         $mailer->sendPaymentReceipt($booking);
         if (app(BookingAutoAssignmentManager::class)->autoApprove() && $booking->status === 'Accepted') {
             $mailer->sendStatusUpdate($booking, 'Pending Approval');

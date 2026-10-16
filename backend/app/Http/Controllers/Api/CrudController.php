@@ -216,12 +216,14 @@ abstract class CrudController extends Controller
 
     protected function clearModelCache(): void
     {
-        if ($this->cacheable) {
-            try {
+        try {
+            \Illuminate\Support\Facades\Cache::forget('frontend_content_v1');
+            \Illuminate\Support\Facades\Cache::forget('frontend_content_json_v1');
+            if ($this->cacheable) {
                 \Illuminate\Support\Facades\Cache::flush();
-            } catch (\Throwable $e) {
-                // Ignore cache flush errors if driver fails
             }
+        } catch (\Throwable $e) {
+            // Ignore cache flush errors if driver fails
         }
     }
 

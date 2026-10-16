@@ -20,143 +20,162 @@ class FrontendContentController extends Controller
 {
     public function index()
     {
-        $bookings = Booking::query()
-            ->select(['id', 'service_name', 'service_id', 'service_package_id', 'metadata'])
-            ->get();
+        $json = \Illuminate\Support\Facades\Cache::remember('frontend_content_json_v1', 300, function () {
+            $bookings = Booking::query()
+                ->select(['id', 'service_name', 'service_id', 'service_package_id', 'metadata'])
+                ->get();
 
-        $packageIdCounts = [];
-        $serviceIdCounts = [];
-        $nameCounts = [];
+            $packageIdCounts = [];
+            $serviceIdCounts = [];
+            $nameCounts = [];
 
-        foreach ($bookings as $booking) {
-            if ($booking->service_package_id) {
-                $packageIdCounts[$booking->service_package_id] = ($packageIdCounts[$booking->service_package_id] ?? 0) + 1;
-            }
-            if ($booking->service_id) {
-                $serviceIdCounts[$booking->service_id] = ($serviceIdCounts[$booking->service_id] ?? 0) + 1;
-            }
-            if ($booking->service_name) {
-                $rawName = strtolower(trim($booking->service_name));
-                $nameCounts[$rawName] = ($nameCounts[$rawName] ?? 0) + 1;
-                $baseName = preg_replace('/\s*\+\s*\d+\s*more$/i', '', $rawName);
-                if ($baseName !== $rawName) {
-                    $nameCounts[$baseName] = ($nameCounts[$baseName] ?? 0) + 1;
+            foreach ($bookings as $booking) {
+                if ($booking->service_package_id) {
+                    $packageIdCounts[$booking->service_package_id] = ($packageIdCounts[$booking->service_package_id] ?? 0) + 1;
                 }
-            }
-            $items = $booking->metadata['items'] ?? [];
-            if (is_array($items)) {
-                foreach ($items as $item) {
-                    $itemQty = max(1, (int) ($item['quantity'] ?? 1));
-                    if (!empty($item['id'])) {
-                        $packageIdCounts[$item['id']] = ($packageIdCounts[$item['id']] ?? 0) + $itemQty;
-                    }
-                    if (!empty($item['name'])) {
-                        $itemName = strtolower(trim($item['name']));
-                        $nameCounts[$itemName] = ($nameCounts[$itemName] ?? 0) + $itemQty;
+                if ($booking->service_id) {
+                    $serviceIdCounts[$booking->service_id] = ($serviceIdCounts[$booking->service_id] ?? 0) + 1;
+                }
+                if ($booking->service_name) {
+                    $rawName = strtolower(trim($booking->service_name));
+                    $nameCounts[$rawName] = ($nameCounts[$rawName] ?? 0) + 1;
+                    $baseName = preg_replace('/\s*\+\s*\d+\s*more$/i', '', $rawName);
+                    if ($baseName !== $rawName) {
+                        $nameCounts[$baseName] = ($nameCounts[$baseName] ?? 0) + 1;
                     }
                 }
+                $items = $booking->metadata['items'] ?? [];
+                if (is_array($items)) {
+                    foreach ($items as $item) {
+                        $itemQty = max(1, (int) ($item['quantity'] ?? 1));
+                        if (!empty($item['id'])) {
+                            $packageIdCounts[$item['id']] = ($packageIdCounts[$item['id']] ?? 0) + $itemQty;
+                        }
+                        if (!empty($item['name'])) {
+                            $itemName = strtolower(trim($item['name']));
+                            $nameCounts[$itemName] = ($nameCounts[$itemName] ?? 0) + $itemQty;
+                        }
+                    }
+                }
             }
-        }
 
-        $categories = Category::query()
-            ->where('status', 'Active')
-            ->orderBy('sort_order')
-            ->orderBy('id')
-            ->get();
-
-        $services = Service::query()
-            ->with(['category', 'subServices' => fn ($query) => $query
+            $categories = Category::query()
                 ->where('status', 'Active')
                 ->orderBy('sort_order')
-                ->orderBy('id'), 'packages' => fn ($query) => $query
-                ->with(['detailSections' => fn ($sectionQuery) => $sectionQuery->where('status', 'Active')->where('is_visible', true)])
+                ->orderBy('id')
+                ->get();
+
+            $services = Service::query()
+                ->with([
+                    'category',
+                    'subServices' => fn ($query) => $query
+                        ->where('status', 'Active')
+                        ->orderBy('sort_order')
+                        ->orderBy('id'),
+                    'packages' => fn ($query) => $query
+                        ->with([
+                            'subService:id,name,service_id',
+                            'detailSections' => fn ($sectionQuery) => $sectionQuery
+                                ->where('status', 'Active')
+                                ->where('is_visible', true),
+                        ])
+                        ->where('status', 'Active')
+                        ->orderBy('sort_order')
+                        ->orderBy('id'),
+                ])
                 ->where('status', 'Active')
                 ->orderBy('sort_order')
-                ->orderBy('id')])
-            ->where('status', 'Active')
-            ->orderBy('sort_order')
-            ->orderBy('id')
-            ->get();
+                ->orderBy('id')
+                ->get();
 
-        $services->each(function (Service $service) use ($serviceIdCounts, $nameCounts, $packageIdCounts) {
-            $serviceDirectCount = max(
-                (int) ($serviceIdCounts[$service->id] ?? 0),
-                (int) ($nameCounts[strtolower(trim($service->name))] ?? 0)
-            );
+            $services->each(function (Service $service) use ($serviceIdCounts, $nameCounts, $packageIdCounts) {
+                $serviceDirectCount = max(
+                    (int) ($serviceIdCounts[$service->id] ?? 0),
+                    (int) ($nameCounts[strtolower(trim($service->name))] ?? 0)
+                );
 
-            $packageSum = 0;
-            $service->packages->each(function (ServicePackage $package) use ($packageIdCounts, $nameCounts, &$packageSum) {
+                $packageSum = 0;
+                $service->packages->each(function (ServicePackage $package) use ($packageIdCounts, $nameCounts, &$packageSum) {
+                    $pkgCount = max(
+                        (int) ($packageIdCounts[$package->id] ?? 0),
+                        (int) ($nameCounts[strtolower(trim($package->name))] ?? 0)
+                    );
+                    $package->setAttribute('booking_count', $pkgCount);
+                    $packageSum += $pkgCount;
+                });
+
+                $service->setAttribute('booking_count', max($serviceDirectCount, $packageSum));
+            });
+
+            $packages = ServicePackage::query()
+                ->with([
+                    'service:id,name,category_id',
+                    'subService:id,name,service_id',
+                    'detailSections' => fn ($sectionQuery) => $sectionQuery
+                        ->where('status', 'Active')
+                        ->where('is_visible', true),
+                ])
+                ->where('status', 'Active')
+                ->whereHas('service', fn ($query) => $query->where('status', 'Active'))
+                ->orderBy('sort_order')
+                ->orderBy('id')
+                ->get();
+
+            $packages->each(function (ServicePackage $package) use ($packageIdCounts, $nameCounts) {
                 $pkgCount = max(
                     (int) ($packageIdCounts[$package->id] ?? 0),
                     (int) ($nameCounts[strtolower(trim($package->name))] ?? 0)
                 );
                 $package->setAttribute('booking_count', $pkgCount);
-                $packageSum += $pkgCount;
             });
 
-            $service->setAttribute('booking_count', max($serviceDirectCount, $packageSum));
+            return json_encode([
+                'categories' => $categories,
+                'services' => $services,
+                'service_packages' => $packages,
+                'coupons' => Coupon::query()
+                    ->available()
+                    ->orderBy('id')
+                    ->get(),
+                'brands' => Brand::query()
+                    ->where('status', 'Active')
+                    ->orderBy('sort_order')
+                    ->orderBy('id')
+                    ->get(),
+                'mobile_banners' => MobileBanner::query()
+                    ->where('status', 'Active')
+                    ->orderBy('sort_order')
+                    ->orderBy('id')
+                    ->get(),
+                'testimonials' => Testimonial::query()
+                    ->where('status', 'Active')
+                    ->orderBy('sort_order')
+                    ->orderBy('id')
+                    ->get(),
+                'reviews' => Review::query()
+                    ->whereIn('status', ['Approved', 'Published'])
+                    ->orderByDesc('reviewed_at')
+                    ->orderByDesc('id')
+                    ->get(),
+                'app_content' => AppContent::query()
+                    ->where('status', 'Active')
+                    ->orderBy('sort_order')
+                    ->orderBy('id')
+                    ->get(),
+                'settings' => Setting::query()
+                    ->whereIn('group', ['branding', 'contact', 'legal', 'social_links', 'payment_methods', 'invoice'])
+                    ->orderBy('group')
+                    ->orderBy('key')
+                    ->get()
+                    ->map(fn (Setting $setting) => $setting->toPublicArray())
+                    ->groupBy('group'),
+                'pages' => Page::query()
+                    ->where('status', 'Active')
+                    ->orderBy('id')
+                    ->get(),
+            ]);
         });
 
-        $packages = ServicePackage::query()
-            ->with(['service', 'detailSections' => fn ($sectionQuery) => $sectionQuery->where('status', 'Active')->where('is_visible', true)])
-            ->where('status', 'Active')
-            ->whereHas('service', fn ($query) => $query->where('status', 'Active'))
-            ->orderBy('sort_order')
-            ->orderBy('id')
-            ->get();
-
-        $packages->each(function (ServicePackage $package) use ($packageIdCounts, $nameCounts) {
-            $pkgCount = max(
-                (int) ($packageIdCounts[$package->id] ?? 0),
-                (int) ($nameCounts[strtolower(trim($package->name))] ?? 0)
-            );
-            $package->setAttribute('booking_count', $pkgCount);
-        });
-
-        return response()->json([
-            'categories' => $categories,
-            'services' => $services,
-            'service_packages' => $packages,
-            'coupons' => Coupon::query()
-                ->available()
-                ->orderBy('id')
-                ->get(),
-            'brands' => Brand::query()
-                ->where('status', 'Active')
-                ->orderBy('sort_order')
-                ->orderBy('id')
-                ->get(),
-            'mobile_banners' => MobileBanner::query()
-                ->where('status', 'Active')
-                ->orderBy('sort_order')
-                ->orderBy('id')
-                ->get(),
-            'testimonials' => Testimonial::query()
-                ->where('status', 'Active')
-                ->orderBy('sort_order')
-                ->orderBy('id')
-                ->get(),
-            'reviews' => Review::query()
-                ->whereIn('status', ['Approved', 'Published'])
-                ->orderByDesc('reviewed_at')
-                ->orderByDesc('id')
-                ->get(),
-            'app_content' => AppContent::query()
-                ->where('status', 'Active')
-                ->orderBy('sort_order')
-                ->orderBy('id')
-                ->get(),
-            'settings' => Setting::query()
-                ->whereIn('group', ['branding', 'contact', 'legal', 'social_links', 'payment_methods', 'invoice'])
-                ->orderBy('group')
-                ->orderBy('key')
-                ->get()
-                ->map(fn (Setting $setting) => $setting->toPublicArray())
-                ->groupBy('group'),
-            'pages' => Page::query()
-                ->where('status', 'Active')
-                ->orderBy('id')
-                ->get(),
-        ]);
+        return response($json, 200, ['Content-Type' => 'application/json']);
     }
 }

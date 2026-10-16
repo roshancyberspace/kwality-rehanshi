@@ -458,6 +458,9 @@ function App() {
   }
 
   const handleGlobalSearch = (query) => {
+    if (typeof query !== 'string') {
+      return
+    }
     const trimmedQuery = query.trim()
 
     if (!trimmedQuery) {

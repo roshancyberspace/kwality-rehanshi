@@ -56,6 +56,52 @@
       "name": "Shared Content",
       "item": [
         {
+          "name": "Check App Version (Customer & Vendor)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"app_type\": \"customer\",\n  \"version\": \"1.0.0\",\n  \"build_number\": 1\n}"
+            },
+            "url": "{{base_url}}/app-version/check",
+            "description": "Check if client app build and version are valid or require force update. Valid app_type values: customer, vendor. Works with both GET and POST."
+          },
+          "response": [
+            {
+              "name": "200 OK (App is Up to Date - can_proceed: true)",
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": true,\n  \"force_update\": false,\n  \"can_proceed\": true,\n  \"message\": \"App is up to date.\",\n  \"data\": {\n    \"app_type\": \"customer\",\n    \"comparison\": \"same\",\n    \"can_proceed\": true,\n    \"force_update\": false,\n    \"client_version\": \"1.0.0\",\n    \"client_build_number\": 1,\n    \"current_version\": \"1.0.0\",\n    \"current_build_number\": 1\n  }\n}"
+            },
+            {
+              "name": "200 OK (Force Update Required - status: false, force_update: true)",
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"status\": false,\n  \"force_update\": true,\n  \"can_proceed\": false,\n  \"message\": \"Update required. Please update your app to continue.\",\n  \"data\": {\n    \"app_type\": \"customer\",\n    \"comparison\": \"lower\",\n    \"can_proceed\": false,\n    \"force_update\": true,\n    \"client_version\": \"0.9.0\",\n    \"client_build_number\": 1,\n    \"current_version\": \"1.0.0\",\n    \"current_build_number\": 1\n  }\n}"
+            }
+          ]
+        },
+        {
           "name": "Frontend Content",
           "request": {
             "method": "GET",

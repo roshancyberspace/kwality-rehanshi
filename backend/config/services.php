@@ -36,9 +36,15 @@ return [
     ],
 
     'sms' => [
-        'url' => env('SMS_API_URL'),
+        'url' => env('SMS_API_URL', 'http://sms.clicksms.co.in/api/mt/SendSMS'),
         'key' => env('SMS_API_KEY'),
-        'sender' => env('SMS_SENDER_ID', 'REHANSHI'),
+        'user' => env('SMS_USER'),
+        'password' => env('SMS_PASSWORD'),
+        'sender' => env('SMS_SENDER_ID', 'REHTCH'),
+        'dlt_template_id' => env('SMS_DLT_TEMPLATE_ID'),
+        'telemarketer_id' => env('SMS_TELEMARKETER_ID'),
+        'peid' => env('SMS_PEID'),
+        'route' => env('SMS_ROUTE', '06'),
     ],
 
     'fcm' => [

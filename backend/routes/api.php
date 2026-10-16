@@ -40,6 +40,7 @@ use App\Http\Controllers\Api\WalletTransactionController;
 use App\Http\Controllers\Api\AccountDeletionController;
 use App\Http\Controllers\Api\LoginLogController;
 use App\Http\Controllers\Api\PageController;
+use App\Http\Controllers\Api\AppVersionController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
@@ -145,6 +146,7 @@ Route::prefix('v1')->group(function () {
     Route::post('bookings/{booking}/extra-items/approve', [BookingController::class, 'approveExtraItems']);
     Route::post('bookings/{booking}/extra-items/reject', [BookingController::class, 'rejectExtraItems']);
     Route::apiResource('booking-ledgers', BookingLedgerController::class);
+    Route::post('payments/razorpay/verify', [\App\Http\Controllers\Api\PaymentVerificationController::class, 'verifyRazorpay'])->middleware('throttle:30,1');
     Route::apiResource('payments', PaymentController::class);
     Route::apiResource('payouts', PayoutController::class);
     Route::post('coupons/validate', [CouponController::class, 'validateCode']);
@@ -171,5 +173,7 @@ Route::prefix('v1')->group(function () {
     Route::post('login-logs/{loginLog}/unblock', [LoginLogController::class, 'unblock']);
     Route::apiResource('login-logs', LoginLogController::class);
     Route::post('checkout/calculate', [BookingController::class, 'calculateCheckout']);
+    Route::match(['get', 'post'], 'app-version/check', [AppVersionController::class, 'check']);
+    Route::match(['get', 'post'], 'mobile/app-version/check', [AppVersionController::class, 'check']);
 });
 

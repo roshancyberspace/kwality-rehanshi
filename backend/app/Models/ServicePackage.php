@@ -24,18 +24,22 @@ class ServicePackage extends Model
 
     public function getServiceNameAttribute(): ?string
     {
-        return $this->service?->name;
+        return $this->relationLoaded('service') ? $this->service?->name : null;
     }
 
     public function getSubServiceNameAttribute(): ?string
     {
-        return $this->subService?->name;
+        return $this->relationLoaded('subService') ? $this->subService?->name : null;
     }
 
     public function getCategoryIdAttribute(): ?int
     {
-        $categoryId = $this->service?->category_id;
-        return $categoryId !== null ? (int) $categoryId : null;
+        if ($this->relationLoaded('service') && $this->service) {
+            $categoryId = $this->service->category_id;
+            return $categoryId !== null ? (int) $categoryId : null;
+        }
+
+        return null;
     }
 
     public function detailSections()
